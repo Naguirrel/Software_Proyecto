@@ -1,5 +1,7 @@
 # VisaGuide
 
+[![CI](https://github.com/dquan123/Software_Proyecto/actions/workflows/ci.yml/badge.svg)](https://github.com/dquan123/Software_Proyecto/actions/workflows/ci.yml)
+
 Aplicacion web para acompanar procesos de visa estadounidense.
 
 ## Panel de administracion
