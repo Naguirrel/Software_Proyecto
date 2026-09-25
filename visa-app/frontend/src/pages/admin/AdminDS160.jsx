@@ -82,7 +82,7 @@ export default function AdminDS160() {
         <AdminAdvancedFilters value={filters} onChange={setFilters} advisors={advisors} status={tab} statuses={states} onStatusChange={setTab}
           onReset={() => { setFilters(EMPTY_ADMIN_FILTERS); setTab("todos"); setQuery(""); }} />
         <div className="admin-list-toolbar"><AdminSearch value={query} onChange={setQuery} placeholder="Buscar formulario..." /></div>
-        <AdminResourceState {...resource} isEmpty={!forms.length} empty="No hay formularios DS-160 registrados." />
+        <AdminResourceState {...resource} isEmpty={!forms.length} empty="No hay formularios DS-160 registrados aún." />
         {!resource.isLoading && !resource.error && forms.length > 0 && (
           <div className="admin-table-wrap"><table className="admin-table">
             <thead><tr><th>Solicitante</th><th>Progreso</th><th>Asesor</th><th>Estado</th><th>Acción</th></tr></thead>
@@ -94,7 +94,7 @@ export default function AdminDS160() {
                 <td><span className={`admin-status admin-status--${statusTone(item.estado_revision)}`}>{labels[item.estado_revision] || item.estado_revision}</span></td>
                 <td><button className="admin-action-button" type="button" onClick={(event) => { triggerRef.current = event.currentTarget; setDraftStatus(item.estado_revision || "por_revisar"); setSelected(item); }}>Ver formulario</button></td>
               </tr>
-            )) : <tr><td colSpan="5" className="admin-table-state">No hay formularios que coincidan con los filtros.</td></tr>}</tbody>
+            )) : <tr><td colSpan="5" className="admin-table-state">{forms.length ? "No hay formularios que coincidan con los filtros aplicados." : "Aún no hay formularios DS-160. Aparecerán cuando los clientes inicien el proceso."}</td></tr>}</tbody>
           </table></div>
         )}
       </section>
