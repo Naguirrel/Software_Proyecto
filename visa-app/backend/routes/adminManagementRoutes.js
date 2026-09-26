@@ -499,8 +499,8 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
         ORDER BY f.updated_at DESC, f.id_formulario DESC`);
       res.json({ formularios: result.rows.map((row) => ({ ...row, progreso: row.completado ? 100 : Math.min(100, Math.round(number(row.seccion_actual) / 6 * 100)) })) });
     } catch (error) {
-      console.error("ERROR ADMIN DS160:", error);
-      res.status(500).json({ error: "No fue posible cargar los formularios" });
+      console.error("ERROR ADMIN DS160:", error.message, error.stack);
+      res.status(500).json({ error: "No fue posible cargar los formularios. Intente nuevamente." });
     }
   });
 
