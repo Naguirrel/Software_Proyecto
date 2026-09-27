@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { buildApiUrl } from "../config/api";
+import { apiRequest } from "../utils/apiClient";
 
 export default function useRequireAuth() {
   const [isValidating, setIsValidating] = useState(true);
@@ -21,13 +21,13 @@ export default function useRequireAuth() {
           throw new Error("Sesión sin token");
         }
 
-        const res = await fetch(buildApiUrl("/validar-sesion"), {
+        const data = await apiRequest("/validar-sesion", {
           signal: controller.signal,
           headers: { Authorization: `Bearer ${sessionData.token}` },
+          fallbackMessage: "No fue posible validar la sesión.",
         });
-        const data = await res.json();
 
-        if (!res.ok || !data.valid) {
+        if (!data?.valid) {
           localStorage.removeItem("visaguide_session");
           localStorage.removeItem("correoUsuario");
           localStorage.removeItem("perfilUsuario");

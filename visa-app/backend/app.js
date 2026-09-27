@@ -31,12 +31,14 @@ const createConsularAppointmentService = require("./services/consularAppointment
 const { streamDs160Pdf } = require("./services/ds160PdfService");
 const { LOCAL_STORAGE_DIR, uploadStoredFile, deleteStoredFile, getStoredFile } = require("./storage");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
+const { createApiDocsRouter } = require("./swagger");
 
 const app = express();
 
 app.set("trust proxy", 1);
 app.use(cors(createCorsOptions()));
 app.use(express.json());
+app.use(createApiDocsRouter());
 
 if (process.env.NODE_ENV !== "production") {
   app.use("/local-files", express.static(LOCAL_STORAGE_DIR));
