@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import DS160Form from "../pages/ds160";
 
@@ -41,7 +42,11 @@ describe("DS-160 navigation persistence", () => {
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
 
-    render(<DS160Form />);
+    render(
+      <MemoryRouter>
+        <DS160Form />
+      </MemoryRouter>
+    );
 
     await screen.findByText(/Sección 1: Datos Personales/);
     await user.click(screen.getByRole("button", { name: "Siguiente →" }));

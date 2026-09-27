@@ -30,6 +30,7 @@ import { buildApiUrl } from "../../config/api";
 import { buildSessionHeaders } from "../../utils/sessionAuth";
 import useTheme from "../../hooks/useTheme";
 import { useAdminSession } from "./AdminSessionContext";
+import { preloadRoute } from "../../routes/lazyRoutes";
 import "../../styles/admin.css";
 import "../../styles/admin-prototype.css";
 
@@ -179,6 +180,8 @@ export default function AdminLayout({ children }) {
               data-tooltip={label}
               title={sidebarCollapsed ? label : undefined}
               onClick={() => setSidebarOpen(false)}
+              onMouseEnter={() => preloadRoute(path)}
+              onFocus={() => preloadRoute(path)}
             >
               {icon}
               <span>{label}</span>
@@ -192,6 +195,8 @@ export default function AdminLayout({ children }) {
             data-tooltip="Configuración"
             title={sidebarCollapsed ? "Configuración" : undefined}
             onClick={() => setSidebarOpen(false)}
+            onMouseEnter={() => preloadRoute("/admin/settings")}
+            onFocus={() => preloadRoute("/admin/settings")}
           >
             <Settings size={20} strokeWidth={2} aria-hidden="true" />
             <span>Configuración</span>
@@ -220,6 +225,8 @@ export default function AdminLayout({ children }) {
             data-tooltip="Mi perfil"
             title={sidebarCollapsed ? "Mi perfil" : undefined}
             onClick={() => setSidebarOpen(false)}
+            onMouseEnter={() => preloadRoute("/admin/profile")}
+            onFocus={() => preloadRoute("/admin/profile")}
           >
             <UserCircle size={20} strokeWidth={2} aria-hidden="true" /><span>Mi perfil</span>
           </NavLink>

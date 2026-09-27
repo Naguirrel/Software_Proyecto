@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
@@ -234,9 +235,9 @@ export default function Chat() {
                 </p>
               </div>
 
-              <a href="/ds160" className="chat-summary__cta">
+              <Link to="/ds160" className="chat-summary__cta">
                 Ir al DS-160 →
-              </a>
+              </Link>
             </aside>
           </div>
         )}

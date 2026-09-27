@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   Accessibility,
   ChevronLeft,
@@ -20,6 +21,7 @@ import useTheme from "../hooks/useTheme";
 import TopActions from "./TopActions";
 import VisaGuideLogo from "./VisaGuideLogo";
 import EmailVerificationNotice from "./EmailVerificationNotice";
+import { preloadRoute } from "../routes/lazyRoutes";
 
 const menuItems = [
   { id: "inicio", label: "Inicio", icon: <LayoutGrid size={20} strokeWidth={2} aria-hidden="true" />, path: "/dashboard" },
@@ -220,10 +222,12 @@ export default function Sidebar({ currentPage }) {
               const isActive = currentPage === item.id;
               return (
                 <li key={item.id}>
-                  <a
-                    href={item.path}
+                  <Link
+                    to={item.path}
                     style={{ ...s.menuItem, ...(isActive ? s.menuItemActive : {}) }}
                     onClick={collapseSidebar}
+                    onMouseEnter={() => preloadRoute(item.path)}
+                    onFocus={() => preloadRoute(item.path)}
                   >
                     <span style={s.menuIcon}>{item.icon}</span>
                     <span className="vg-sidebar-label" style={{ ...s.menuText, fontSize: modoSenior ? "17px" : "14px" }}>
@@ -232,7 +236,7 @@ export default function Sidebar({ currentPage }) {
                     {item.badge && (
                       <span className="vg-sidebar-label" style={s.badge}>{item.badge}</span>
                     )}
-                  </a>
+                  </Link>
                 </li>
               );
             })}
@@ -284,12 +288,14 @@ export default function Sidebar({ currentPage }) {
           </div>
 
           {/* User */}
-          <a
-            href="/perfil"
+          <Link
+            to="/perfil"
             style={s.userSection}
             className="vg-sidebar-user-link"
             aria-label={`Abrir perfil de ${usuario?.nombre || "Usuario"}, ${getPerfilLabel(usuario?.perfil)}`}
             onClick={collapseSidebar}
+            onMouseEnter={() => preloadRoute("/perfil")}
+            onFocus={() => preloadRoute("/perfil")}
           >
             <div style={s.userAvatar}>{getInitials(usuario?.nombre)}</div>
             <div className="vg-sidebar-label" style={s.userInfo}>
@@ -300,7 +306,7 @@ export default function Sidebar({ currentPage }) {
                 {getPerfilLabel(usuario?.perfil)}
               </p>
             </div>
-          </a>
+          </Link>
 
           {usuario && usuario.emailVerificado === false && (
             <EmailVerificationNotice correo={usuario.correo} />
