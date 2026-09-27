@@ -5,6 +5,7 @@ import { buildApiUrl } from "./config/api";
 import AuthLayout from "./components/auth/AuthLayout";
 import RequireAdmin from "./components/admin/RequireAdmin";
 import RequireStaff from "./components/RequireStaff";
+import AppErrorBoundary from "./components/AppErrorBoundary";
 import "./components/auth/auth.css";
 
 const Upload = lazy(() => import("./Upload"));
@@ -98,9 +99,10 @@ const validateSession = async (session) => {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Suspense fallback={<RouteLoadingState />}>
-      <Routes>
+    <AppErrorBoundary>
+      <BrowserRouter>
+        <Suspense fallback={<RouteLoadingState />}>
+        <Routes>
         <Route path="/"                               element={<Navigate to="/login" replace />} />
         <Route path="/login"                          element={<Login />} />
         <Route path="/registro"                       element={<Registro />} />
@@ -141,9 +143,10 @@ function App() {
         <Route path="/pagos"                          element={<ConsularPayment />} />
         <Route path="/citas"                          element={<ConsularAppointments />} />
         <Route path="/gestion-consular"               element={<RequireStaff><ConsularManagement /></RequireStaff>} />
-      </Routes>
-      </Suspense>
-    </BrowserRouter>
+        </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </AppErrorBoundary>
   );
 }
 

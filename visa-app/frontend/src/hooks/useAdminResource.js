@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { buildApiUrl } from "../config/api";
+import { apiRequest } from "../utils/apiClient";
 
 export function getAdminToken() {
   try {
@@ -10,17 +10,15 @@ export function getAdminToken() {
 }
 
 export async function adminRequest(path, options = {}) {
-  const response = await fetch(buildApiUrl(path), {
+  return apiRequest(path, {
     ...options,
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       Authorization: `Bearer ${getAdminToken()}`,
       ...options.headers,
     },
+    fallbackMessage: "No fue posible completar la operación.",
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "No fue posible completar la operación.");
-  return data;
 }
 
 export default function useAdminResource(path) {
