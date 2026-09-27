@@ -33,7 +33,10 @@ function verifySessionToken(token) {
   const secret = getSecret();
   if (!secret || !token) return null;
 
-  const [payload, signature] = token.split(".");
+  const segments = token.split(".");
+  if (segments.length !== 2) return null;
+
+  const [payload, signature] = segments;
   if (!payload || !signature) return null;
 
   const expected = sign(payload, secret);
@@ -52,12 +55,16 @@ function verifySessionToken(token) {
   }
 }
 
+function getBearerToken(authorization) {
+  if (typeof authorization !== "string") return "";
+
+  const match = authorization.match(/^Bearer[ \t]+([^\s,]+)$/i);
+  return match?.[1] || "";
+}
+
 function createSessionMiddleware(pool) {
   return async (req, res, next) => {
-    const authorization = req.get("authorization") || "";
-    const token = authorization.startsWith("Bearer ")
-      ? authorization.slice("Bearer ".length).trim()
-      : "";
+    const token = getBearerToken(req.get("authorization"));
     const session = verifySessionToken(token);
 
     if (!session) return res.status(401).json({ error: "Sesión inválida o expirada" });
