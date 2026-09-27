@@ -99,7 +99,8 @@ id_dsa
 id_ecdsa
 id_ed25519
 
-# Local uploads and generated inspection artifacts
+# Local uploads, database backups and generated inspection artifacts
+/backups/
 backend/uploads/
 backend/local_uploads/
 .codex_pptx_inspect/
