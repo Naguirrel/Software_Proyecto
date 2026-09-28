@@ -28,17 +28,48 @@ function presentReminder(row) {
   };
 }
 
+const { createEmailTransporter, getEmailFrom } = require("../config/email");
+
 function createSafeEmailSender(env = process.env) {
+  const transporter = createEmailTransporter(env);
+  const fromAddress = getEmailFrom(env);
+
   return async function sendEmail(message) {
+    // Modo deshabilitado
     if (env.EMAIL_REMINDERS_MODE === "disabled") {
       return { status: "skipped", reason: "disabled" };
     }
 
-    console.info("EMAIL REMINDER DRY RUN:", {
-      to: message.to,
-      subject: message.subject,
-    });
-    return { status: "dry_run", reason: "safe-mode" };
+    // Si no hay transporter configurado, usar dry run
+    if (!transporter) {
+      console.info("EMAIL DRY RUN (no SMTP configured):", {
+        to: message.to,
+        subject: message.subject,
+      });
+      return { status: "dry_run", reason: "no-smtp-config" };
+    }
+
+    // Enviar email real
+    try {
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to: message.to,
+        subject: message.subject,
+        text: message.text,
+        html: message.html || undefined,
+      });
+
+      console.info("EMAIL SENT:", {
+        to: message.to,
+        subject: message.subject,
+        messageId: info.messageId,
+      });
+
+      return { status: "sent", messageId: info.messageId };
+    } catch (error) {
+      console.error("EMAIL SEND ERROR:", error.message);
+      throw error;
+    }
   };
 }
 
