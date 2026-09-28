@@ -1,6 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Dashboard from "../pages/Dashboard";
+
+const user = userEvent.setup();
 
 const authState = vi.hoisted(() => ({
   isValidating: false,
@@ -84,6 +87,37 @@ describe("Dashboard", () => {
         signal: expect.any(AbortSignal),
       })
     );
+  });
+
+  it("muestra el aviso de verificación cuando el correo no está verificado y permite reenviarlo", async () => {
+    authState.session = { ...authState.session, emailVerificado: false };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      if (String(url).includes("/reenviar-verificacion")) {
+        return Promise.resolve({ ok: true, json: async () => ({ message: "ok" }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(<Dashboard />);
+
+    expect(await screen.findByText("Verifica tu correo electrónico")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reenviar enlace" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Enlace enviado" })).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/reenviar-verificacion"), expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ correo: "ana@example.com" }),
+    }));
+  });
+
+  it("no muestra el aviso de verificación cuando el correo ya está verificado", async () => {
+    authState.session = { ...authState.session, emailVerificado: true };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: async () => ({}) });
+
+    render(<Dashboard />);
+
+    await screen.findByRole("heading", { name: "¡Hola, Ana!" });
+    expect(screen.queryByText("Verifica tu correo electrónico")).not.toBeInTheDocument();
   });
 
   it("usa valores seguros cuando no hay datos del usuario ni del trámite", async () => {
