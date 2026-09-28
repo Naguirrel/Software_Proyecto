@@ -227,6 +227,12 @@ function mockAdminSession() {
         }),
       });
     }
+    if (String(url).endsWith("/documentos/41/archivo")) {
+      return Promise.resolve({
+        ok: true,
+        blob: async () => new Blob(["%PDF-1.4"], { type: "application/pdf" }),
+      });
+    }
     if (String(url).endsWith("/admin/documents")) {
       return Promise.resolve({
         ok: true,
@@ -896,7 +902,14 @@ describe("panel de administracion", () => {
 
   it("abre documentos con la URL del backend y evita navegar por React Router", async () => {
     const user = userEvent.setup();
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const previewWindow = {
+      opener: {},
+      location: { href: "" },
+      document: { title: "", body: { textContent: "" } },
+    };
+    const createObjectURL = vi.fn(() => "blob:documento-preview");
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURL });
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => previewWindow);
     window.history.pushState({}, "", "/admin/documents");
 
     render(<App />);
@@ -906,9 +919,8 @@ describe("panel de administracion", () => {
     await user.click(screen.getByRole("button", { name: "Ver documento" }));
 
     expect(openSpy).toHaveBeenCalledWith(
-      "",
-      "_blank",
-      "noopener,noreferrer"
+      "about:blank",
+      "_blank"
     );
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringMatching(/^http:\/\/localhost:3000\/documentos\/41\/archivo$/),
@@ -916,6 +928,8 @@ describe("panel de administracion", () => {
         headers: expect.objectContaining({ Authorization: `Bearer ${adminSession.token}` }),
       })
     ));
+    await waitFor(() => expect(previewWindow.location.href).toBe("blob:documento-preview"));
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(window.location.pathname).toBe("/admin/documents");
   });
 
