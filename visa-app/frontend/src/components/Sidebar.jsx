@@ -48,18 +48,30 @@ export default function Sidebar({ currentPage }) {
   const sidebarRef = useRef(null);
   const { isDark, toggleTheme } = useTheme();
 
-  const [usuario] = useState(() => {
+  const readUsuario = () => {
     const session = localStorage.getItem("visaguide_session");
     if (session) {
       try { return JSON.parse(session); } catch { return null; }
     }
     return null;
-  });
+  };
+
+  const [usuario, setUsuario] = useState(readUsuario);
   const [noLeidas, setNoLeidas] = useState(0);
 
   useEffect(() => {
     document.body.classList.add("vg-has-top-actions");
     return () => document.body.classList.remove("vg-has-top-actions");
+  }, []);
+
+  // Si el correo se verifica en otra pestaña, refleja el cambio aquí sin recargar.
+  useEffect(() => {
+    const syncUsuario = (event) => {
+      if (event.key && event.key !== "visaguide_session") return;
+      setUsuario(readUsuario());
+    };
+    window.addEventListener("storage", syncUsuario);
+    return () => window.removeEventListener("storage", syncUsuario);
   }, []);
 
   useEffect(() => {

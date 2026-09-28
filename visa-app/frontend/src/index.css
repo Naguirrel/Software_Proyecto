@@ -526,6 +526,11 @@ img, video, canvas, svg {
   text-decoration: none;
 }
 
+.vg-email-verify-notice__error {
+  font-size: 12px;
+  color: var(--vg-danger-text, #dc2626);
+}
+
 /* Variante dentro del Sidebar (fondo navy siempre oscuro, sin importar el tema) */
 .vg-email-verify-notice--sidebar {
   background: rgba(217, 119, 6, 0.12);

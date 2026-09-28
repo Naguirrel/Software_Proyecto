@@ -11,12 +11,12 @@ export default function EmailVerificationNotice({ correo, variant = "sidebar" })
   const handleResend = async () => {
     setStatus("sending");
     try {
-      await fetch(buildApiUrl("/reenviar-verificacion"), {
+      const response = await fetch(buildApiUrl("/reenviar-verificacion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo }),
       });
-      setStatus("sent");
+      setStatus(response.ok ? "sent" : "error");
     } catch {
       setStatus("error");
     }
@@ -42,8 +42,11 @@ export default function EmailVerificationNotice({ correo, variant = "sidebar" })
         onClick={handleResend}
         disabled={status === "sending" || status === "sent"}
       >
-        {status === "sent" ? "Enlace enviado" : status === "sending" ? "Enviando..." : "Reenviar enlace"}
+        {status === "sent" ? "Enlace enviado" : status === "sending" ? "Enviando..." : status === "error" ? "Reintentar" : "Reenviar enlace"}
       </button>
+      {status === "error" && (
+        <span className="vg-email-verify-notice__error">No se pudo enviar el enlace. Intenta de nuevo.</span>
+      )}
     </div>
   );
 }

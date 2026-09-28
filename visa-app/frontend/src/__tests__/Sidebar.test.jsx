@@ -117,6 +117,50 @@ describe("Sidebar", () => {
     expect(screen.queryByText("Verifica tu correo electrónico")).not.toBeInTheDocument();
   });
 
+  it("muestra un error y permite reintentar si el reenvío falla", async () => {
+    localStorage.setItem("visaguide_session", JSON.stringify({
+      id: 12,
+      nombre: "Ana López",
+      correo: "ana@example.com",
+      emailVerificado: false,
+    }));
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      if (String(url).includes("/reenviar-verificacion")) {
+        return Promise.resolve({ ok: false, json: async () => ({ error: "falló" }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ total: 0 }) });
+    });
+
+    renderSidebar();
+    await user.click(screen.getByRole("button", { name: "Reenviar enlace" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument());
+    expect(screen.getByText("No se pudo enviar el enlace. Intenta de nuevo.")).toBeInTheDocument();
+  });
+
+  it("refleja en la sesión abierta que el correo se verificó en otra pestaña", async () => {
+    localStorage.setItem("visaguide_session", JSON.stringify({
+      id: 12,
+      nombre: "Ana López",
+      correo: "ana@example.com",
+      emailVerificado: false,
+    }));
+
+    renderSidebar();
+    expect(screen.getByText("Verifica tu correo electrónico")).toBeInTheDocument();
+
+    localStorage.setItem("visaguide_session", JSON.stringify({
+      id: 12,
+      nombre: "Ana López",
+      correo: "ana@example.com",
+      emailVerificado: true,
+    }));
+    window.dispatchEvent(new StorageEvent("storage", { key: "visaguide_session" }));
+
+    await waitFor(() => expect(screen.queryByText("Verifica tu correo electrónico")).not.toBeInTheDocument());
+  });
+
   it("permite expandir la navegación y activar el modo Senior", async () => {
     const user = userEvent.setup();
     renderSidebar();
