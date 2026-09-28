@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { buildApiUrl } from "../config/api";
 import Sidebar from "../components/Sidebar";
+import EmailVerificationNotice from "../components/EmailVerificationNotice";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
 import { SkeletonCard, SkeletonList } from "../components/SkeletonCard";
@@ -215,6 +216,10 @@ export default function Dashboard() {
             Continuemos con tu solicitud de visa {tipoVisa()}.
           </p>
         </header>
+
+        {session && session.emailVerificado === false && (
+          <EmailVerificationNotice correo={session.correo} variant="banner" />
+        )}
 
         {loading ? (
           <DashSkeleton />

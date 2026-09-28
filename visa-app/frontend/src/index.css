@@ -486,22 +486,18 @@ img, video, canvas, svg {
   padding: 10px 8px;
   margin-bottom: 8px;
   border-radius: 8px;
-  background: rgba(217, 119, 6, 0.12);
-  border: 1px solid rgba(217, 119, 6, 0.35);
 }
 
 .vg-email-verify-notice__row {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #f59e0b;
 }
 
-.vg-email-verify-notice__row .vg-sidebar-label {
+.vg-email-verify-notice__text {
   flex: 1;
   font-size: 12px;
   font-weight: 500;
-  color: #fcd34d;
 }
 
 .vg-email-verify-notice__close {
@@ -517,7 +513,6 @@ img, video, canvas, svg {
   align-self: flex-start;
   background: transparent;
   border: none;
-  color: #f59e0b;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -529,6 +524,56 @@ img, video, canvas, svg {
   cursor: default;
   opacity: 0.7;
   text-decoration: none;
+}
+
+/* Variante dentro del Sidebar (fondo navy siempre oscuro, sin importar el tema) */
+.vg-email-verify-notice--sidebar {
+  background: rgba(217, 119, 6, 0.12);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+}
+
+.vg-email-verify-notice--sidebar .vg-email-verify-notice__row {
+  color: #f59e0b;
+}
+
+.vg-email-verify-notice--sidebar .vg-email-verify-notice__text {
+  color: #fcd34d;
+}
+
+.vg-email-verify-notice--sidebar .vg-email-verify-notice__resend {
+  color: #f59e0b;
+}
+
+/* Variante como banner dentro del contenido (respeta el tema claro/oscuro) */
+.vg-email-verify-notice--banner {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  background: var(--vg-amber-bg);
+  border: 1px solid var(--vg-amber-border);
+}
+
+.vg-email-verify-notice--banner .vg-email-verify-notice__row {
+  color: var(--vg-amber-text);
+  flex: 1;
+}
+
+.vg-email-verify-notice--banner .vg-email-verify-notice__text {
+  color: var(--vg-amber-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.vg-email-verify-notice--banner .vg-email-verify-notice__resend {
+  color: var(--vg-warning-solid);
+  font-size: 13px;
+}
+
+.vg-email-verify-notice--banner .vg-email-verify-notice__close {
+  color: var(--vg-amber-text);
 }
 
 .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-bottom-section {
