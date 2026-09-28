@@ -1,7 +1,8 @@
 const express = require("express");
 const createDocumentRoutes = require("../routes/documentRoutes");
+const createAdminDocumentRoutes = require("../routes/adminDocumentRoutes");
 const upload = require("../upload");
-const { createSessionMiddleware, issueSessionToken } = require("../auth");
+const { createRoleMiddleware, createSessionMiddleware, issueSessionToken } = require("../auth");
 
 const normalize = (sql) => String(sql).replace(/\s+/g, " ").trim();
 
@@ -77,7 +78,37 @@ function createInMemoryDocumentsDb() {
       return { rows: [{ id: removed.id, storage_key: removed.storage_key }] };
     }
 
+    if (text.includes("FROM documentos d LEFT JOIN usuario u")) {
+      const rows = state.documentos
+        .slice()
+        .sort((a, b) => b.actualizado_en - a.actualizado_en)
+        .map(withOwner);
+      return { rows };
+    }
+
+    if (text.startsWith("WITH updated AS") && text.includes("UPDATE documentos")) {
+      const documento = state.documentos.find((row) => row.id === values[values.length - 1]);
+      if (!documento) return { rows: [] };
+      const estadoParam = text.match(/estado = \$(\d+)/);
+      const feedbackParam = text.match(/feedback = \$(\d+)/);
+      if (estadoParam) documento.estado = values[Number(estadoParam[1]) - 1];
+      if (feedbackParam) documento.feedback = values[Number(feedbackParam[1]) - 1];
+      documento.actualizado_en = tick();
+      return { rows: [withOwner(documento)] };
+    }
+
     throw new Error(`Consulta no soportada por la base en memoria: ${text}`);
+  }
+
+  function withOwner(documento) {
+    const owner = state.users.find((row) => row.id_usuario === documento.usuario_id);
+    return {
+      ...documento,
+      usuario_nombre: owner?.nombre,
+      usuario_correo: owner?.correo,
+      asesor_id: null,
+      asesor_nombre: null,
+    };
   }
 
   function addUser({ id, rol = "cliente", nombre, correo }) {
@@ -100,7 +131,14 @@ function createInMemoryDocumentsDb() {
 function createDocumentsIntegrationApp() {
   const db = createInMemoryDocumentsDb();
   const requireSession = createSessionMiddleware(db.pool);
+  const requireAdmin = createRoleMiddleware(db.pool, ["admin"]);
   const activityLogService = { logActivity: jest.fn(() => Promise.resolve()) };
+  const notificaciones = [];
+  const notificacionService = {
+    crearNotificacion: jest.fn(async (notificacion) => {
+      notificaciones.push(notificacion);
+    }),
+  };
 
   const app = express();
   app.use(express.json());
@@ -109,9 +147,15 @@ function createDocumentsIntegrationApp() {
     activityLogService,
     requireSession,
   }));
+  app.use("/admin/documents", createAdminDocumentRoutes(db.pool, {
+    requireAdmin,
+    schemaReady: Promise.resolve(),
+    notificacionService,
+    activityLogService,
+  }));
   app.use(upload.handleUploadError);
 
-  return { app, ...db, activityLogService };
+  return { app, ...db, activityLogService, notificaciones, notificacionService };
 }
 
 const PDF_CONTENT = Buffer.from("%PDF-1.4 contenido de prueba");
