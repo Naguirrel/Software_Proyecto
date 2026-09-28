@@ -421,7 +421,7 @@ app.use("/", createAuthRoutes(pool, { userSchemaReady, tramiteSchemaReady, passw
 app.use("/notificaciones", createNotificacionRoutes(pool, { requireSession, requireAdmin }));
 app.use("/chat", createChatRoutes(pool, { requireSession }));
 app.use("/", createDocumentRoutes(pool, { documentSchemaReady, activityLogService, requireSession }));
-app.use("/", createDs160Routes(pool, { activityLogService, notificacionService }));
+app.use("/", createDs160Routes(pool, { activityLogService, notificacionService, requireSession }));
 app.use("/", createConsularRoutes({
   requireSession,
   requireStaff,

@@ -65,6 +65,16 @@ describe("DS-160: carga inicial del formulario", () => {
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(Math.round(100 / secciones.length)));
   });
 
+  it("envía el token de sesión al cargar el formulario, no solo el correo", async () => {
+    const fetchMock = mockFetch();
+    renderForm();
+
+    await screen.findByText(/Sección 1: Datos Personales/);
+    const loadCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/ds160/load"));
+    expect(loadCall).toBeDefined();
+    expect(loadCall[1].headers).toMatchObject({ Authorization: `Bearer ${SESSION.token}` });
+  });
+
   it("carga un formulario existente con sus datos y retoma la sección guardada", async () => {
     mockFetch({
       datos: { apellidos: "Perez", nombres: "Ana", otrosNombres: "No", fechaNacimiento: "1990-01-01", lugarNacimiento: "Guatemala", paisNacimiento: "Guatemala" },

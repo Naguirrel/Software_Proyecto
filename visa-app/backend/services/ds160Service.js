@@ -1,13 +1,5 @@
 function createDs160Service(pool, { activityLogService, notificacionService }) {
 
-  async function findUserByEmail(correo) {
-    const result = await pool.query(
-      "SELECT id_usuario FROM usuario WHERE correo = $1",
-      [correo]
-    );
-    return result.rows[0] || null;
-  }
-
   async function getFormulario(userId) {
     const result = await pool.query(
       "SELECT * FROM formulario_ds160 WHERE id_usuario = $1",
@@ -111,7 +103,6 @@ function createDs160Service(pool, { activityLogService, notificacionService }) {
   }
 
   return {
-    findUserByEmail,
     getFormulario,
     saveFormulario,
     avanzarTramitePago,

@@ -3,20 +3,8 @@ const { streamDs160Pdf } = require("../services/ds160PdfService");
 function createDs160Controller(ds160Service) {
 
   async function loadDs160(req, res) {
-    const { correo } = req.body || {};
-
-    if (!correo) {
-      return res.status(400).json({ error: "Correo requerido en el body" });
-    }
-
     try {
-      const user = await ds160Service.findUserByEmail(correo);
-
-      if (!user) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-
-      const formulario = await ds160Service.getFormulario(user.id_usuario);
+      const formulario = await ds160Service.getFormulario(req.auth.id_usuario);
 
       if (!formulario) {
         return res.json({
@@ -38,31 +26,21 @@ function createDs160Controller(ds160Service) {
   }
 
   async function saveDs160(req, res) {
-    const { correo, datos, seccion_actual, completado } = req.body;
-
-    if (!correo) {
-      return res.status(400).json({ error: "Correo requerido" });
-    }
+    const { datos, seccion_actual, completado } = req.body;
 
     try {
-      const user = await ds160Service.findUserByEmail(correo);
-
-      if (!user) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-
       const formulario = await ds160Service.saveFormulario(
-        user.id_usuario,
-        correo,
+        req.auth.id_usuario,
+        req.auth.correo,
         { datos, seccion_actual, completado },
         req
       );
 
       // Si se completó, avanzar trámite y notificar
       if (completado) {
-        const avanzado = await ds160Service.avanzarTramitePago(user.id_usuario);
+        const avanzado = await ds160Service.avanzarTramitePago(req.auth.id_usuario);
         if (avanzado) {
-          await ds160Service.notificarDs160Completado(user.id_usuario);
+          await ds160Service.notificarDs160Completado(req.auth.id_usuario);
         }
       }
 
@@ -77,33 +55,21 @@ function createDs160Controller(ds160Service) {
   }
 
   async function exportPdf(req, res) {
-    const { correo } = req.body || {};
-
-    if (!correo) {
-      return res.status(400).json({ error: "Correo requerido en el body" });
-    }
-
     try {
-      const user = await ds160Service.findUserByEmail(correo);
-
-      if (!user) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-
-      const formulario = await ds160Service.getFormulario(user.id_usuario);
+      const formulario = await ds160Service.getFormulario(req.auth.id_usuario);
 
       if (!formulario) {
         return res.status(404).json({ error: "Formulario DS-160 no encontrado" });
       }
 
-      await ds160Service.logPdfExport(req, user.id_usuario, correo, formulario.id_formulario);
+      await ds160Service.logPdfExport(req, req.auth.id_usuario, req.auth.correo, formulario.id_formulario);
 
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="ds160-${user.id_usuario}.pdf"`);
+      res.setHeader("Content-Disposition", `attachment; filename="ds160-${req.auth.id_usuario}.pdf"`);
       res.setHeader("Cache-Control", "no-store");
 
       return streamDs160Pdf({
-        usuario: { id_usuario: user.id_usuario, correo },
+        usuario: { id_usuario: req.auth.id_usuario, correo: req.auth.correo },
         formulario,
       }, res);
     } catch (error) {

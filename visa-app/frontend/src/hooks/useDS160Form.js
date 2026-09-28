@@ -10,6 +10,15 @@ function getCorreo() {
     : localStorage.getItem("correoUsuario");
 }
 
+function getToken() {
+  const sessionRaw = localStorage.getItem("visaguide_session");
+  return sessionRaw ? JSON.parse(sessionRaw).token : null;
+}
+
+function authHeaders(token) {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export default function useDS160Form() {
   const [seccionActual, setSeccionActual] = useState(1);
   const [formData, setFormData] = useState({});
@@ -39,14 +48,15 @@ export default function useDS160Form() {
     const controller = new AbortController();
     const cargar = async () => {
       const correo = getCorreo();
-      if (!correo) {
+      const token = getToken();
+      if (!correo || !token) {
         setCargando(false);
         return;
       }
       try {
         const res = await fetch(buildApiUrl("/ds160/load"), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders(token) },
           body: JSON.stringify({ correo }),
           signal: controller.signal,
         });
@@ -70,14 +80,15 @@ export default function useDS160Form() {
 
     const timeout = window.setTimeout(async () => {
       const correo = getCorreo();
-      if (!correo) return;
+      const token = getToken();
+      if (!correo || !token) return;
       autosaveControllerRef.current?.abort();
       const controller = new AbortController();
       autosaveControllerRef.current = controller;
       try {
         const response = await fetch(buildApiUrl("/ds160"), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders(token) },
           body: JSON.stringify({ correo, datos: formData, seccion_actual: seccionActual, completado: false }),
           signal: controller.signal,
         });
@@ -95,9 +106,13 @@ export default function useDS160Form() {
     const flushPendingChanges = () => {
       if (!dirtyRef.current || Object.keys(formDataRef.current).length === 0) return;
       const correo = getCorreo();
-      if (!correo) return;
+      const token = getToken();
+      if (!correo || !token) return;
+      // navigator.sendBeacon no permite encabezados personalizados, así que el
+      // token viaja también en el body para que el backend lo use como respaldo.
       const body = JSON.stringify({
         correo,
+        token,
         datos: formDataRef.current,
         seccion_actual: seccionActualRef.current,
         completado: false,
@@ -107,7 +122,7 @@ export default function useDS160Form() {
       } else {
         fetch(buildApiUrl("/ds160"), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders(token) },
           body,
           keepalive: true,
         }).catch(() => {});
@@ -152,12 +167,13 @@ export default function useDS160Form() {
 
   const guardarProgreso = async (seccionParaGuardar = seccionActual) => {
     const correo = getCorreo();
-    if (!correo) return;
+    const token = getToken();
+    if (!correo || !token) return;
     setGuardando(true);
     try {
       const res = await fetch(buildApiUrl("/ds160"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders(token) },
         body: JSON.stringify({ correo, datos: formData, seccion_actual: seccionParaGuardar, completado: false }),
       });
       if (!res.ok) throw new Error();
@@ -174,7 +190,8 @@ export default function useDS160Form() {
 
   const descargarPdf = async () => {
     const correo = getCorreo();
-    if (!correo) {
+    const token = getToken();
+    if (!correo || !token) {
       setMensajeGuardado("No se encontró una sesión activa.");
       setTimeout(() => setMensajeGuardado(""), 3000);
       return;
@@ -184,7 +201,7 @@ export default function useDS160Form() {
     try {
       const response = await fetch(buildApiUrl("/ds160/pdf"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders(token) },
         body: JSON.stringify({ correo }),
       });
       if (!response.ok) {
@@ -218,12 +235,13 @@ export default function useDS160Form() {
     }
 
     const correo = getCorreo();
-    if (!correo) return;
+    const token = getToken();
+    if (!correo || !token) return;
     setGuardando(true);
     try {
       await fetch(buildApiUrl("/ds160"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders(token) },
         body: JSON.stringify({ correo, datos: formData, seccion_actual: seccionActual, completado: true }),
       });
       dirtyRef.current = false;
