@@ -1,5 +1,6 @@
 const express = require("express");
 const createDs160Routes = require("../routes/ds160Routes");
+const { createSessionMiddleware, issueSessionToken } = require("../auth");
 
 const normalize = (sql) => String(sql).replace(/\s+/g, " ").trim();
 
@@ -9,9 +10,9 @@ function createInMemoryDs160Db() {
   async function query(sql, values = []) {
     const text = normalize(sql);
 
-    if (text.startsWith("SELECT id_usuario FROM usuario WHERE correo = $1")) {
-      const user = state.users.find((row) => row.correo === values[0]);
-      return { rows: user ? [{ id_usuario: user.id_usuario }] : [] };
+    if (text.includes("FROM usuario WHERE id_usuario = $1")) {
+      const user = state.users.find((row) => row.id_usuario === values[0]);
+      return { rows: user ? [{ ...user }] : [] };
     }
 
     if (text.startsWith("SELECT * FROM formulario_ds160 WHERE id_usuario = $1")) {
@@ -71,10 +72,10 @@ function createInMemoryDs160Db() {
     throw new Error(`Consulta no soportada por la base en memoria: ${text}`);
   }
 
-  function addUser({ id, correo, nombre }) {
-    const user = { id_usuario: id, correo, nombre: nombre || correo };
+  function addUser({ id, correo, nombre, rol = "cliente", activo = true }) {
+    const user = { id_usuario: id, correo, nombre: nombre || correo, perfil: null, rol, activo, email_verificado: true };
     state.users.push(user);
-    return user;
+    return { user, token: issueSessionToken(user) };
   }
 
   function addTramite({ userId, progreso = 0 }) {
@@ -95,10 +96,11 @@ function createDs160IntegrationApp() {
       notificaciones.push(notificacion);
     }),
   };
+  const requireSession = createSessionMiddleware(db.pool);
 
   const app = express();
   app.use(express.json());
-  app.use("/", createDs160Routes(db.pool, { activityLogService, notificacionService }));
+  app.use("/", createDs160Routes(db.pool, { activityLogService, notificacionService, requireSession }));
 
   return { app, ...db, activityLogService, notificaciones, notificacionService };
 }

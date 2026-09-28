@@ -1,8 +1,25 @@
 const request = require("supertest");
 const { Readable } = require("stream");
 const bcrypt = require("bcrypt");
+const { issueSessionToken } = require("../auth");
 
 const LOGIN_TEST_PASSWORD_HASH = bcrypt.hashSync("1234", 10);
+
+const DS160_TEST_USERS = {
+  10: "ds160-con-form@example.com",
+  11: "ds160-sin-form@example.com",
+  12: "ds160-nuevo@example.com",
+  13: "ds160-existente@example.com",
+  14: "ds160-completado@example.com",
+  15: "ds160-datos-vacios@example.com",
+  16: "ds160-invalido@example.com",
+  17: "ds160-pdf@example.com",
+  18: "ds160-pdf-sin-form@example.com",
+};
+
+function ds160Token(id) {
+  return issueSessionToken({ id_usuario: id, correo: DS160_TEST_USERS[id], rol: "cliente" });
+}
 
 const mockQuery = jest.fn();
 const mockConnect = jest.fn(() => Promise.resolve());
@@ -56,24 +73,14 @@ function defaultQueryHandler(sql, values) {
     if (values?.[0] === "valido@example.com") {
       return Promise.resolve({ rows: [{ id_usuario: 1, nombre: "Valido", correo: values[0], perfil: "turismo_negocios", rol: "cliente" }] });
     }
-    const ds160Users = {
-      "ds160-con-form@example.com": 10,
-      "ds160-sin-form@example.com": 11,
-      "ds160-nuevo@example.com": 12,
-      "ds160-existente@example.com": 13,
-      "ds160-completado@example.com": 14,
-      "ds160-datos-vacios@example.com": 15,
-      "ds160-invalido@example.com": 16,
-      "ds160-pdf@example.com": 17,
-      "ds160-pdf-sin-form@example.com": 18,
-    };
-    if (ds160Users[values?.[0]]) {
-      return Promise.resolve({ rows: [{ id_usuario: ds160Users[values[0]] }] });
-    }
     return Promise.resolve({ rows: [] });
   }
 
   if (normalized.includes("FROM usuario WHERE id_usuario = $1")) {
+    const ds160Correo = DS160_TEST_USERS[values[0]];
+    if (ds160Correo) {
+      return Promise.resolve({ rows: [{ id_usuario: values[0], nombre: "Usuario DS160", correo: ds160Correo, perfil: null, rol: "cliente", activo: true, email_verificado: true }] });
+    }
     return Promise.resolve({ rows: [{ id_usuario: values[0], nombre: "Admin", correo: "admin@test.dev", perfil: null, rol: "admin" }] });
   }
 
@@ -986,10 +993,11 @@ describe("app endpoints", () => {
     expect(response.body).toEqual({ error: "connection timeout" });
   });
 
-  test("POST /ds160/load carga un formulario existente con correo en body", async () => {
+  test("POST /ds160/load carga el formulario del usuario autenticado", async () => {
     const response = await request(app)
       .post("/ds160/load")
-      .send({ correo: "ds160-con-form@example.com" });
+      .set("Authorization", `Bearer ${ds160Token(10)}`)
+      .send({});
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
@@ -1011,7 +1019,8 @@ describe("app endpoints", () => {
   test("POST /ds160/load devuelve formulario vacio cuando el usuario no tiene progreso guardado", async () => {
     const response = await request(app)
       .post("/ds160/load")
-      .send({ correo: "ds160-sin-form@example.com" });
+      .set("Authorization", `Bearer ${ds160Token(11)}`)
+      .send({});
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
@@ -1021,20 +1030,23 @@ describe("app endpoints", () => {
     });
   });
 
-  test("POST /ds160/load devuelve 404 cuando el usuario no existe", async () => {
-    const response = await request(app)
-      .post("/ds160/load")
-      .send({ correo: "noexiste@example.com" });
-
-    expect(response.status).toBe(404);
-    expect(response.body).toEqual({ error: "Usuario no encontrado" });
-  });
-
-  test("POST /ds160/load devuelve 400 cuando falta el correo", async () => {
+  test("POST /ds160/load devuelve 401 sin una sesión válida", async () => {
     const response = await request(app).post("/ds160/load").send({});
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: "Correo requerido en el body" });
+    expect(response.status).toBe(401);
+  });
+
+  test("POST /ds160/load ignora un correo ajeno enviado en el body y solo usa la sesión autenticada", async () => {
+    const response = await request(app)
+      .post("/ds160/load")
+      .set("Authorization", `Bearer ${ds160Token(10)}`)
+      .send({ correo: "ds160-sin-form@example.com" });
+
+    expect(response.status).toBe(200);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("SELECT * FROM formulario_ds160 WHERE id_usuario = $1"),
+      [10]
+    );
   });
 
   test("POST /ds160/load devuelve 500 ante error simulado de base de datos", async () => {
@@ -1047,16 +1059,18 @@ describe("app endpoints", () => {
 
     const response = await request(app)
       .post("/ds160/load")
-      .send({ correo: "ds160-con-form@example.com" });
+      .set("Authorization", `Bearer ${ds160Token(10)}`)
+      .send({});
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: "ds160 read failed" });
   });
 
-  test("POST /ds160/pdf genera el PDF del formulario existente con correo en body", async () => {
+  test("POST /ds160/pdf genera el PDF del formulario del usuario autenticado", async () => {
     const response = await request(app)
       .post("/ds160/pdf")
-      .send({ correo: "ds160-pdf@example.com" })
+      .set("Authorization", `Bearer ${ds160Token(17)}`)
+      .send({})
       .buffer(true)
       .parse((res, callback) => {
         const chunks = [];
@@ -1075,26 +1089,17 @@ describe("app endpoints", () => {
     );
   });
 
-  test("POST /ds160/pdf devuelve 400 cuando falta el correo", async () => {
+  test("POST /ds160/pdf devuelve 401 sin una sesión válida", async () => {
     const response = await request(app).post("/ds160/pdf").send({});
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: "Correo requerido en el body" });
-  });
-
-  test("POST /ds160/pdf devuelve 404 cuando el usuario no existe", async () => {
-    const response = await request(app)
-      .post("/ds160/pdf")
-      .send({ correo: "noexiste@example.com" });
-
-    expect(response.status).toBe(404);
-    expect(response.body).toEqual({ error: "Usuario no encontrado" });
+    expect(response.status).toBe(401);
   });
 
   test("POST /ds160/pdf devuelve 404 cuando no existe formulario guardado", async () => {
     const response = await request(app)
       .post("/ds160/pdf")
-      .send({ correo: "ds160-pdf-sin-form@example.com" });
+      .set("Authorization", `Bearer ${ds160Token(18)}`)
+      .send({});
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ error: "Formulario DS-160 no encontrado" });
@@ -1110,7 +1115,8 @@ describe("app endpoints", () => {
 
     const response = await request(app)
       .post("/ds160/pdf")
-      .send({ correo: "ds160-pdf@example.com" });
+      .set("Authorization", `Bearer ${ds160Token(17)}`)
+      .send({});
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: "ds160 pdf failed" });
@@ -1124,12 +1130,10 @@ describe("app endpoints", () => {
       },
     };
 
-    const response = await request(app).post("/ds160").send({
-      correo: "ds160-nuevo@example.com",
-      datos,
-      seccion_actual: 2,
-      completado: false,
-    });
+    const response = await request(app)
+      .post("/ds160")
+      .set("Authorization", `Bearer ${ds160Token(12)}`)
+      .send({ datos, seccion_actual: 2, completado: false });
 
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Formulario guardado correctamente");
@@ -1157,12 +1161,10 @@ describe("app endpoints", () => {
       },
     };
 
-    const response = await request(app).post("/ds160").send({
-      correo: "ds160-existente@example.com",
-      datos,
-      seccion_actual: 4,
-      completado: false,
-    });
+    const response = await request(app)
+      .post("/ds160")
+      .set("Authorization", `Bearer ${ds160Token(13)}`)
+      .send({ datos, seccion_actual: 4, completado: false });
 
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Formulario guardado correctamente");
@@ -1178,19 +1180,17 @@ describe("app endpoints", () => {
     );
   });
 
-  test("POST /ds160 marca el formulario como completado y avanza el tramite", async () => {
+  test("POST /ds160 marca el formulario como completado, avanza el tramite y notifica al usuario", async () => {
     const datos = {
       confirmacion: {
         numeroConfirmacion: "AA00BB11",
       },
     };
 
-    const response = await request(app).post("/ds160").send({
-      correo: "ds160-completado@example.com",
-      datos,
-      seccion_actual: 6,
-      completado: true,
-    });
+    const response = await request(app)
+      .post("/ds160")
+      .set("Authorization", `Bearer ${ds160Token(14)}`)
+      .send({ datos, seccion_actual: 6, completado: true });
 
     expect(response.status).toBe(200);
     expect(response.body.formulario).toMatchObject({
@@ -1207,37 +1207,41 @@ describe("app endpoints", () => {
       expect.stringContaining("UPDATE tramite"),
       [14]
     );
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO notificaciones"),
+      expect.arrayContaining([14, "DS-160 completado"])
+    );
   });
 
-  test("POST /ds160 devuelve 400 cuando falta el correo", async () => {
+  test("POST /ds160 devuelve 401 sin una sesión válida", async () => {
     const response = await request(app).post("/ds160").send({
-      datos: { personal: { nombreCompleto: "Sin Correo" } },
+      datos: { personal: { nombreCompleto: "Sin Sesion" } },
       seccion_actual: 1,
       completado: false,
     });
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: "Correo requerido" });
+    expect(response.status).toBe(401);
   });
 
-  test("POST /ds160 devuelve 404 cuando el usuario no existe", async () => {
-    const response = await request(app).post("/ds160").send({
-      correo: "noexiste@example.com",
-      datos: { personal: { nombreCompleto: "No Existe" } },
-      seccion_actual: 1,
-      completado: false,
-    });
+  test("POST /ds160 ignora un correo ajeno enviado en el body y guarda sobre la sesión autenticada", async () => {
+    const response = await request(app)
+      .post("/ds160")
+      .set("Authorization", `Bearer ${ds160Token(15)}`)
+      .send({ correo: "ds160-con-form@example.com", datos: {}, seccion_actual: 1, completado: false });
 
-    expect(response.status).toBe(404);
-    expect(response.body).toEqual({ error: "Usuario no encontrado" });
+    expect(response.status).toBe(200);
+    expect(response.body.formulario.id_usuario).toBe(15);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO formulario_ds160"),
+      [15, JSON.stringify({}), 1, false]
+    );
   });
 
   test("POST /ds160 guarda datos vacios cuando no se envia el objeto datos", async () => {
-    const response = await request(app).post("/ds160").send({
-      correo: "ds160-datos-vacios@example.com",
-      seccion_actual: 1,
-      completado: false,
-    });
+    const response = await request(app)
+      .post("/ds160")
+      .set("Authorization", `Bearer ${ds160Token(15)}`)
+      .send({ seccion_actual: 1, completado: false });
 
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Formulario guardado correctamente");
@@ -1254,12 +1258,10 @@ describe("app endpoints", () => {
   });
 
   test("POST /ds160 acepta valores invalidos porque el backend no valida tipos ni estructura", async () => {
-    const response = await request(app).post("/ds160").send({
-      correo: "ds160-invalido@example.com",
-      datos: "contenido-no-estructurado",
-      seccion_actual: "segunda",
-      completado: false,
-    });
+    const response = await request(app)
+      .post("/ds160")
+      .set("Authorization", `Bearer ${ds160Token(16)}`)
+      .send({ datos: "contenido-no-estructurado", seccion_actual: "segunda", completado: false });
 
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Formulario guardado correctamente");
@@ -1283,12 +1285,10 @@ describe("app endpoints", () => {
       return defaultQueryHandler(sql, values);
     });
 
-    const response = await request(app).post("/ds160").send({
-      correo: "ds160-nuevo@example.com",
-      datos: { personal: { nombreCompleto: "Error DB" } },
-      seccion_actual: 1,
-      completado: false,
-    });
+    const response = await request(app)
+      .post("/ds160")
+      .set("Authorization", `Bearer ${ds160Token(12)}`)
+      .send({ datos: { personal: { nombreCompleto: "Error DB" } }, seccion_actual: 1, completado: false });
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: "ds160 write failed" });
@@ -2339,12 +2339,14 @@ describe("app endpoints", () => {
         rol: "cliente",
       });
 
-      const saveDs160Response = await request(app).post("/ds160").send({
-        correo: usuario.correo,
-        datos: datosDs160,
-        seccion_actual: 3,
-        completado: false,
-      });
+      const saveDs160Response = await request(app)
+        .post("/ds160")
+        .set("Authorization", `Bearer ${registerResponse.body.token}`)
+        .send({
+          datos: datosDs160,
+          seccion_actual: 3,
+          completado: false,
+        });
 
       expect(saveDs160Response.status).toBe(200);
       expect(saveDs160Response.body.message).toBe("Formulario guardado correctamente");
@@ -2357,7 +2359,8 @@ describe("app endpoints", () => {
 
       const getDs160Response = await request(app)
         .post("/ds160/load")
-        .send({ correo: usuario.correo });
+        .set("Authorization", `Bearer ${registerResponse.body.token}`)
+        .send({});
 
       expect(getDs160Response.status).toBe(200);
       expect(getDs160Response.body).toEqual({

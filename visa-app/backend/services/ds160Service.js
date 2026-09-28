@@ -1,13 +1,5 @@
 function createDs160Service(pool, { activityLogService, notificacionService }) {
 
-  async function findUserByEmail(correo) {
-    const result = await pool.query(
-      "SELECT id_usuario FROM usuario WHERE correo = $1",
-      [correo]
-    );
-    return result.rows[0] || null;
-  }
-
   async function getFormulario(userId) {
     const result = await pool.query(
       "SELECT * FROM formulario_ds160 WHERE id_usuario = $1",
@@ -85,7 +77,7 @@ function createDs160Service(pool, { activityLogService, notificacionService }) {
 
   async function notificarDs160Completado(userId) {
     try {
-      await notificacionService.crear({
+      await notificacionService.crearNotificacion({
         userId,
         titulo: "DS-160 completado",
         mensaje: "Has completado el formulario DS-160 exitosamente. Ahora debes realizar el pago de la tarifa de visa.",
@@ -111,7 +103,6 @@ function createDs160Service(pool, { activityLogService, notificacionService }) {
   }
 
   return {
-    findUserByEmail,
     getFormulario,
     saveFormulario,
     avanzarTramitePago,
