@@ -37,7 +37,12 @@ export function openDocumentPreview(document) {
     return;
   }
 
-  const previewWindow = window.open("", "_blank", "noopener,noreferrer");
+  const previewWindow = window.open("about:blank", "_blank");
+  if (previewWindow) {
+    previewWindow.opener = null;
+    previewWindow.document.title = "Cargando documento";
+    previewWindow.document.body.textContent = "Cargando documento...";
+  }
 
   fetch(previewUrl, { headers: buildSessionHeaders() })
     .then((response) => {
@@ -53,7 +58,10 @@ export function openDocumentPreview(document) {
       }
       setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
     })
-    .catch(() => {
-      if (previewWindow) previewWindow.close();
+    .catch((error) => {
+      if (previewWindow) {
+        previewWindow.document.title = "No se pudo abrir el documento";
+        previewWindow.document.body.textContent = error.message || "No se pudo abrir el documento.";
+      }
     });
 }
