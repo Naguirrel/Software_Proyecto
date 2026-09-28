@@ -1,5 +1,5 @@
 # Imagen base
-FROM node:18
+FROM node:20
 
 # Carpeta de trabajo dentro del contenedor
 WORKDIR /app
@@ -11,7 +11,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 
 # Instalar dependencias
-RUN npm install
+RUN npm ci
 
 # Copiar todo el código
 COPY . .

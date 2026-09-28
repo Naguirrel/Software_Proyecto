@@ -32,6 +32,15 @@ const routeLoaders = Object.freeze({
   adminQuestions: () => import("../pages/admin/AdminQuestions"),
   adminActivityLogs: () => import("../pages/admin/AdminActivityLogs"),
   adminEmailReminders: () => import("../pages/admin/AdminEmailReminders"),
+  advisorDashboard: () => import("../pages/advisor/AdvisorDashboard"),
+  advisorProcesses: () => import("../pages/advisor/AdvisorProcesses"),
+  advisorDocuments: () => import("../pages/advisor/AdvisorDocuments"),
+  advisorDs160: () => import("../pages/advisor/AdvisorDS160"),
+  advisorInterviews: () => import("../pages/advisor/AdvisorInterviews"),
+  advisorChat: () => import("../pages/advisor/AdvisorChat"),
+  advisorTasks: () => import("../pages/advisor/AdvisorTasks"),
+  advisorQuestions: () => import("../pages/advisor/AdvisorQuestions"),
+  advisorProfile: () => import("../pages/advisor/AdvisorProfile"),
 });
 
 const routeKeysByPath = new Map([
@@ -51,6 +60,11 @@ const routeKeysByPath = new Map([
   ["/admin/ds160", "adminDs160"], ["/admin/profile", "adminProfile"],
   ["/admin/questions", "adminQuestions"], ["/admin/activity-logs", "adminActivityLogs"],
   ["/admin/email-reminders", "adminEmailReminders"],
+  ["/advisor", "advisorDashboard"], ["/advisor/solicitudes", "advisorProcesses"],
+  ["/advisor/documentos", "advisorDocuments"], ["/advisor/ds160", "advisorDs160"],
+  ["/advisor/entrevistas", "advisorInterviews"], ["/advisor/chat", "advisorChat"],
+  ["/advisor/tareas", "advisorTasks"], ["/advisor/preguntas", "advisorQuestions"],
+  ["/advisor/perfil", "advisorProfile"],
 ]);
 
 const preloadCache = new Map();

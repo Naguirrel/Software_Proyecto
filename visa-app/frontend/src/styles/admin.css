@@ -292,6 +292,94 @@
     pointer-events: none;
     white-space: nowrap;
   }
+
+  .admin-sidebar--collapsed:hover,
+  .admin-sidebar--collapsed:focus-within {
+    width: 280px;
+    padding: 30px 20px 22px;
+    box-shadow: 10px 0 30px rgba(15, 23, 42, .12);
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__top,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__top {
+    justify-items: stretch;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__brand,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__brand {
+    width: auto;
+    min-height: 104px;
+    justify-content: flex-start;
+    padding: 6px 14px 26px;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__brand .visaguide-logo__text,
+  .admin-sidebar--collapsed:hover .admin-sidebar__link span,
+  .admin-sidebar--collapsed:hover .admin-sidebar__theme span,
+  .admin-sidebar--collapsed:hover .admin-sidebar__profile span,
+  .admin-sidebar--collapsed:hover .admin-sidebar__logout span,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__brand .visaguide-logo__text,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__link span,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__theme span,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__profile span,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__logout span {
+    width: auto;
+    max-width: none;
+    opacity: 1;
+    overflow: visible;
+    pointer-events: auto;
+    white-space: nowrap;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__collapse,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__collapse {
+    justify-self: end;
+    transform: none;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__nav,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__nav {
+    justify-items: stretch;
+    gap: 18px;
+    padding-right: 4px;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__group,
+  .admin-sidebar--collapsed:hover .admin-sidebar__group-links,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__group,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__group-links {
+    justify-items: stretch;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__group-label,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__group-label {
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    background: transparent;
+    color: var(--vg-strong-muted);
+    padding: 0 14px;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__link,
+  .admin-sidebar--collapsed:hover .admin-sidebar__theme,
+  .admin-sidebar--collapsed:hover .admin-sidebar__profile,
+  .admin-sidebar--collapsed:hover .admin-sidebar__logout,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__link,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__theme,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__profile,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__logout {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 0 16px;
+  }
+
+  .admin-sidebar--collapsed:hover [data-tooltip]::after,
+  .admin-sidebar--collapsed:focus-within [data-tooltip]::after {
+    display: none;
+  }
 }
 
 .admin-hero { margin-bottom: 34px; }

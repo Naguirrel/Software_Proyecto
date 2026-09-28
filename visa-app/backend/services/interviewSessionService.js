@@ -165,7 +165,7 @@ function createInterviewSessionService(pool) {
     }
   }
 
-  async function listSessions({ status } = {}) {
+  async function listSessions({ status, advisorId } = {}) {
     await ensureSchema();
 
     const values = [];
@@ -174,6 +174,11 @@ function createInterviewSessionService(pool) {
     if (status) {
       values.push(status);
       where.push(`s.status = $${values.length}`);
+    }
+
+    if (advisorId) {
+      values.push(Number(advisorId));
+      where.push(`t.id_asesor = $${values.length}`);
     }
 
     const result = await pool.query(
@@ -213,7 +218,7 @@ function createInterviewSessionService(pool) {
     return result.rows.map(presentSession);
   }
 
-  async function getSession(id) {
+  async function getSession(id, { advisorId } = {}) {
     await ensureSchema();
 
     const parsedId = Number(id);
@@ -223,12 +228,18 @@ function createInterviewSessionService(pool) {
       throw error;
     }
 
+    const values = [parsedId];
+    if (advisorId) values.push(Number(advisorId));
     const result = await pool.query(
       `SELECT id, user_id, user_name, user_email, status, responses,
               feedback, rating, created_at, reviewed_at
-       FROM interview_sessions
-       WHERE id = $1`,
-      [parsedId]
+       FROM interview_sessions s
+       WHERE s.id = $1
+         ${advisorId ? `AND EXISTS (
+           SELECT 1 FROM tramite t
+           WHERE t.id_usuario = s.user_id AND t.id_asesor = $2
+         )` : ""}`,
+      values
     );
 
     if (result.rows.length === 0) {
@@ -288,7 +299,7 @@ function createInterviewSessionService(pool) {
     };
   }
 
-  async function updateFeedback(id, payload = {}) {
+  async function updateFeedback(id, payload = {}, { advisorId } = {}) {
     await ensureSchema();
 
     const parsedId = Number(id);
@@ -316,6 +327,8 @@ function createInterviewSessionService(pool) {
       throw error;
     }
 
+    const values = [feedback, rating, parsedId];
+    if (advisorId) values.push(Number(advisorId));
     const result = await pool.query(
       `UPDATE interview_sessions
        SET feedback = $1,
@@ -323,9 +336,13 @@ function createInterviewSessionService(pool) {
            status = 'reviewed',
            reviewed_at = CURRENT_TIMESTAMP
        WHERE id = $3
+         ${advisorId ? `AND EXISTS (
+           SELECT 1 FROM tramite t
+           WHERE t.id_usuario = interview_sessions.user_id AND t.id_asesor = $4
+         )` : ""}
        RETURNING id, user_id, user_name, user_email, status, responses,
                  feedback, rating, created_at, reviewed_at`,
-      [feedback, rating, parsedId]
+      values
     );
 
     if (result.rows.length === 0) {

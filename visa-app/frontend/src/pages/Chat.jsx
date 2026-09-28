@@ -4,42 +4,9 @@ import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
 import { SkeletonCard } from "../components/SkeletonCard";
+import { apiRequest } from "../utils/apiClient";
+import { buildSessionHeaders } from "../utils/sessionAuth";
 import "../styles/chat.css";
-
-const INITIAL_MESSAGES = [
-  {
-    id: 1,
-    from: "advisor",
-    text: "Hola, soy Carlos, tu asesor consular asignado. He revisado tu perfil inicial y todo se ve muy bien para tu solicitud de visa B1/B2.",
-    time: "10:30 AM",
-  },
-  {
-    id: 2,
-    from: "advisor",
-    text: "Noté que tienes una duda sobre los documentos financieros. ¿Tienes algún certificado laboral reciente?",
-    time: "10:31 AM",
-  },
-  {
-    id: 3,
-    from: "user",
-    text: "Hola Carlos, gracias. Sí, tengo uno de la semana pasada, pero no sé si deba estar firmado digitalmente o a mano.",
-    time: "10:35 AM",
-  },
-  {
-    id: 4,
-    from: "advisor",
-    text: "Ambas firmas son válidas. Lo más importante es que el certificado incluya membrete de la empresa, cargo, antigüedad y salario mensual.",
-    time: "10:36 AM",
-  },
-];
-
-const AUTO_RESPONSES = [
-  "Entiendo tu pregunta. Te recomiendo revisar la sección correspondiente en el DS-160 con mucho cuidado.",
-  "Eso es completamente normal. Muchos solicitantes tienen esa misma duda.",
-  "Perfecto, esa documentación es suficiente para el consulado.",
-  "Te sugiero que programemos una revisión de tu DS-160 antes de la cita consular.",
-  "Claro, puedo ayudarte con eso. ¿Podrías darme más detalles sobre tu situación?",
-];
 
 function SendIcon() {
   return (
@@ -66,45 +33,55 @@ function ShieldIcon() {
   );
 }
 
-function getTime() {
-  const now = new Date();
-  const h = now.getHours();
-  const m = now.getMinutes().toString().padStart(2, "0");
-  const ampm = h >= 12 ? "PM" : "AM";
-  return `${h % 12 || 12}:${m} ${ampm}`;
+function getTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("es-GT", { hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
 export default function Chat() {
   const { isValidating, session } = useRequireAuth();
   const senior = useModoSenior();
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState([]);
+  const [assignment, setAssignment] = useState(null);
   const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing]);
+  }, [messages]);
 
-  const sendMessage = () => {
+  useEffect(() => {
+    if (isValidating) return undefined;
+    const controller = new AbortController();
+    apiRequest("/chat", { signal: controller.signal, headers: buildSessionHeaders() })
+      .then((data) => { setAssignment(data.assignment || null); setMessages(data.messages || []); })
+      .catch((requestError) => { if (requestError.name !== "AbortError") setError(requestError.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [isValidating]);
+
+  const sendMessage = async () => {
     const text = input.trim();
-    if (!text) return;
-
-    const userMsg = { id: Date.now(), from: "user", text, time: getTime() };
-    setMessages((m) => [...m, userMsg]);
-    setInput("");
-    setTyping(true);
-
-    // Simulate advisor response
-    setTimeout(() => {
-      const response = AUTO_RESPONSES[Math.floor(Math.random() * AUTO_RESPONSES.length)];
-      setTyping(false);
-      setMessages((m) => [
-        ...m,
-        { id: Date.now() + 1, from: "advisor", text: response, time: getTime() },
-      ]);
-    }, 1400 + Math.random() * 800);
+    if (!text || sending) return;
+    try {
+      setSending(true); setError("");
+      const data = await apiRequest("/chat/messages", {
+        method: "POST",
+        headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ message: text }),
+      });
+      setMessages((current) => [...current, data.message]);
+      setInput("");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKey = (e) => {
@@ -119,7 +96,7 @@ export default function Chat() {
       <Sidebar currentPage="chat" />
 
       <main id="main-content" tabIndex="-1" className={`vg-main chat-main${senior ? " chat-main--senior" : ""}`}>
-        {isValidating ? (
+        {isValidating || loading ? (
           <div className="chat-loading">
             <SkeletonCard variant="message" />
           </div>
@@ -137,8 +114,8 @@ export default function Chat() {
                   <span className="chat-header__online" aria-label="En línea" />
                 </div>
                 <div className="chat-header__info">
-                  <h2 className="chat-header__name">Carlos Mendoza</h2>
-                  <p className="chat-header__role">Asesor Consular en línea</p>
+                  <h2 className="chat-header__name">{assignment?.advisor_name || "Asesor pendiente"}</h2>
+                  <p className="chat-header__role">{assignment?.advisor_name ? "Asesor consular asignado" : "Aún no tienes asesor asignado"}</p>
                 </div>
                 <div className="chat-header__badge">
                   <ShieldIcon />
@@ -150,32 +127,24 @@ export default function Chat() {
               <div className="chat-messages" role="log" aria-live="polite">
                 <div className="chat-date-sep">HOY</div>
 
+                {error && <p className="chat-error" role="alert">{error}</p>}
+                {!assignment?.id_asesor && <p className="chat-empty">El chat estará disponible cuando se asigne un asesor a tu trámite.</p>}
                 {messages.map((msg) =>
-                  msg.from === "advisor" ? (
+                  msg.sender === "advisor" ? (
                     <div key={msg.id} className="chat-msg chat-msg--advisor">
                       <div className="chat-bubble chat-bubble--advisor">
-                        <p>{msg.text}</p>
-                        <time className="chat-msg__time">{msg.time}</time>
+                        <p>{msg.message}</p>
+                        <time className="chat-msg__time">{getTime(msg.createdAt)}</time>
                       </div>
                     </div>
                   ) : (
                     <div key={msg.id} className="chat-msg chat-msg--user">
                       <div className="chat-bubble chat-bubble--user">
-                        <p>{msg.text}</p>
-                        <time className="chat-msg__time chat-msg__time--user">{msg.time}</time>
+                        <p>{msg.message}</p>
+                        <time className="chat-msg__time chat-msg__time--user">{getTime(msg.createdAt)}</time>
                       </div>
                     </div>
                   )
-                )}
-
-                {typing && (
-                  <div className="chat-msg chat-msg--advisor">
-                    <div className="chat-bubble chat-bubble--advisor chat-bubble--typing">
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  </div>
                 )}
 
                 <div ref={bottomRef} />
@@ -198,7 +167,7 @@ export default function Chat() {
                 <button
                   className="chat-input-bar__send"
                   onClick={sendMessage}
-                  disabled={!input.trim() || typing}
+                  disabled={!input.trim() || sending || !assignment?.id_asesor}
                   aria-label="Enviar"
                 >
                   <SendIcon />
@@ -219,19 +188,18 @@ export default function Chat() {
 
               <div className="chat-summary__section">
                 <span className="chat-summary__label">TRÁMITE</span>
-                <strong className="chat-summary__value">Visa B1/B2 (Turismo)</strong>
+                <strong className="chat-summary__value">{assignment?.perfil || "Sin definir"}</strong>
               </div>
 
               <div className="chat-summary__section">
                 <span className="chat-summary__label">ESTADO</span>
-                <span className="chat-summary__estado">● Llenando DS-160</span>
+                <span className="chat-summary__estado">● {assignment?.estado || "Pendiente de asignación"}</span>
               </div>
 
               <div className="chat-summary__section">
                 <span className="chat-summary__label">PRÓXIMO PASO RECOMENDADO</span>
                 <p className="chat-summary__next">
-                  Completar la sección &quot;Datos Familiares&quot; en el formulario
-                  antes de la revisión final.
+                  {assignment?.etapa_actual ? `Continuar con la etapa: ${assignment.etapa_actual}.` : "Espera la asignación de un asesor."}
                 </p>
               </div>
 
