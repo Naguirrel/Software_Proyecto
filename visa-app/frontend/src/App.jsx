@@ -5,6 +5,7 @@ import { buildApiUrl } from "./config/api";
 import AuthLayout from "./components/auth/AuthLayout";
 import RequireAdmin from "./components/admin/RequireAdmin";
 import RequireStaff from "./components/RequireStaff";
+import RequireAdvisor from "./components/advisor/RequireAdvisor";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import "./components/auth/auth.css";
 
@@ -41,6 +42,15 @@ const AdminProfile = lazy(() => import("./pages/admin/AdminProfile"));
 const AdminQuestions = lazy(() => import("./pages/admin/AdminQuestions"));
 const AdminActivityLogs = lazy(() => import("./pages/admin/AdminActivityLogs"));
 const AdminEmailReminders = lazy(() => import("./pages/admin/AdminEmailReminders"));
+const AdvisorDashboard = lazy(() => import("./pages/advisor/AdvisorDashboard"));
+const AdvisorProcesses = lazy(() => import("./pages/advisor/AdvisorProcesses"));
+const AdvisorDocuments = lazy(() => import("./pages/advisor/AdvisorDocuments"));
+const AdvisorDS160 = lazy(() => import("./pages/advisor/AdvisorDS160"));
+const AdvisorInterviews = lazy(() => import("./pages/advisor/AdvisorInterviews"));
+const AdvisorChat = lazy(() => import("./pages/advisor/AdvisorChat"));
+const AdvisorTasks = lazy(() => import("./pages/advisor/AdvisorTasks"));
+const AdvisorQuestions = lazy(() => import("./pages/advisor/AdvisorQuestions"));
+const AdvisorProfile = lazy(() => import("./pages/advisor/AdvisorProfile"));
 
 // ── Apply saved theme on app start ──
 const savedTheme = localStorage.getItem("vg-theme");
@@ -52,7 +62,7 @@ const getUserId = (userData) => userData.id_usuario || userData.id;
 
 const getLoginDestination = (userData) => {
   if (userData?.rol === "admin") return "/admin";
-  if (userData?.rol === "asesor") return "/dashboard";
+  if (userData?.rol === "asesor") return "/advisor";
   return userData?.perfil ? "/dashboard" : "/seleccion-perfil";
 };
 
@@ -135,6 +145,15 @@ function App() {
         <Route path="/admin/questions"                element={<RequireAdmin><AdminQuestions /></RequireAdmin>} />
         <Route path="/admin/activity-logs"            element={<RequireAdmin><AdminActivityLogs /></RequireAdmin>} />
         <Route path="/admin/email-reminders"          element={<RequireAdmin><AdminEmailReminders /></RequireAdmin>} />
+        <Route path="/advisor"                       element={<RequireAdvisor><AdvisorDashboard /></RequireAdvisor>} />
+        <Route path="/advisor/solicitudes"            element={<RequireAdvisor><AdvisorProcesses /></RequireAdvisor>} />
+        <Route path="/advisor/documentos"             element={<RequireAdvisor><AdvisorDocuments /></RequireAdvisor>} />
+        <Route path="/advisor/ds160"                  element={<RequireAdvisor><AdvisorDS160 /></RequireAdvisor>} />
+        <Route path="/advisor/entrevistas"            element={<RequireAdvisor><AdvisorInterviews /></RequireAdvisor>} />
+        <Route path="/advisor/chat"                   element={<RequireAdvisor><AdvisorChat /></RequireAdvisor>} />
+        <Route path="/advisor/tareas"                 element={<RequireAdvisor><AdvisorTasks /></RequireAdvisor>} />
+        <Route path="/advisor/preguntas"              element={<RequireAdvisor><AdvisorQuestions /></RequireAdvisor>} />
+        <Route path="/advisor/perfil"                 element={<RequireAdvisor><AdvisorProfile /></RequireAdvisor>} />
         <Route path="/questions"                      element={<QuestionBank />} />
         <Route path="/documents"                      element={<Documents />} />
         <Route path="/ds160"                          element={<DS160Form />} />

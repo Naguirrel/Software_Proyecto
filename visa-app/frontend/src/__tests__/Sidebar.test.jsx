@@ -59,11 +59,11 @@ describe("Sidebar", () => {
     renderSidebar("documentos");
 
     expect(screen.getByRole("link", { name: "Documentos" })).toHaveStyle({
-      backgroundColor: "#dc2649",
+      backgroundColor: "var(--vg-navy)",
       color: "rgb(255, 255, 255)",
     });
     expect(screen.getByRole("link", { name: "Inicio" })).not.toHaveStyle({
-      backgroundColor: "#dc2649",
+      backgroundColor: "var(--vg-navy)",
     });
   });
 

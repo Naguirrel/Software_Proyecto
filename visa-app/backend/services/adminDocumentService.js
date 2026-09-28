@@ -48,8 +48,15 @@ function normalizeDocumentUpdatePayload(payload = {}) {
 }
 
 function createAdminDocumentService(pool, { schemaReady = Promise.resolve() } = {}) {
-  async function listDocuments() {
+  async function listDocuments({ advisorId } = {}) {
     await schemaReady;
+
+    const values = [];
+    const where = [];
+    if (advisorId) {
+      values.push(Number(advisorId));
+      where.push(`t.id_asesor = $${values.length}`);
+    }
 
     const result = await pool.query(`
       SELECT
@@ -72,13 +79,14 @@ function createAdminDocumentService(pool, { schemaReady = Promise.resolve() } = 
       LEFT JOIN usuario u ON u.id_usuario = d.usuario_id
       LEFT JOIN tramite t ON t.id_usuario = d.usuario_id
       LEFT JOIN usuario advisor ON advisor.id_usuario = t.id_asesor
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
       ORDER BY d.actualizado_en DESC, d.creado_en DESC
-    `);
+    `, values);
 
     return result.rows.map(presentAdminDocument);
   }
 
-  async function updateDocumentStatus(documentId, payload = {}) {
+  async function updateDocumentStatus(documentId, payload = {}, { advisorId } = {}) {
     await schemaReady;
 
     const updatePayload = normalizeDocumentUpdatePayload(payload);
@@ -98,6 +106,8 @@ function createAdminDocumentService(pool, { schemaReady = Promise.resolve() } = 
     updates.push("actualizado_en = CURRENT_TIMESTAMP");
     values.push(documentId);
     const documentIdParam = values.length;
+    if (advisorId) values.push(Number(advisorId));
+    const advisorIdParam = advisorId ? values.length : null;
 
     const result = await pool.query(
       `
@@ -105,6 +115,11 @@ function createAdminDocumentService(pool, { schemaReady = Promise.resolve() } = 
           UPDATE documentos
           SET ${updates.join(",\n              ")}
           WHERE id = $${documentIdParam}
+            ${advisorId ? `AND EXISTS (
+              SELECT 1 FROM tramite scoped_process
+              WHERE scoped_process.id_usuario = documentos.usuario_id
+                AND scoped_process.id_asesor = $${advisorIdParam}
+            )` : ""}
           RETURNING id, nombre, tipo, archivo_url, usuario_id, documento_key, estado,
                     feedback, creado_en, actualizado_en, storage_key
         )

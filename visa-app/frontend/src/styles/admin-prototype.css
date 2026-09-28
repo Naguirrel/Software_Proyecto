@@ -155,6 +155,48 @@
 .admin-sidebar__logout { margin-top: 4px; color: var(--admin-accent); }
 .admin-sidebar__logout:hover { background: rgba(231, 25, 76, .09); color: var(--admin-accent); }
 
+@media (min-width: 761px) {
+  .admin-sidebar--collapsed:hover,
+  .admin-sidebar--collapsed:focus-within {
+    padding: 0;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__top,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__top {
+    min-height: 112px;
+    place-content: center;
+    padding: 20px 24px;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__brand,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__brand {
+    min-height: 0;
+    gap: 12px;
+    padding: 0;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__collapse,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__collapse {
+    right: -15px;
+    bottom: -15px;
+    justify-self: auto;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__nav,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__nav {
+    gap: 4px;
+    margin: 0;
+    padding: 26px 18px 20px;
+  }
+
+  .admin-sidebar--collapsed:hover .admin-sidebar__footer,
+  .admin-sidebar--collapsed:focus-within .admin-sidebar__footer {
+    gap: 3px;
+    margin: 0;
+    padding: 18px;
+  }
+}
+
 .admin-workspace { width: calc(100% - 280px); min-width: 0; margin-left: 280px; }
 
 .admin-header {

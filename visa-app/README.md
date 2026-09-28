@@ -6,7 +6,7 @@ Aplicación web para gestionar procesos de visa estadounidense.
 
 ## Requisitos
 
-- Docker y Docker Compose, o Node.js 18 y PostgreSQL 15.
+- Docker y Docker Compose, o Node.js 20 y PostgreSQL 15.
 
 ## Ejecución con Docker
 

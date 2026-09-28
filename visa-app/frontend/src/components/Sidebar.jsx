@@ -10,9 +10,11 @@ import {
   FileText,
   Folder,
   LayoutGrid,
+  LogOut,
   MessageSquare,
   Moon,
   Sun,
+  UserCircle,
   Users,
 } from "lucide-react";
 import { buildApiUrl } from "../config/api";
@@ -121,14 +123,6 @@ export default function Sidebar({ currentPage }) {
     window.dispatchEvent(new CustomEvent("modoSeniorChange", { detail: next }));
   };
 
-  const getInitials = (nombre) => {
-    if (!nombre) return "US";
-    const parts = nombre.split(" ");
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : nombre.substring(0, 2).toUpperCase();
-  };
-
   const getPerfilLabel = (perfil) => {
     const map = {
       turismo_negocios: "Solicitante B1/B2",
@@ -195,9 +189,10 @@ export default function Sidebar({ currentPage }) {
       >
         {/* Logo */}
         <VisaGuideLogo
-          variant="compact"
+          variant="full"
           className="vg-sidebar-logo"
           textClassName="vg-sidebar-label"
+          subtitle="Solicitante"
         />
 
         <button
@@ -225,6 +220,8 @@ export default function Sidebar({ currentPage }) {
                   <Link
                     to={item.path}
                     style={{ ...s.menuItem, ...(isActive ? s.menuItemActive : {}) }}
+                    data-tooltip={item.label}
+                    title={!desktopExpanded ? item.label : undefined}
                     onClick={collapseSidebar}
                     onMouseEnter={() => preloadRoute(item.path)}
                     onFocus={() => preloadRoute(item.path)}
@@ -245,59 +242,46 @@ export default function Sidebar({ currentPage }) {
 
         {/* Bottom section */}
         <div className="vg-sidebar-bottom-section" style={s.bottomSection}>
-          {/* Dark mode toggle */}
-          <div className="vg-sidebar-theme-row" style={s.themeRow}>
-            <div style={s.themeLeft}>
-              <span style={s.themeIcon}>
-                {isDark
-                  ? <Moon size={16} strokeWidth={2} aria-hidden="true" />
-                  : <Sun size={16} strokeWidth={2} aria-hidden="true" />}
-              </span>
-              <span className="vg-sidebar-label" style={{ ...s.themeText, fontSize: modoSenior ? "17px" : "14px" }}>
-                {isDark ? "Modo oscuro" : "Modo claro"}
-              </span>
-            </div>
-            <button
-              style={{ ...s.toggle, ...(isDark ? s.toggleActive : {}) }}
-              onClick={toggleTheme}
-              aria-label="Cambiar tema"
-              aria-pressed={isDark}
-            >
-              <span style={{ ...s.toggleCircle, ...(isDark ? s.toggleCircleActive : {}) }} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="vg-sidebar-action vg-sidebar-theme-row"
+            style={s.sidebarAction}
+            onClick={toggleTheme}
+            aria-label={isDark ? "Activar modo claro" : "Activar modo oscuro"}
+            aria-pressed={isDark}
+            data-tooltip={isDark ? "Modo claro" : "Modo oscuro"}
+          >
+            {isDark
+              ? <Sun size={20} strokeWidth={2} aria-hidden="true" />
+              : <Moon size={20} strokeWidth={2} aria-hidden="true" />}
+            <span className="vg-sidebar-label">{isDark ? "Modo claro" : "Modo oscuro"}</span>
+          </button>
 
-          {/* Modo Senior */}
-          <div className="vg-sidebar-senior-row" style={s.modoSenior}>
-            <div style={s.modoSeniorLeft}>
-              <span style={s.modoSeniorIcon}>
-                <Accessibility size={16} strokeWidth={2} aria-hidden="true" />
-              </span>
-              <span className="vg-sidebar-label" style={{ ...s.modoSeniorText, fontSize: modoSenior ? "17px" : "14px" }}>
-                Modo Senior
-              </span>
-            </div>
-            <button
-              style={{ ...s.toggle, ...(modoSenior ? s.toggleActive : {}) }}
-              onClick={toggleModoSenior}
-              aria-label="Alternar modo Senior"
-              aria-pressed={modoSenior}
-            >
-              <span style={{ ...s.toggleCircle, ...(modoSenior ? s.toggleCircleActive : {}) }} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="vg-sidebar-action vg-sidebar-senior-row"
+            style={s.sidebarAction}
+            onClick={toggleModoSenior}
+            aria-label="Alternar modo Senior"
+            aria-pressed={modoSenior}
+            data-tooltip="Modo Senior"
+          >
+            <Accessibility size={20} strokeWidth={2} aria-hidden="true" />
+            <span className="vg-sidebar-label">Modo Senior</span>
+          </button>
 
           {/* User */}
           <Link
             to="/perfil"
             style={s.userSection}
             className="vg-sidebar-user-link"
+            data-tooltip="Mi perfil"
             aria-label={`Abrir perfil de ${usuario?.nombre || "Usuario"}, ${getPerfilLabel(usuario?.perfil)}`}
             onClick={collapseSidebar}
             onMouseEnter={() => preloadRoute("/perfil")}
             onFocus={() => preloadRoute("/perfil")}
           >
-            <div style={s.userAvatar}>{getInitials(usuario?.nombre)}</div>
+            <UserCircle size={20} strokeWidth={2} aria-hidden="true" />
             <div className="vg-sidebar-label" style={s.userInfo}>
               <p style={{ ...s.userName, fontSize: modoSenior ? "17px" : "14px" }}>
                 {usuario?.nombre || "Usuario"}
@@ -313,8 +297,11 @@ export default function Sidebar({ currentPage }) {
           )}
 
           <button
-            className="vg-sidebar-label"
+            type="button"
+            className="vg-sidebar-action vg-sidebar-logout"
             style={s.logoutBtn}
+            aria-label="Cerrar sesión"
+            data-tooltip="Cerrar sesión"
             onClick={() => {
               localStorage.removeItem("visaguide_session");
               localStorage.removeItem("correoUsuario");
@@ -322,7 +309,8 @@ export default function Sidebar({ currentPage }) {
               window.location.href = "/";
             }}
           >
-            Cerrar sesión
+            <LogOut size={20} strokeWidth={2} aria-hidden="true" />
+            <span className="vg-sidebar-label">Cerrar sesión</span>
           </button>
         </div>
         </div>
@@ -334,7 +322,7 @@ export default function Sidebar({ currentPage }) {
 const s = {
   sidebar: {
     minHeight: "100vh",
-    backgroundColor: "#0f172a",
+    backgroundColor: "var(--vg-card)",
     display: "flex",
     flexDirection: "column",
     fontFamily: "var(--vg-font)",
@@ -343,19 +331,19 @@ const s = {
     top: 0,
     bottom: 0,
     zIndex: 1000,
-    overflowY: "auto",
     // Mobile: hidden by default (CSS handles transform via media query)
   },
-  nav: { flex:1, padding:"0 12px" },
-  menuLabel: { fontSize:"11px", fontWeight:"600", color:"#64748b", letterSpacing:"0.5px", padding:"0 12px", marginBottom:"12px" },
-  menuList: { listStyle:"none", padding:0, margin:0, display:"flex", flexDirection:"column", gap:"4px" },
-  menuItem: { display:"flex", alignItems:"center", gap:"12px", padding:"11px 14px", borderRadius:"10px", color:"#94a3b8", textDecoration:"none", fontSize:"14px", fontWeight:"500", transition:"all 0.15s ease" },
-  menuItemActive: { backgroundColor:"#dc2649", color:"white" },
+  nav: { flex:1, padding:"18px 12px 12px" },
+  menuLabel: { fontSize:"10px", fontWeight:"800", color:"var(--vg-text-muted)", letterSpacing:"0.08em", padding:"0 12px", marginBottom:"8px" },
+  menuList: { listStyle:"none", padding:0, margin:0, display:"flex", flexDirection:"column", gap:"3px" },
+  menuItem: { display:"flex", minHeight:"44px", alignItems:"center", gap:"11px", padding:"0 12px", borderRadius:"10px", color:"var(--vg-text-muted)", textDecoration:"none", fontSize:"14px", fontWeight:"700", transition:"all 0.15s ease" },
+  menuItemActive: { backgroundColor:"var(--vg-navy)", color:"white", boxShadow:"0 8px 18px rgba(15,23,42,.18)" },
   menuIcon: { display:"flex", alignItems:"center", justifyContent:"center", width:"20px", height:"20px", flexShrink:0 },
   menuText: { flex:1 },
   badge: { backgroundColor:"#dc2649", color:"white", fontSize:"11px", fontWeight:"600", padding:"2px 8px", borderRadius:"10px", minWidth:"20px", textAlign:"center" },
 
-  bottomSection: { padding:"14px", borderTop:"1px solid #1e293b", marginTop:"auto" },
+  bottomSection: { display:"grid", gap:"2px", padding:"10px 12px 12px", borderTop:"1px solid var(--vg-border)", marginTop:"auto" },
+  sidebarAction: { width:"100%", minHeight:"44px", display:"flex", alignItems:"center", gap:"11px", border:0, borderRadius:"10px", background:"transparent", color:"var(--vg-text-muted)", padding:"0 12px", font:"inherit", fontWeight:700, cursor:"pointer", textAlign:"left" },
 
   themeRow: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 8px", marginBottom:"4px" },
   themeLeft: { display:"flex", alignItems:"center", gap:"10px" },
@@ -372,10 +360,10 @@ const s = {
   toggleCircle: { position:"absolute", top:"3px", left:"3px", width:"18px", height:"18px", backgroundColor:"white", borderRadius:"50%", transition:"left 0.2s ease" },
   toggleCircleActive: { left:"23px" },
 
-  userSection: { display:"flex", alignItems:"center", gap:"12px", padding:"8px" },
+  userSection: { display:"flex", minHeight:"44px", alignItems:"center", gap:"11px", padding:"0 12px", color:"var(--vg-text-muted)" },
   userAvatar: { width:"40px", height:"40px", backgroundColor:"#334155", borderRadius:"10px", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:"14px", fontWeight:"600" },
   userInfo: { flex:1 },
-  userName: { color:"white", fontWeight:"600", margin:0 },
-  userRole: { color:"#64748b", margin:"2px 0 0 0" },
-  logoutBtn: { width:"100%", padding:"10px", marginTop:"10px", backgroundColor:"transparent", border:"1px solid #334155", borderRadius:"8px", color:"#94a3b8", fontSize:"13px", cursor:"pointer", fontFamily:"var(--vg-font)" },
+  userName: { color:"var(--vg-text)", fontWeight:"700", margin:0 },
+  userRole: { color:"var(--vg-text-muted)", margin:"2px 0 0 0" },
+  logoutBtn: { width:"100%", minHeight:"44px", display:"flex", alignItems:"center", gap:"11px", padding:"0 12px", marginTop:"2px", backgroundColor:"transparent", border:0, borderRadius:"10px", color:"var(--vg-red)", fontSize:"14px", fontWeight:700, cursor:"pointer", fontFamily:"var(--vg-font)", textAlign:"left" },
 };

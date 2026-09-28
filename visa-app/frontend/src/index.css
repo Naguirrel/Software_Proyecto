@@ -4,8 +4,8 @@
 
 :root {
   /* ---- Sidebar width (CSS var for responsive) ---- */
-  --vg-sidebar-w: 72px;
-  --vg-sidebar-expanded-w: 250px;
+  --vg-sidebar-w: 76px;
+  --vg-sidebar-expanded-w: 244px;
 
   /* ---- Paleta principal ---- */
   --vg-red:          #e11d48;
@@ -339,15 +339,19 @@ img, video, canvas, svg {
    ══════════════════════════════ */
 .vg-sidebar {
   width: var(--vg-sidebar-w);
-  overflow-x: hidden;
+  border-right: 1px solid var(--vg-border);
+  background: var(--vg-card);
+  color: var(--vg-text);
+  overflow: visible;
   transform: translateX(0);
-  transition: width 0.22s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  transition: width 0.22s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow .22s ease;
 }
 
 .vg-sidebar:not(.vg-sidebar--auto-disabled):hover,
 .vg-sidebar:focus-within,
 .vg-sidebar--expanded {
   width: var(--vg-sidebar-expanded-w);
+  box-shadow: 10px 0 30px rgba(15, 23, 42, .12);
 }
 
 .vg-sidebar-content {
@@ -355,6 +359,8 @@ img, video, canvas, svg {
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .vg-sidebar-label {
@@ -373,16 +379,16 @@ img, video, canvas, svg {
 
 .vg-sidebar-expand-button {
   position: absolute;
-  top: 66px;
-  right: 6px;
+  top: 73px;
+  right: -14px;
   z-index: 1;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border: 1px solid #475569;
-  border-radius: 8px;
-  background: var(--vg-navy-mid);
-  color: #fff;
+  border: 1px solid var(--vg-border);
+  border-radius: 50%;
+  background: var(--vg-card);
+  color: var(--vg-text-muted);
   font-size: 22px;
   line-height: 1;
   opacity: 0;
@@ -400,17 +406,22 @@ img, video, canvas, svg {
 }
 
 .vg-sidebar-logo {
+  min-height: 88px;
   flex-shrink: 0;
-  gap: 10px;
-  padding: 20px 20px 28px;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--vg-border);
+  padding: 14px 17px;
 }
 
 .vg-sidebar-logo .visaguide-logo__mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: #dc2649;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 11px;
+  background: var(--vg-navy);
   color: #fff;
+  box-shadow: 0 7px 16px rgba(15, 23, 42, .13);
 }
 
 .vg-sidebar-logo .visaguide-logo__mark svg {
@@ -419,13 +430,13 @@ img, video, canvas, svg {
 }
 
 .vg-sidebar-logo .visaguide-logo__name {
-  color: #fff;
-  font-size: 20px;
-  font-weight: 600;
+  color: var(--vg-text);
+  font-size: 19px;
+  font-weight: 750;
 }
 
 .vg-sidebar-logo .visaguide-logo__accent {
-  color: #dc2649;
+  color: inherit;
 }
 
 .vg-sidebar-user-link {
@@ -443,7 +454,8 @@ img, video, canvas, svg {
 }
 
 .vg-sidebar-user-link:hover {
-  background: var(--vg-navy-mid);
+  background: var(--vg-bg-alt);
+  color: var(--vg-text);
 }
 
 .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-user-link {
@@ -452,11 +464,19 @@ img, video, canvas, svg {
   padding-right: 0 !important;
 }
 
-.vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-theme-row,
-.vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-senior-row,
 .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-email-verify-notice,
 .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) button.vg-sidebar-label {
   display: none !important;
+}
+
+.vg-sidebar-action:hover {
+  background: var(--vg-bg-alt) !important;
+  color: var(--vg-text) !important;
+}
+
+.vg-sidebar-logout:hover {
+  background: rgba(225, 29, 72, .09) !important;
+  color: var(--vg-red) !important;
 }
 
 .vg-email-verify-notice {
@@ -512,15 +532,18 @@ img, video, canvas, svg {
 }
 
 .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-bottom-section {
-  position: absolute;
-  right: 0;
-  bottom: 16px;
-  left: 0;
-  display: flex;
+  display: grid;
+  justify-items: center;
+  padding: 10px 16px 12px !important;
+}
+
+.vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-action,
+.vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-user-link {
+  width: 44px !important;
+  min-height: 44px;
   justify-content: center;
+  gap: 0 !important;
   padding: 0 !important;
-  border-top: 0 !important;
-  margin-top: 0 !important;
 }
 
 /* Notification popover shared by authenticated application pages. */
@@ -768,7 +791,7 @@ body.vg-has-top-actions main#main-content {
   .vg-sidebar:hover,
   .vg-sidebar:focus-within,
   .vg-sidebar--expanded {
-    width: 250px;
+    width: var(--vg-sidebar-expanded-w);
     transform: translateX(-100%);
   }
 

@@ -134,6 +134,69 @@ const schemas = {
     required: ["tramiteId", "asesorId"],
     properties: { tramiteId: { type: "integer" }, asesorId: { type: "integer" } },
   },
+  AdvisorProcessRequest: {
+    type: "object",
+    required: ["estado", "etapaActual"],
+    properties: {
+      estado: { type: "string", enum: ["En proceso", "Pendiente", "Aprobado", "Inactivo", "Completado"] },
+      etapaActual: { type: "string" },
+    },
+  },
+  AdvisorDocumentRequest: {
+    type: "object",
+    required: ["status"],
+    properties: { status: { type: "string", enum: ["approved", "correction"] }, feedback: { type: "string" } },
+  },
+  AdvisorDs160Request: {
+    type: "object",
+    required: ["status"],
+    properties: {
+      status: { type: "string", enum: ["en_progreso", "por_revisar", "correccion", "aprobado"] },
+      feedback: { type: "string" },
+    },
+  },
+  InterviewFeedbackRequest: {
+    type: "object",
+    required: ["feedback"],
+    properties: { feedback: { type: "string" }, rating: { type: "integer", minimum: 1, maximum: 5, nullable: true } },
+  },
+  ChatMessageRequest: {
+    type: "object",
+    required: ["message"],
+    properties: { message: { type: "string", maxLength: 4000 } },
+  },
+  AdvisorTaskRequest: {
+    type: "object",
+    required: ["title"],
+    properties: {
+      title: { type: "string", maxLength: 240 },
+      dueAt: { type: "string", format: "date-time", nullable: true },
+      priority: { type: "string", enum: ["normal", "high"] },
+      status: { type: "string", enum: ["pending", "completed"] },
+      userId: { type: "integer", nullable: true },
+    },
+  },
+  AdvisorTaskUpdateRequest: {
+    type: "object",
+    properties: {
+      title: { type: "string", maxLength: 240 },
+      dueAt: { type: "string", format: "date-time", nullable: true },
+      priority: { type: "string", enum: ["normal", "high"] },
+      status: { type: "string", enum: ["pending", "completed"] },
+    },
+  },
+  AdvisorQuestionRequest: {
+    type: "object",
+    required: ["question", "category", "difficulty"],
+    properties: {
+      question: { type: "string" }, category: { type: "string" }, difficulty: { type: "string", enum: ["Fácil", "Media", "Alta"] }, is_required: { type: "boolean" },
+    },
+  },
+  AdvisorProfileRequest: {
+    type: "object",
+    required: ["nombre"],
+    properties: { nombre: { type: "string" }, telefono: { type: "string" }, ciudad: { type: "string" }, pais: { type: "string" } },
+  },
   GenericRequest: objectSchema,
 };
 
@@ -248,12 +311,38 @@ const endpoints = [
   ["put", "/admin/profile", "Administración", "Actualizar perfil", "admin", "GenericRequest"],
   ["get", "/admin/settings", "Administración", "Consultar configuración", "admin"],
   ["put", "/admin/settings", "Administración", "Actualizar configuración", "admin", "GenericRequest"],
+  ["get", "/chat", "Chat", "Consultar conversación con el asesor", "session"],
+  ["post", "/chat/messages", "Chat", "Enviar mensaje al asesor", "session", "ChatMessageRequest", 201],
+  ["get", "/advisor/dashboard", "Asesor", "Consultar panel del asesor", "advisor"],
+  ["get", "/advisor/processes", "Asesor", "Listar solicitudes asignadas", "advisor"],
+  ["get", "/advisor/processes/{id}", "Asesor", "Consultar solicitud asignada", "advisor"],
+  ["put", "/advisor/processes/{id}", "Asesor", "Actualizar solicitud asignada", "advisor", "AdvisorProcessRequest"],
+  ["get", "/advisor/documents", "Asesor", "Listar documentos asignados", "advisor"],
+  ["put", "/advisor/documents/{id}", "Asesor", "Revisar documento asignado", "advisor", "AdvisorDocumentRequest"],
+  ["get", "/advisor/ds160", "Asesor", "Listar formularios DS-160 asignados", "advisor"],
+  ["put", "/advisor/ds160/{id}", "Asesor", "Revisar formulario DS-160", "advisor", "AdvisorDs160Request"],
+  ["get", "/advisor/interviews", "Asesor", "Listar entrevistas asignadas", "advisor"],
+  ["put", "/advisor/interviews/{id}/feedback", "Asesor", "Guardar retroalimentación de entrevista", "advisor", "InterviewFeedbackRequest"],
+  ["get", "/advisor/conversations", "Asesor", "Listar conversaciones", "advisor"],
+  ["get", "/advisor/conversations/{userId}/messages", "Asesor", "Listar mensajes con un solicitante", "advisor"],
+  ["post", "/advisor/conversations/{userId}/messages", "Asesor", "Enviar mensaje a un solicitante", "advisor", "ChatMessageRequest", 201],
+  ["get", "/advisor/tasks", "Asesor", "Listar tareas", "advisor"],
+  ["post", "/advisor/tasks", "Asesor", "Crear tarea", "advisor", "AdvisorTaskRequest", 201],
+  ["put", "/advisor/tasks/{id}", "Asesor", "Actualizar tarea", "advisor", "AdvisorTaskUpdateRequest"],
+  ["delete", "/advisor/tasks/{id}", "Asesor", "Eliminar tarea", "advisor"],
+  ["get", "/advisor/questions", "Asesor", "Listar banco de preguntas", "advisor"],
+  ["post", "/advisor/questions", "Asesor", "Crear pregunta", "advisor", "AdvisorQuestionRequest", 201],
+  ["put", "/advisor/questions/{id}", "Asesor", "Actualizar pregunta", "advisor", "AdvisorQuestionRequest"],
+  ["patch", "/advisor/questions/{id}/status", "Asesor", "Activar o desactivar pregunta", "advisor", "GenericRequest"],
+  ["get", "/advisor/profile", "Asesor", "Consultar perfil", "advisor"],
+  ["put", "/advisor/profile", "Asesor", "Actualizar perfil", "advisor", "AdvisorProfileRequest"],
 ];
 
 function buildOperation(method, path, tag, summary, auth, body, successStatus = 200, responseType, contentType = "application/json") {
   const roleDescriptions = {
     session: "Requiere una sesión válida.",
     staff: "Requiere rol asesor o administrador.",
+    advisor: "Requiere rol asesor.",
     admin: "Requiere rol administrador.",
   };
   const operation = {
@@ -303,7 +392,7 @@ module.exports = {
   servers: [{ url: "/", description: "Servidor actual" }],
   tags: [
     "Sistema", "Autenticación", "Perfil y trámite", "DS-160", "Documentos",
-    "Preguntas", "Entrevistas", "Notificaciones", "Gestión consular", "Administración",
+    "Preguntas", "Entrevistas", "Notificaciones", "Gestión consular", "Chat", "Asesor", "Administración",
   ].map((name) => ({ name })),
   paths,
   components: {

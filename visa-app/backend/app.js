@@ -20,6 +20,8 @@ const createAdminDocumentRoutes = require("./routes/adminDocumentRoutes");
 const createAdminProcessRoutes = require("./routes/adminProcessRoutes");
 const createAdminManagementRoutes = require("./routes/adminManagementRoutes");
 const createConsularRoutes = require("./routes/consularRoutes");
+const createAdvisorRoutes = require("./routes/advisorRoutes");
+const createChatRoutes = require("./routes/chatRoutes");
 const { createRoleMiddleware, createSessionMiddleware, issueSessionToken } = require("./auth");
 const createInterviewSessionService = require("./services/interviewSessionService");
 const { createQuestionBankService } = require("./services/questionBankService");
@@ -58,6 +60,7 @@ const pool = new Pool({
 });
 const requireAdmin = createRoleMiddleware(pool, ["admin"]);
 const requireStaff = createRoleMiddleware(pool, ["asesor", "admin"]);
+const requireAdvisor = createRoleMiddleware(pool, ["asesor"]);
 const requireSession = createSessionMiddleware(pool);
 
 pool
@@ -416,6 +419,7 @@ app.use("/questions", createQuestionBankRoutes(pool, { requireAdmin }));
 app.use("/", createPerfilRoutes(pool, { userSchemaReady, tramiteSchemaReady, activityLogService, notificacionService }));
 app.use("/", createAuthRoutes(pool, { userSchemaReady, tramiteSchemaReady, passwordResetSchemaReady, emailVerificationSchemaReady, testUsersReady, requireSession, activityLogService }));
 app.use("/notificaciones", createNotificacionRoutes(pool, { requireSession, requireAdmin }));
+app.use("/chat", createChatRoutes(pool, { requireSession }));
 app.use("/", createDocumentRoutes(pool, { documentSchemaReady, activityLogService, requireSession }));
 app.use("/", createDs160Routes(pool, { activityLogService, notificacionService }));
 app.use("/", createConsularRoutes({
@@ -432,6 +436,13 @@ app.use("/admin/metrics", createAdminMetricsRoutes(pool, { requireAdmin }));
 app.use("/admin/documents", createAdminDocumentRoutes(pool, { requireAdmin, schemaReady: documentSchemaReady, notificacionService, activityLogService }));
 app.use("/admin/processes", createAdminProcessRoutes(pool, { requireAdmin, schemaReady: tramiteSchemaReady, notificacionService, activityLogService }));
 app.use("/admin", createAdminManagementRoutes(pool, { requireAdmin, schemaReady: adminSchemaReady, notificacionService, activityLogService, emailReminderService }));
+app.use("/advisor", createAdvisorRoutes(pool, {
+  requireAdvisor,
+  schemaReady: adminSchemaReady,
+  documentSchemaReady,
+  notificacionService,
+  activityLogService,
+}));
 
 
 // =====================
