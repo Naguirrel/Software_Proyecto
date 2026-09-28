@@ -77,7 +77,7 @@ function createDs160Service(pool, { activityLogService, notificacionService }) {
 
   async function notificarDs160Completado(userId) {
     try {
-      await notificacionService.crear({
+      await notificacionService.crearNotificacion({
         userId,
         titulo: "DS-160 completado",
         mensaje: "Has completado el formulario DS-160 exitosamente. Ahora debes realizar el pago de la tarifa de visa.",

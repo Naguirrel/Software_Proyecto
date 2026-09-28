@@ -1180,7 +1180,7 @@ describe("app endpoints", () => {
     );
   });
 
-  test("POST /ds160 marca el formulario como completado y avanza el tramite", async () => {
+  test("POST /ds160 marca el formulario como completado, avanza el tramite y notifica al usuario", async () => {
     const datos = {
       confirmacion: {
         numeroConfirmacion: "AA00BB11",
@@ -1206,6 +1206,10 @@ describe("app endpoints", () => {
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE tramite"),
       [14]
+    );
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO notificaciones"),
+      expect.arrayContaining([14, "DS-160 completado"])
     );
   });
 

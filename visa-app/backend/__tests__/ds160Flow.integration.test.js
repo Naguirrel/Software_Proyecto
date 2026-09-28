@@ -121,6 +121,15 @@ describe("integración: cargar y guardar el formulario DS-160", () => {
     expect(ctx.state.tramites[0].etapa_actual).toBeUndefined();
   });
 
+  test("completar el DS-160 notifica al usuario", async () => {
+    ctx.addTramite({ userId: USER.id, progreso: 0 });
+
+    await auth(request(ctx.app).post("/ds160")).send({ datos: {}, seccion_actual: 10, completado: true });
+
+    expect(ctx.notificaciones).toHaveLength(1);
+    expect(ctx.notificaciones[0]).toMatchObject({ userId: USER.id, titulo: "DS-160 completado" });
+  });
+
   test("registra en la bitácora la creación y la actualización del formulario", async () => {
     await auth(request(ctx.app).post("/ds160")).send({ datos: { apellidos: "Perez" }, seccion_actual: 1 });
     await auth(request(ctx.app).post("/ds160")).send({ datos: { apellidos: "Perez" }, seccion_actual: 2 });
