@@ -1,0 +1,8 @@
+# Copiar a /etc/visaguide/monitoring.env y proteger con chmod 600.
+MONITOR_URL=https://visa-app.duckdns.org
+MONITOR_THRESHOLD=80
+MONITOR_DISK_PATH=/
+MONITOR_LOG_FILE=/var/log/visaguide/server-monitoring.log
+MONITOR_MAX_LOG_LINES=2000
+# Dejar vacio hasta configurar mailutils y un MTA o relay SMTP en AWS.
+ALERT_EMAIL=
