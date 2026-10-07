@@ -4,53 +4,86 @@ Guia de trabajo para devs y agentes de IA que colaboren en VisaGuide.
 
 ## Contexto del producto
 
-VisaGuide es una aplicacion web para acompanar procesos de visa estadounidense. El flujo principal cubre registro/login, seleccion de perfil de visa, dashboard del tramite, formulario DS-160, cronologia, gestion de documentos, preparacion de entrevista, banco de preguntas, retroalimentacion y notificaciones.
+VisaGuide es una aplicacion web para acompanar procesos de visa estadounidense. El flujo principal cubre registro/login (con verificacion de correo y recuperacion de contrasena), seleccion de perfil de visa, dashboard del tramite, formulario DS-160 (con exportacion a PDF), cronologia, gestion de documentos, preparacion de entrevista, banco de preguntas, retroalimentacion, notificaciones, chat con el asesor, pagos por transferencia y citas consulares.
+
+Hay tres roles (`usuario.rol`): `cliente` (solicitante), `asesor` (panel `/advisor`, solo ve tramites asignados) y `admin` (panel `/admin`).
 
 El proyecto esta organizado como una app full-stack JavaScript:
 
-- Frontend: React 19 + Vite, en `frontend/`.
+- Frontend: React 19 + Vite 8 + React Router 7, en `frontend/`.
 - Backend: Node.js + Express 5 + PostgreSQL, en `backend/`.
-- Base de datos local/contenedores: PostgreSQL 15 con `init.sql`.
+- Base de datos local/contenedores: PostgreSQL 15 con `init.sql` mas migraciones ligeras al arrancar.
 - Archivos/documentos/audio: abstraccion `storage.js`, Cloudflare R2 en produccion y fallback local en desarrollo/test.
-- Pruebas: Vitest/Testing Library para frontend, Jest/Supertest para backend.
-- Documentacion academica y entregables: `docs/`.
+- Correo: `nodemailer` con proveedor SMTP (Mailtrap en desarrollo) o Resend en produccion (`backend/config/email.js`).
+- Pruebas: Vitest/Testing Library para frontend, Jest/Supertest para backend, k6 para carga (`tests/load-test.js`).
+- CI: GitHub Actions (`.github/workflows/ci.yml`) en push/PR a `main`.
+- Despliegue: EC2 Ubuntu + Docker Compose + Nginx del host (`nginx/visa-app.duckdns.org.conf`), dominio `visa-app.duckdns.org`.
+- Documentacion academica, operativa y entregables: `docs/`.
 
 ## Estructura importante
 
 ```text
 visa-app/
   backend/
-    app.js                         # Express app, pool de Postgres, endpoints legacy y montaje de rutas
+    app.js                         # Express app, pool de Postgres, migraciones ligeras, seed de desarrollo y montaje de rutas
     index.js                       # Arranque del servidor
+    auth.js                        # Tokens de sesion HMAC y middlewares requireSession / requireRole
     r2.js                          # Cliente Cloudflare R2/S3 y helpers de upload/delete
     storage.js                     # Abstraccion de storage: R2 o fallback local
-    upload.js                      # Multer memoryStorage
-    routes/                        # Rutas modulares por dominio
-    controllers/                   # Controladores HTTP modulares
-    services/                      # Logica de dominio y SQL modular
+    upload.js                      # Multer memoryStorage + validacion de extension/MIME
+    swagger.js, docs/openapi.js    # Swagger UI en /api-docs y contrato en /api-docs.json
+    config/cors.js                 # Origenes permitidos por ambiente
+    config/email.js                # Transporte de correo (smtp | resend)
+    middleware/errorHandler.js     # 404 y manejador central de errores
+    templates/emailTemplates.js    # Plantillas de correo
+    routes/                        # Rutas modulares por dominio (todas las rutas viven aqui)
+    controllers/                   # Controladores HTTP
+    services/                      # Logica de dominio y SQL
+    test-utils/                    # Harnesses de integracion (auth, documentos, DS-160) y fakeStorage
     __tests__/                     # Pruebas Jest/Supertest
-    coverage/                      # Artefacto generado, no editar
   frontend/
     src/
-      App.jsx                      # Router principal, lazy routes, login y registro
+      App.jsx                      # Router principal, login, registro, recuperacion y verificacion
+      routes/lazyRoutes.js         # Carga diferida de paginas
       assets/                      # Imagenes estaticas de la app
-      config/api.js                # buildApiUrl y VITE_API_URL
-      components/                  # UI compartida
+      config/api.js                # buildApiUrl y resolucion de VITE_API_URL
+      components/                  # UI compartida (cliente)
+      components/admin/            # AdminLayout, RequireAdmin, AdminShared, AdminCharts, filtros
+      components/advisor/          # AdvisorLayout, RequireAdvisor, AdvisorShared
       components/auth/             # Layout y CSS de autenticacion
-      hooks/                       # useRequireAuth, useTheme, useModoSenior
-      pages/                       # Pantallas principales
+      components/ds160/            # Campos e iconos del formulario DS-160
+      data/ds160Sections.js        # Definicion de secciones del DS-160
+      hooks/                       # useRequireAuth, useTheme, useModoSenior, useDS160Form, useAdminResource
+      pages/                       # Pantallas cliente
+      pages/admin/                 # Pantallas del panel administrador
+      pages/advisor/               # Pantallas del panel asesor
       styles/                      # CSS por area
+      utils/                       # apiClient, sessionAuth, advisorApi, documentPreview, validaciones
       __tests__/                   # Pruebas Vitest/Testing Library
-    coverage/                      # Artefacto generado, no editar
+    nginx.conf                     # Nginx del contenedor: SPA + proxy /api, /documentos, /local-files
     vite.config.js                 # Vite + Vitest
-  docs/                            # Entregables, guiones, estrategia de pruebas
-  tools/                           # Scripts para generar documentos academicos/PDF
+  docs/                            # Entregables, guiones, estrategia de pruebas, backups, monitoreo
+  tools/                           # Scripts Python de entregables + tools/backups y tools/monitoring (bash)
+  tests/load-test.js               # Prueba de carga k6
+  nginx/                           # Nginx del host EC2 (reverse proxy publico)
   init.sql                         # Esquema y seed inicial para Postgres
   docker-compose.yml               # backend + frontend + db
+  docker-compose.override.yml      # Overrides locales (se carga automaticamente con docker compose up)
   .env.example                     # Variables esperadas
 ```
 
-Evita modificar `backend/coverage/`, `frontend/coverage/` y `docs/entregables/` salvo que el usuario pida regenerar entregables.
+`coverage/` esta ignorado por git; no lo commitee. Evite modificar `docs/entregables/` salvo que el usuario pida regenerar entregables.
+
+## Historial de sprints
+
+Las secciones siguientes son bitacora historica de ramas ya integradas. Pueden mencionar ubicaciones o contratos que despues cambiaron (por ejemplo, endpoints que vivian en `app.js` o el antiguo `PUT /tramite`); la referencia vigente son las secciones "Backend", "Frontend" y "Riesgos conocidos" de este archivo. Resumen de lo integrado en `main` despues de las secciones de Sprint 6 (orden aproximado, ver `git log` para el detalle):
+
+- Backend y seguridad: refactor de `app.js` a `routes/controllers/services`, bcrypt para contrasenas (SCRUM-150), tokens de sesion y roles, CORS restringido, manejo centralizado de errores (SCRUM-161), datos sensibles movidos al body, pruebas de seguridad (SCRUM-164) y de endpoints/tokens.
+- Cuentas: recuperacion de contrasena (SCRUM-168) y verificacion de email no bloqueante (SCRUM-187).
+- Administracion: exportacion de reportes CSV/XLSX, busqueda avanzada, historial de cambios de tramite, logs de actividad y recordatorios por email.
+- Producto: pagos por transferencia y citas consulares, panel de asesor (`/advisor`), chat cliente-asesor, exportacion del DS-160 a PDF y refactor del DS-160 en frontend.
+- Calidad y operacion: pruebas de integracion (SCRUM-182, 183, 184, 185), pruebas E2E y de carga, lazy loading, Swagger, pipeline de CI, backups de PostgreSQL y monitoreo del servidor (SCRUM-199).
+- Rama `email-funcional` (aun no integrada en `main`): envio real de correos con Resend (`EMAIL_PROVIDER=resend`).
 
 ## Sprint 6 - Administracion de Documentos
 
@@ -237,46 +270,73 @@ Instalar dependencias por paquete:
 
 ```bash
 cd backend
-npm install
+npm ci
 
 cd ../frontend
-npm install
+npm ci
 ```
 
-Variables de entorno:
+Variables de entorno (ver `.env.example`, `backend/.env.example` y `frontend/.env.example` para la lista completa):
 
 ```text
+# Base de datos (obligatorias)
 DB_HOST=db
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=change_me
 DB_NAME=visa_db
+# Sesion (obligatoria en produccion; sin ella el login falla)
+SESSION_SECRET=<secreto largo y aleatorio>
+NODE_ENV=development | production
+# Storage
 R2_ACCESS_KEY=...
 R2_SECRET_KEY=...
 R2_BUCKET=...
 R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 LOCAL_UPLOAD_DIR=backend/local_uploads
+# CORS y frontend
+CORS_ALLOWED_ORIGINS=http://localhost:5173,...
+FRONTEND_URL=                     # base para enlaces de reset/verificacion
+FRONTEND_API_URL=/api             # build arg del frontend en Docker
+VITE_API_URL=
+VITE_API_PORT=3000
+VITE_WHATSAPP_PHONE=
+# Correo
+EMAIL_PROVIDER=smtp | resend
+SMTP_HOST / SMTP_PORT / SMTP_SECURE / SMTP_USER / SMTP_PASS / SMTP_FROM
+RESEND_API_KEY=...
+EMAIL_FROM=VisaGuide <...>
+EMAIL_REMINDERS_MODE=dry_run | disabled | send
+# Pago por transferencia
+PAYMENT_BANK_NAME / PAYMENT_ACCOUNT_NAME / PAYMENT_ACCOUNT_NUMBER / PAYMENT_ACCOUNT_TYPE / PAYMENT_BANK_INSTRUCTIONS
 ```
 
 Notas:
 
-- `.env.example` vive en la raiz.
-- Docker Compose carga `.env` desde la raiz.
-- `backend/app.js` tambien intenta cargar `backend/.env` con `dotenv`. En local fuera de Docker, asegurese de que el backend reciba las mismas variables.
+- Docker Compose carga `.env` desde la raiz de `visa-app/`.
+- `backend/app.js` carga `backend/.env` con `dotenv` (no el de la raiz). En local fuera de Docker configure `backend/.env`.
+- `SESSION_SECRET` es obligatorio con `NODE_ENV=production`. Fuera de produccion `auth.js` usa un secreto de desarrollo fijo.
+- Con `NODE_ENV=development`, `app.js` crea cuentas de prueba (ver `testUsers` en `app.js`) y tramites de ejemplo al arrancar.
 - `LOCAL_UPLOAD_DIR` es opcional; Docker lo define como `/app/local_uploads` y monta el volumen `local_uploads`.
 - En `NODE_ENV !== "production"`, si R2 no esta configurado, `storage.js` guarda archivos localmente y el backend expone `/local-files`.
-- `frontend/src/config/api.js` usa `VITE_API_URL`. Si esta vacio, las llamadas quedan relativas, por ejemplo `/login`.
+- Sin `RESEND_API_KEY` o sin credenciales SMTP, el transporte queda en `null` y los correos no se envian (dry-run).
+- `frontend/src/config/api.js` resuelve `VITE_API_URL`: si es relativo (`/api`) lo usa tal cual; si esta vacio usa el host actual con `VITE_API_PORT`.
 
 Con Docker:
 
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 
+`docker compose up` aplica automaticamente `docker-compose.override.yml`, que fuerza `NODE_ENV=development` y un `SESSION_SECRET` de desarrollo. Para produccion use solo el archivo base: `docker compose -f docker-compose.yml up -d --build`.
+
 Puertos por defecto:
 
-- Frontend: `http://localhost:5173`
+- Frontend (Docker, Nginx): `http://localhost:8080`, que proxea `/api` al backend.
+- Frontend (Vite dev): `http://localhost:5173`
 - Backend: `http://localhost:3000`
+- Swagger: `http://localhost:3000/api-docs`
 - Postgres del host: `localhost:5433`, mapeado al contenedor `5432`
 
 Sin Docker:
@@ -321,20 +381,29 @@ Antes de cerrar una tarea, ejecute al menos las pruebas relacionadas con el area
 
 El backend usa CommonJS. Mantenga `require`/`module.exports`; no mezcle ESM.
 
-Hay dos estilos conviviendo:
+Todas las rutas son modulares. `app.js` ya no define endpoints de negocio (solo `GET /`); crea el pool, ejecuta las migraciones ligeras, instancia servicios compartidos (notificaciones, activity log, recordatorios, consular) y monta los routers. Queda codigo muerto de antes del refactor en `app.js` (`ETAPAS_VALIDAS`, `MENSAJES_ETAPA`, `notificarCambioEtapa`, etc.); no lo use como referencia.
 
-- Endpoints legacy/directos en `backend/app.js`: auth, perfil, tramite, DS-160 y documentos.
-- Dominios modulares en `routes/`, `controllers/`, `services/`: banco de preguntas, sesiones de entrevista y notificaciones.
+Los routers siguen el patron de fabrica: `createXRoutes(pool, { dependencias })`. Las dependencias (middlewares de auth, servicios, promesas `schemaReady`) se inyectan desde `app.js`, lo que permite mockearlas en pruebas.
 
-Para funcionalidad nueva, prefiera el patron modular:
+Para funcionalidad nueva use:
 
 ```text
 routes/<dominio>Routes.js
-controllers/<dominio>Controller.js
+controllers/<dominio>Controller.js   # opcional; algunos dominios (admin, advisor, chat, consular) manejan HTTP en la ruta
 services/<dominio>Service.js
 ```
 
-Monte la ruta en `app.js` con `app.use(...)`.
+Monte la ruta en `app.js` con `app.use(...)` antes de `notFoundHandler`/`errorHandler`.
+
+### Autenticacion y autorizacion
+
+- `POST /login` y `POST /register` devuelven `token`. El cliente lo envia como `Authorization: Bearer <token>`.
+- El token (`auth.js`) es `base64url(payload).HMAC-SHA256` firmado con `SESSION_SECRET`, con `sub`, `correo`, `rol` y `exp` (8 horas). No hay revocacion: cambiar la contrasena no invalida tokens emitidos.
+- `createSessionMiddleware(pool)` (`requireSession`) valida el token y vuelve a leer el usuario en BD; rechaza cuentas con `activo = false`. Deja el usuario en `req.auth`.
+- `createRoleMiddleware(pool, roles)` genera `requireAdmin`, `requireAdvisor` (`asesor`) y `requireStaff` (`asesor` + `admin`).
+- En endpoints nuevos tome el usuario de `req.auth`, nunca de `correo`/`userId` enviados por el cliente, y valide propiedad del recurso.
+- `email_verificado` se guarda y se muestra como aviso, pero no bloquea el acceso.
+- Para `navigator.sendBeacon` (sin headers), las rutas DS-160 aceptan `token` en el body y lo promueven a `Authorization`.
 
 ### Base de datos
 
@@ -348,7 +417,12 @@ La app usa `pg.Pool` creado en `backend/app.js`. Las tablas base estan en `init.
 - `interview_sessions`
 - `notificaciones`
 
-Ademas, varios servicios hacen `ensureSchema()` o `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` al arrancar. Si cambia esquema:
+Otras tablas y columnas se crean al arrancar, no en `init.sql`:
+
+- En `app.js`: columnas extra de `usuario` (`rol`, `activo`, `email_verificado`, preferencias, capacidad de asesor), `tramite.id_asesor`, `process_change_history`, `password_resets`, `email_verifications`, `admin_settings`, `admin_activity`.
+- En servicios con `ensureSchema()`: notificaciones, sesiones de entrevista, banco de preguntas, pagos y citas consulares, activity logs y recordatorios por email.
+
+Las promesas `userSchemaReady`, `tramiteSchemaReady`, `adminSchemaReady`, etc. se pasan a los routers; espere la que corresponda antes de consultar tablas que dependan de ellas. Si cambia esquema:
 
 - Actualice `init.sql`.
 - Actualice tambien los `ensureSchema()` o migraciones ligeras existentes si la app depende de que se autocorrija en ambientes ya creados.
@@ -356,55 +430,70 @@ Ademas, varios servicios hacen `ensureSchema()` o `ALTER TABLE ... ADD COLUMN IF
 
 ### Rutas principales
 
-Auth/sesion:
+La lista completa y actualizada esta en Swagger (`/api-docs`, fuente `backend/docs/openapi.js`). Proteccion indicada entre corchetes: [publica], [sesion], [admin], [asesor], [staff].
 
-- `POST /register`
-- `POST /login`
-- `GET /validar-sesion` con token de sesión en `Authorization`
+Auth/sesion (`authRoutes.js`):
 
-Perfil/tramite:
+- `POST /register`, `POST /login` [publica]
+- `GET /validar-sesion` [sesion]
+- `POST /forgot-password`, `POST /reset-password` [publica]
+- `POST /verificar-email`, `POST /reenviar-verificacion` [publica]
+
+Perfil/tramite (`perfilRoutes.js`) — **sin middleware de sesion; identifican al usuario por `correo` en el body** (ver Riesgos):
 
 - `POST /guardar-perfil`
-- `POST /estado-tramite` con `{ correo }` en body
-- `POST /usuario-perfil` con `{ correo }` en body
-- `PUT /usuario-perfil`
-- `PUT /tramite`
+- `POST /estado-tramite` con `{ correo }`
+- `POST /usuario-perfil` con `{ correo }`, `PUT /usuario-perfil`
+- `PUT /tramite` con `{ id_tramite, ... }`
 
-DS-160:
+DS-160 (`ds160Routes.js`) [sesion; usa `req.auth`, no `correo`]:
 
-- `POST /ds160/load` con `{ correo }` en body
-- `POST /ds160/pdf` con `{ correo }` en body
-- `POST /ds160`
+- `POST /ds160/load`, `POST /ds160`, `POST /ds160/pdf`
 
-Documentos/uploads:
+Documentos/uploads (`documentRoutes.js`) [sesion; cliente solo los propios, `asesor`/`admin` cualquiera]:
 
-- `POST /upload`
-- `POST /documentos`
-- `GET /documentos/:usuarioId`
-- `DELETE /documentos` con `{ documento_id, usuario_id }` en body
+- `POST /upload`, `POST /documentos` (multipart, campo `file`)
+- `POST /documentos/listar` con `{ usuario_id }`, `GET /documentos/:usuarioId`
+- `GET /documentos/:id/archivo`
+- `DELETE /documentos/:id`, `DELETE /documentos` con `{ documento_id, usuario_id }`
 
-Banco de preguntas:
+Banco de preguntas (`questionBankRoutes.js`):
 
-- `GET /questions`
-- `POST /questions`
-- `PUT /questions/:id`
-- `DELETE /questions/:id`
+- `GET /questions` [publica]
+- `GET /questions/admin`, `POST /questions`, `PUT /questions/:id`, `PATCH /questions/:id/status`, `DELETE /questions/:id` [admin]
 
-Entrevistas:
+Entrevistas (`interviewSessionRoutes.js`):
 
-- `GET /interview-sessions`
-- `POST /interview-sessions`
-- `GET /interview-sessions/user/:userId`
-- `GET /interview-sessions/:id`
-- `PUT /interview-sessions/:id/feedback`
+- `GET /interview-sessions`, `PUT /interview-sessions/:id/feedback` [admin]
+- `POST /interview-sessions` (multipart, campos `audio_*`), `POST /interview-sessions/user`, `POST /interview-sessions/detail`, `GET /interview-sessions/user/:userId`, `GET /interview-sessions/:id`, `GET /interview-sessions/:id/audio/:questionId` — **sin middleware de sesion** (ver Riesgos)
 
-Notificaciones:
+Notificaciones (`notificacionRoutes.js`) [sesion + propietario o admin]:
 
-- `POST /notificaciones`
-- `GET /notificaciones/:userId/no-leidas`
-- `GET /notificaciones/:userId`
-- `PUT /notificaciones/:id/leer`
-- `PUT /notificaciones/:userId/leer-todas`
+- `POST /notificaciones` [admin]
+- `POST /notificaciones/no-leidas`, `POST /notificaciones/listar`, `PUT /notificaciones/leer-todas` con `{ userId }`
+- `GET /notificaciones/:userId/no-leidas`, `GET /notificaciones/:userId`
+- `PUT /notificaciones/:id/leer`, `DELETE /notificaciones/:id` con `{ userId }`
+- `PUT /notificaciones/:userId/leer-todas` es legacy y responde 405
+
+Chat cliente-asesor (`chatRoutes.js`) [sesion, rol `cliente`]:
+
+- `GET /chat`, `POST /chat/messages`
+
+Consular y pagos (`consularRoutes.js`):
+
+- `GET /payments/me`, `POST /payments/bank-transfer`, `GET /appointments/me` [sesion]
+- `GET /staff/consular-cases`, `POST /staff/consular-payments/:id/start|review-transfer|receipt`, `PUT /staff/consular-cases/:userId/appointment`, `POST /staff/consular-cases/:userId/appointments/:id/cancel` [staff]
+
+Administracion [admin]:
+
+- `/admin/metrics`: `overview`, `processes`, `processes.csv`, `processes.xlsx`
+- `/admin/documents`: `GET /`, `PUT /:id/status`
+- `/admin/processes`: `GET /`, `GET /:id`, `GET /:id/history`, `PUT /:id`
+- `/admin`: `dashboard`, `users`, `advisors`, `assignments`, `ds160`, `profile`, `settings`, `activity-logs`, `POST /email-reminders/run`
+
+Asesor (`advisorRoutes.js`) [asesor; todo filtrado por `tramite.id_asesor = req.auth.id_usuario`]:
+
+- `/advisor`: `dashboard`, `processes`, `documents`, `ds160`, `interviews`, `conversations`, `tasks`, `questions`, `profile`
 
 ### Storage, R2 y archivos
 
@@ -440,7 +529,9 @@ Cuando cree endpoints de upload:
 
 ### Manejo de errores
 
-Los servicios modulares usan `error.statusCode` para respuestas esperadas. Los controladores convierten errores no esperados en mensajes genericos y registran `console.error`.
+Los servicios modulares usan `error.statusCode` para respuestas esperadas. Los controladores convierten errores no esperados en mensajes genericos y registran `console.error`. Al final de `app.js`, `upload.handleUploadError`, `notFoundHandler` y `errorHandler` (`middleware/errorHandler.js`) responden `{ error }` y ocultan el mensaje en errores 5xx.
+
+Algunos controladores antiguos (auth, perfil, DS-160) todavia devuelven `error.message` en respuestas 500; no copie ese patron.
 
 Mantenga ese patron:
 
@@ -456,7 +547,9 @@ throw error;
 
 El frontend usa React 19, Vite, React Router y `lucide-react`. No hay TypeScript.
 
-`App.jsx` carga paginas con `lazy`/`Suspense`. La ruta `/` redirige a `/login`; ya no existe una pantalla de onboarding como landing inicial. Login y registro usan `AuthLayout` en `frontend/src/components/auth/`.
+`App.jsx` carga paginas con `lazy`/`Suspense` (ver tambien `routes/lazyRoutes.js`). La ruta `/` redirige a `/login`; ya no existe una pantalla de onboarding como landing inicial. Login, registro, `/recuperar-contrasena`, `/restablecer-contrasena` y `/verificar-email` usan `AuthLayout` en `frontend/src/components/auth/`.
+
+Guardas de rol en el router: `RequireAdmin` para `/admin/*`, `RequireAdvisor` para `/advisor/*` y `RequireStaff` para `/gestion-consular`. Son solo UX; la autorizacion real la hace el backend.
 
 Rutas principales estan en `frontend/src/App.jsx`. Al agregar una pantalla:
 
@@ -474,13 +567,15 @@ import { buildApiUrl } from "../config/api";
 fetch(buildApiUrl("/ruta"))
 ```
 
-Evite construir URLs con `import.meta.env.VITE_API_URL` directamente. Hay una excepcion legacy en `DocumentList.jsx`; si toca ese componente, considere migrarlo a `buildApiUrl`.
+Para endpoints protegidos agregue el token con `buildSessionHeaders()` de `utils/sessionAuth.js`. Para codigo nuevo prefiera `apiRequest()` de `utils/apiClient.js`: aplica timeout (15 s), lanza `ApiError` con mensajes en espanol por codigo HTTP y limpia la sesion ante 401. Los paneles usan `utils/adminHeaders.js` y `utils/advisorApi.js`.
+
+No construya URLs con `import.meta.env.VITE_API_URL` directamente; solo `config/api.js` lo lee.
 
 ### Sesion y auth
 
 La sesion del usuario se guarda en `localStorage`:
 
-- `visaguide_session`: JSON con `id`, `nombre`, `correo`, `perfil`, `loginTime`.
+- `visaguide_session`: JSON con `id`, `nombre`, `correo`, `perfil`, `rol`, `emailVerificado`, `token` y `loginTime`.
 - `correoUsuario`: compatibilidad con flujos antiguos.
 - `perfilUsuario`: compatibilidad con seleccion de perfil.
 
@@ -529,7 +624,12 @@ Convenciones visibles:
 - `InterviewFeedback.jsx`: revision de sesiones/feedback.
 - `QuestionBank.jsx`: CRUD de preguntas y revision de entrevistas.
 - `Notificaciones.jsx`: lista y marcado de notificaciones.
-- `Cronologia.jsx`, `Informacion.jsx`, `Chat.jsx`: pantallas informativas/de apoyo.
+- `Chat.jsx`: chat del cliente con su asesor (`/chat`).
+- `ConsularPayment.jsx` (`/pagos`), `ConsularAppointments.jsx` (`/citas`) y `ConsularManagement.jsx` (`/gestion-consular`, staff).
+- `Cronologia.jsx`, `Informacion.jsx`: pantallas informativas/de apoyo.
+- `Upload.jsx` (`/upload`): pantalla legacy de subida.
+- `pages/admin/*`: dashboard, usuarios, asesores, asignaciones, tramites y detalle, documentos, DS-160, entrevistas, preguntas, reportes, logs de actividad, recordatorios por email, ajustes y perfil.
+- `pages/advisor/*`: dashboard, solicitudes, documentos, DS-160, entrevistas, chat, tareas, preguntas y perfil.
 
 ## Pruebas
 
@@ -537,17 +637,20 @@ Convenciones visibles:
 
 Jest esta configurado en `backend/jest.config.js`.
 
-- `pg` se mockea en `backend/__tests__/app.test.js`.
-- `storage.js` se mockea en `backend/__tests__/app.test.js`.
-- R2 se mockea para no tocar servicios reales.
+- Ninguna prueba usa una base real: CI no levanta PostgreSQL.
+- `pg` y `storage.js` se mockean en `backend/__tests__/app.test.js`; las pruebas usan Supertest contra `require("../app")`.
+- Las pruebas de integracion (`*.integration.test.js`) usan los harnesses de `backend/test-utils/` (auth, documentos, DS-160), que simulan la BD en memoria, y `fakeStorage.js`.
+- Hay suites de seguridad (`security.test.js`, `protectedEndpoints.security.test.js`, `tokensSessions.security.test.js`, `cors.test.js`) y de autorizacion por rol.
+- R2 y el correo se mockean para no tocar servicios reales.
 - `backend/__tests__/storage.test.js` valida el fallback local de desarrollo/test.
-- Las pruebas usan Supertest contra `require("../app")`.
 
 Al agregar endpoints:
 
-- Agregue casos felices y errores de validacion.
-- Mockee queries nuevas en `defaultQueryHandler`.
+- Agregue casos felices, errores de validacion, 401 sin token y 403 con otro rol u otro usuario.
+- Mockee queries nuevas en `defaultQueryHandler` o en el harness correspondiente.
 - Si agrega servicios puros, considere pruebas enfocadas de servicio.
+
+Pruebas de carga: `tests/load-test.js` (k6), no forman parte de CI.
 
 ### Frontend
 
@@ -570,15 +673,26 @@ Al agregar UI:
 
 ## Datos y seguridad
 
-Atencion: este proyecto actualmente guarda contrasenas en texto plano y no tiene autenticacion por token. No trate `visaguide_session` como seguridad real; es estado de cliente para el prototipo. Si el usuario pide endurecer seguridad, priorice:
+Estado actual:
 
-- Hash de contrasenas con bcrypt/argon2.
-- Login con token/sesion del servidor.
-- Middleware de autenticacion para endpoints privados.
-- Validacion de propiedad del recurso en backend.
-- Configuracion CORS restrictiva por ambiente.
+- Contrasenas con bcrypt (10 rondas). `authService.verifyPassword` todavia acepta contrasenas legacy en texto plano y las migra a bcrypt al primer login.
+- Tokens de reset y verificacion: 32 bytes aleatorios; en BD solo se guarda su SHA-256. Reset valido 1 hora, verificacion 24 horas.
+- Token de sesion firmado con HMAC (ver "Autenticacion y autorizacion"); se guarda en `localStorage`.
+- CORS restringido por `CORS_ALLOWED_ORIGINS` o por los defaults de `config/cors.js`; `credentials: false`.
+- Uploads: maximo 5 MB y 8 archivos; documentos solo `.pdf/.jpg/.jpeg/.png` y audio solo `.webm`, validando extension y MIME.
+- Queries parametrizadas en todo el backend.
 
-No registre secretos ni datos sensibles en consola. No commitee `.env`, `backend/.env`, `node_modules`, `dist` ni nuevos artefactos de coverage.
+Pendientes conocidos, en orden de prioridad (no los "arregle" de paso sin pedido del usuario, pero no los replique en codigo nuevo):
+
+1. `perfilRoutes.js` e `interviewSessionRoutes.js` (excepto listado y feedback admin) no exigen sesion: se puede leer o modificar el perfil/tramite de otro usuario con su correo o `id_tramite`, y descargar audios de entrevistas por ID.
+2. `docker-compose.override.yml` tiene un `SESSION_SECRET` commiteado y fuerza `NODE_ENV=development`; si se despliega con `docker compose up` sin `-f`, se crean las cuentas de prueba y se pueden falsificar tokens.
+3. `config/email.js` usa `tls.rejectUnauthorized: false` con Resend.
+4. Sin rate limiting en login, recuperacion y reenvio de verificacion; sin `helmet` ni cabeceras de seguridad en Nginx.
+5. Politica de contrasenas debil: el registro no exige longitud y el reset pide 4 caracteres. El login no normaliza el correo a minusculas (el registro si).
+6. Cualquier `asesor` puede ver y borrar documentos de todos los clientes via `/documentos/*`, aunque `/advisor/*` si filtra por asignacion.
+7. Dependencias con vulnerabilidades conocidas (`npm audit` en backend y frontend).
+
+No registre secretos ni datos sensibles en consola. No commitee `.env`, `backend/.env`, `node_modules`, `dist` ni artefactos de coverage, y no ponga credenciales reales en los `.env.example`.
 
 ## Documentacion y entregables
 
@@ -590,9 +704,18 @@ No registre secretos ni datos sensibles en consola. No commitee `.env`, `backend
 - `guion-video.md`
 - `checklist-rubrica.md`
 - `prompt-presentacion.md`
-- `entregables/` con PDF/DOCX/imagenes generadas
+- `auditoria-dashboard-admin.md`, `bugs-corregidos-rf98.md`
+- `entregables/` con PDF/DOCX/XLSX/imagenes generadas
 
-`tools/` contiene scripts Python para generar documentos y PDFs. Use esos scripts si el usuario pide regenerar entregables; no edite binarios manualmente.
+Y documentacion operativa:
+
+- `backups-postgresql.md`: respaldo, rotacion y restauracion de PostgreSQL (scripts en `tools/backups/`).
+- `server-monitoring.md`: monitoreo de CPU, memoria, disco y HTTP en el host EC2 cada 5 minutos con alertas por correo (scripts en `tools/monitoring/`).
+
+`tools/` contiene:
+
+- Scripts Python (`build_academic_docx.py`, `build_academic_pdf.py`, `make_pdf_contact_sheet.py`) para regenerar entregables; no edite binarios manualmente.
+- `tools/backups/` y `tools/monitoring/`: scripts bash para el servidor, con `*.example` de configuracion y scripts `validate_*.sh`. Se instalan por cron en el host, fuera de Docker.
 
 ## Flujo recomendado para agentes
 
@@ -624,11 +747,13 @@ Antes de entregar:
 Backend endpoint nuevo:
 
 - Ruta en `routes/`.
+- Middleware de sesion/rol aplicado y propiedad del recurso validada con `req.auth`.
 - Controlador con errores consistentes.
 - Servicio con validacion y SQL parametrizado.
 - Montaje en `app.js`.
-- Pruebas con Supertest.
+- Pruebas con Supertest (incluyendo 401/403).
 - Actualizacion de `init.sql` si hay tabla/columna nueva.
+- Documentacion en `backend/docs/openapi.js`.
 
 Frontend pantalla nueva:
 
@@ -665,15 +790,20 @@ Base de datos:
 
 ## Riesgos conocidos y trampas
 
-- `docker-compose.yml` tiene `VITE_API_URL=http://3.14.12.212:3000` como build arg del frontend. Para local puede convenir cambiarlo temporalmente o usar env adecuado, pero no lo cambie sin pedido del usuario.
-- `docker-compose.yml` define `NODE_ENV=development`, `LOCAL_UPLOAD_DIR=/app/local_uploads` y un volumen `local_uploads`; los archivos locales no deben asumirse persistidos en el filesystem del host salvo que el volumen se conserve.
-- El root `package.json` solo declara `cors`; los scripts reales estan en `backend/package.json` y `frontend/package.json`.
+- `docker-compose.yml` construye el frontend con `VITE_API_URL=${FRONTEND_API_URL:-/api}`; el Nginx del contenedor proxea `/api/` al backend. Backend (`3000`) y frontend (`8080`) se publican solo en `127.0.0.1`; Postgres (`5433`) se publica en todas las interfaces.
+- `docker-compose.yml` usa `NODE_ENV=${NODE_ENV:-production}`, pero `docker-compose.override.yml` lo sobrescribe a `development` cuando se usa `docker compose up` sin `-f`. Ver "Datos y seguridad".
+- El `Dockerfile` del backend fija `NODE_ENV=production` y usa `node:20`; CI usa Node 22.
+- `LOCAL_UPLOAD_DIR=/app/local_uploads` vive en el volumen `local_uploads`; los archivos locales no deben asumirse persistidos en el filesystem del host salvo que el volumen se conserve.
+- El servidor publico usa dos Nginx: el del host (`nginx/visa-app.duckdns.org.conf`, que envia `/api/` a `127.0.0.1:3000` y el resto a `127.0.0.1:8080`) y el del contenedor del frontend (`frontend/nginx.conf`). Los cambios de proxy pueden requerir tocar ambos.
+- CI solo corre en push/PR a `main`; las ramas de trabajo no se prueban hasta abrir el PR.
+- El `package.json` de `visa-app/` solo declara `cors` y no se usa; los scripts reales estan en `backend/package.json` y `frontend/package.json`.
 - Algunos archivos muestran caracteres mojibake en terminal Windows si la consola no esta en UTF-8. Antes de "corregir" textos, confirme que el archivo realmente este mal y no sea solo la salida de PowerShell.
-- `app.js` es grande y tiene muchos endpoints legacy. Para cambios grandes, evite meter mas logica ahi salvo que el dominio ya este ahi.
+- `app.js` concentra migraciones, seed y wiring. No agregue endpoints ahi; cree un router.
 - Los endpoints de documentos existen como `/upload` y `/documentos`; revise consumidores antes de consolidar.
-- El fallback local expone `/local-files` solo con `NODE_ENV !== "production"`; no construya flujos de produccion que dependan de esa ruta.
-- `localStorage` tiene llaves legacy usadas por varias pantallas. No las elimine sin migracion.
-- Coverage esta presente en el repo; no lo use como fuente editable.
+- El fallback local expone `/local-files` sin autenticacion cuando `NODE_ENV !== "production"`; no construya flujos de produccion que dependan de esa ruta.
+- El endpoint de audio `GET /interview-sessions/:id/audio/:questionId` se consume con `<audio src>`, que no envia `Authorization`. Si se protege, habra que usar URL firmada, cookie o descarga via `fetch` + `blob:`.
+- `localStorage` tiene llaves legacy (`correoUsuario`, `perfilUsuario`) usadas por varias pantallas. No las elimine sin migracion.
+- Puede haber archivos sueltos sin seguimiento (por ejemplo `temp_app.js`, una copia vieja de `app.js` en UTF-16). No los use como referencia.
 
 ## Estado esperado de calidad
 
