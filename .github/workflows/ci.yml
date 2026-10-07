@@ -36,7 +36,7 @@ jobs:
       DB_NAME: visa_db_test
     defaults:
       run:
-        working-directory: backend
+        working-directory: visa-app/backend
 
     steps:
       - name: Checkout repository
@@ -47,7 +47,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: visa-app/backend/package-lock.json
 
       - name: Install backend dependencies
         run: npm ci
@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-reports
-          path: test-artifacts/backend-*.json
+          path: visa-app/test-artifacts/backend-*.json
           if-no-files-found: warn
 
   frontend:
@@ -84,7 +84,7 @@ jobs:
       VITE_WHATSAPP_PHONE: ""
     defaults:
       run:
-        working-directory: frontend
+        working-directory: visa-app/frontend
 
     steps:
       - name: Checkout repository
@@ -95,7 +95,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: visa-app/frontend/package-lock.json
 
       - name: Install frontend dependencies
         run: npm ci
@@ -117,7 +117,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-test-report
-          path: test-artifacts/frontend.xml
+          path: visa-app/test-artifacts/frontend.xml
           if-no-files-found: warn
 
   summary:
