@@ -1,0 +1,39 @@
+Tarea 5 - demostración de regresión REG-001
+
+Entorno: PostgreSQL 15.19 desechable, base exclusiva visa_db_test.
+Antes de preparar el esquema se comprobó SELECT current_database() = visa_db_test.
+El comando se ejecutó desde backend/ con NODE_ENV=test y conexión a esa base.
+No se usaron correo ni R2 reales.
+
+Comando en las tres ejecuciones:
+  npm run test:postgres -- --testNamePattern=REG-001 --verbose --silent
+
+1. Verde inicial, código con bcrypt.compare:
+   Exit code: 0
+   Test Suites: 1 passed, 1 total
+   Tests: 5 skipped, 1 passed, 6 total
+
+2. Rojo con cambio temporal en la rama de hash de verifyPassword:
+   Se sustituyó únicamente bcrypt.compare por una aceptación incondicional.
+   Exit code: 1
+   Test Suites: 1 failed, 1 total
+   Tests: 1 failed, 5 skipped, 6 total
+   Aserción que detectó la regresión: REG-001 esperaba HTTP 401 al usar
+   una contraseña incorrecta y recibió HTTP 200
+   (postgres-tests/task5.postgres.test.js, aserción de invalid.status).
+
+3. Verde final tras restaurar bcrypt.compare:
+   Exit code: 0
+   Test Suites: 1 passed, 1 total
+   Tests: 5 skipped, 1 passed, 6 total
+
+La mutación deliberada se revirtió inmediatamente después del fallo.
+No se creó commit con el código defectuoso.
+
+Verificación posterior con el código restaurado:
+  npm run test:postgres -- --silent
+  Test Suites: 1 passed, 1 total
+  Tests: 6 passed, 6 total
+
+El clúster PostgreSQL 15 temporal se detuvo y su directorio dedicado se eliminó
+después de las pruebas.

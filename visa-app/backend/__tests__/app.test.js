@@ -797,12 +797,13 @@ describe("app endpoints", () => {
     expect(bcrypt.compareSync("1234", storedPassword)).toBe(true);
   });
 
-  test("POST /register devuelve 500 cuando el correo ya existe", async () => {
+  test("POST /register devuelve 409 cuando el correo ya existe", async () => {
     mockQuery.mockImplementation((sql, values) => {
       if (String(sql).includes("INSERT INTO usuario")) {
-        return Promise.reject(
-          new Error('duplicate key value violates unique constraint "usuario_correo_key"')
-        );
+        const error = new Error('duplicate key value violates unique constraint "usuario_correo_key"');
+        error.code = "23505";
+        error.constraint = "usuario_correo_key";
+        return Promise.reject(error);
       }
       return defaultQueryHandler(sql, values);
     });
@@ -813,10 +814,8 @@ describe("app endpoints", () => {
       contrasena: "1234",
     });
 
-    expect(response.status).toBe(500);
-    expect(response.body).toEqual({
-      error: 'duplicate key value violates unique constraint "usuario_correo_key"',
-    });
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: "El correo ya está registrado" });
   });
 
   test("POST /register devuelve 400 cuando faltan campos obligatorios", async () => {
@@ -844,10 +843,13 @@ describe("app endpoints", () => {
     expect(mockQuery).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO usuario"), expect.anything());
   });
 
-  test("POST /register devuelve 500 ante error simulado de base de datos", async () => {
+  test("POST /register mantiene 500 para otra restricción de base de datos", async () => {
     mockQuery.mockImplementation((sql, values) => {
       if (String(sql).includes("INSERT INTO usuario")) {
-        return Promise.reject(new Error("duplicate key value"));
+        const error = new Error("internal database detail");
+        error.code = "23505";
+        error.constraint = "otra_restriccion";
+        return Promise.reject(error);
       }
       return defaultQueryHandler(sql, values);
     });
@@ -859,7 +861,7 @@ describe("app endpoints", () => {
     });
 
     expect(response.status).toBe(500);
-    expect(response.body.error).toBe("duplicate key value");
+    expect(response.body.error).toBe("No fue posible registrar el usuario");
   });
 
   test("POST /login devuelve usuario cuando las credenciales son validas", async () => {

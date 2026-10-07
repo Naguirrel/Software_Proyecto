@@ -86,7 +86,8 @@ describe("integración: registro, login y sesión", () => {
     await request(app).post("/register").send(NEW_USER);
     const duplicate = await request(app).post("/register").send(NEW_USER);
 
-    expect(duplicate.status).toBeGreaterThanOrEqual(400);
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.error).toBe("El correo ya está registrado");
     expect(duplicate.body.token).toBeUndefined();
     expect(state.users).toHaveLength(1);
   });

@@ -15,14 +15,25 @@ jobs:
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: visa_db_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d visa_db_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       NODE_ENV: test
       DB_HOST: localhost
       DB_PORT: 5432
       DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: visa_test
-      LOCAL_UPLOAD_DIR: backend/local_uploads
+      DB_NAME: visa_db_test
     defaults:
       run:
         working-directory: backend
@@ -41,8 +52,28 @@ jobs:
       - name: Install backend dependencies
         run: npm ci
 
-      - name: Run backend tests
-        run: npm test
+      - name: Generate temporary session key
+        run: echo "SESSION_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: Verify isolated database and apply init.sql
+        run: npm run test:postgres:prepare
+
+      - name: Prepare test reports
+        run: mkdir -p ../test-artifacts
+
+      - name: Run existing backend tests
+        run: npm test -- --json --outputFile=../test-artifacts/backend-existing.json
+
+      - name: Run PostgreSQL integration and regression tests
+        run: npm run test:postgres -- --json --outputFile=../test-artifacts/backend-postgres.json
+
+      - name: Save backend test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: test-artifacts/backend-*.json
+          if-no-files-found: warn
 
   frontend:
     name: Frontend tests, lint and build
@@ -69,11 +100,37 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Prepare test reports
+        run: mkdir -p ../test-artifacts
+
       - name: Run frontend tests
-        run: npm run test:run
+        run: npm run test:run -- --reporter=default --reporter=junit --outputFile.junit=../test-artifacts/frontend.xml
 
       - name: Run frontend lint
         run: npm run lint
 
       - name: Build frontend
         run: npm run build
+
+      - name: Save frontend test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-report
+          path: test-artifacts/frontend.xml
+          if-no-files-found: warn
+
+  summary:
+    name: CI result
+    needs: [backend, frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to succeed
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+        run: |
+          echo "Backend: $BACKEND_RESULT; frontend: $FRONTEND_RESULT"
+          test "$BACKEND_RESULT" = "success"
+          test "$FRONTEND_RESULT" = "success"

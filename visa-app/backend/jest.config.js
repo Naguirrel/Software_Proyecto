@@ -1,6 +1,7 @@
 module.exports = {
   testEnvironment: "node",
   clearMocks: true,
+  testPathIgnorePatterns: ["/node_modules/", "/postgres-tests/"],
   collectCoverageFrom: [
     "app.js",
     "r2.js",

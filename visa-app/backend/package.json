@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "jest --runInBand",
+    "test:postgres": "jest --config jest.postgres.config.js --runInBand",
+    "test:postgres:prepare": "node test-utils/prepareTask5Database.js",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --runInBand",
     "start": "node index.js"
