@@ -33,7 +33,10 @@ function createInMemoryAuthDb() {
     if (text.startsWith("INSERT INTO usuario")) {
       const [nombre, correo, contrasena] = values;
       if (findUser((row) => row.correo === correo)) {
-        throw new Error('duplicate key value violates unique constraint "usuario_correo_key"');
+        const error = new Error('duplicate key value violates unique constraint "usuario_correo_key"');
+        error.code = "23505";
+        error.constraint = "usuario_correo_key";
+        throw error;
       }
       const user = {
         id_usuario: state.nextUserId++,

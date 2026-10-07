@@ -26,11 +26,20 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
     await tramiteSchemaReady;
     
     const contrasenaHash = await bcrypt.hash(contrasena, SALT_ROUNDS);
-    const result = await pool.query(
-      "INSERT INTO usuario(nombre, correo, contrasena, rol, email_verificado) VALUES($1,$2,$3,'cliente',FALSE) RETURNING *",
-      [nombre, correo, contrasenaHash]
-    );
-    return result.rows[0];
+    try {
+      const result = await pool.query(
+        "INSERT INTO usuario(nombre, correo, contrasena, rol, email_verificado) VALUES($1,$2,$3,'cliente',FALSE) RETURNING *",
+        [nombre, correo, contrasenaHash]
+      );
+      return result.rows[0];
+    } catch (error) {
+      if (error.code === "23505" && error.constraint === "usuario_correo_key") {
+        const conflict = new Error("El correo ya está registrado");
+        conflict.statusCode = 409;
+        throw conflict;
+      }
+      throw error;
+    }
   }
 
   async function createInitialTramite(userId) {
