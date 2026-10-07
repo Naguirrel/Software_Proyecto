@@ -254,6 +254,7 @@ const endpoints = [
   ["delete", "/documentos", "Documentos", "Eliminar documento", "session", "GenericRequest"],
   ["delete", "/documentos/{id}", "Documentos", "Eliminar documento", "session"],
   ["get", "/questions", "Preguntas", "Listar preguntas activas"],
+  ["get", "/questions/random", "Preguntas", "Seleccionar preguntas activas aleatorias"],
   ["get", "/questions/admin", "Preguntas", "Listar banco de preguntas", "admin"],
   ["post", "/questions", "Preguntas", "Crear pregunta", "admin", "GenericRequest", 201],
   ["put", "/questions/{id}", "Preguntas", "Actualizar pregunta", "admin", "GenericRequest"],
@@ -385,6 +386,17 @@ for (const endpoint of endpoints) {
   paths[path] ??= {};
   paths[path][method] = buildOperation(method, path, ...settings);
 }
+
+paths["/questions/random"].get.description = "Devuelve preguntas activas con texto distinto. intro excluye la categoría Viaje, que contiene la pregunta del banco sobre el propósito del viaje; el ID de esa pregunta depende de cada base de datos. La introducción fija del simulador no forma parte del banco.";
+paths["/questions/random"].get.parameters = [
+  { name: "count", in: "query", schema: { type: "integer", minimum: 1, maximum: 20, default: 4 }, description: "Cantidad de preguntas solicitadas." },
+  { name: "exclude", in: "query", schema: { type: "string", example: "intro,id:12,category:Finanzas" }, description: "Lista separada por comas: intro, id:<entero> o category:<categoría>. intro equivale a category:Viaje." },
+  { name: "excludeText", in: "query", schema: { type: "string", minLength: 1, maxLength: 500 }, description: "Excluye una pregunta cuyo texto coincida tras TRIM y comparación sin distinguir mayúsculas/minúsculas. Acepta un solo texto." },
+];
+paths["/questions/random"].get.responses[409] = {
+  description: "No hay suficientes preguntas activas elegibles para la cantidad solicitada.",
+  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+};
 
 module.exports = {
   openapi: "3.0.3",

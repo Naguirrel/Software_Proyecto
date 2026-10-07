@@ -10,6 +10,8 @@ const CATEGORIES = [
 ];
 
 const DIFFICULTIES = ["Fácil", "Media", "Alta"];
+const MAX_RANDOM_QUESTIONS = 20;
+const MAX_EXCLUDED_TEXT_LENGTH = 500;
 
 const SEED_QUESTIONS = [
   {
@@ -227,6 +229,79 @@ function createQuestionBankService(pool) {
     return result.rows;
   }
 
+  async function listRandomQuestions({ count = "4", exclude = "", excludeText } = {}) {
+    const rawCount = String(count);
+    if (!/^[1-9]\d*$/.test(rawCount) || Number(rawCount) > MAX_RANDOM_QUESTIONS) {
+      const error = new Error(`count debe ser un entero entre 1 y ${MAX_RANDOM_QUESTIONS}`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const excludedIds = [];
+    const excludedCategories = [];
+    const exclusions = String(exclude).trim();
+    if (exclusions) {
+      for (const token of exclusions.split(",")) {
+        const value = token.trim();
+        if (value.toLowerCase() === "intro") {
+          // La pregunta introductoria no vive en el banco. Su tema corresponde a Viaje.
+          excludedCategories.push("viaje");
+        } else if (/^id:[1-9]\d*$/i.test(value) && Number(value.slice(3)) <= 2147483647) {
+          excludedIds.push(Number(value.slice(3)));
+        } else if (/^category:.+$/i.test(value)) {
+          const category = value.slice(9).trim();
+          if (!CATEGORIES.some((item) => item.toLowerCase() === category.toLowerCase())) {
+            const error = new Error("Categoría de exclusión inválida");
+            error.statusCode = 400;
+            throw error;
+          }
+          excludedCategories.push(category.toLowerCase());
+        } else {
+          const error = new Error("exclude debe contener intro, id:<entero> o category:<categoría>");
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+    }
+
+    let normalizedExcludedText = null;
+    if (excludeText !== undefined) {
+      if (typeof excludeText !== "string" || !excludeText.trim() || excludeText.length > MAX_EXCLUDED_TEXT_LENGTH) {
+        const error = new Error(`excludeText debe ser un texto de 1 a ${MAX_EXCLUDED_TEXT_LENGTH} caracteres`);
+        error.statusCode = 400;
+        throw error;
+      }
+      normalizedExcludedText = excludeText.trim();
+    }
+
+    await ensureSchema();
+    const requestedCount = Number(rawCount);
+    const result = await pool.query(
+      `WITH eligible AS (
+         SELECT DISTINCT ON (LOWER(TRIM(question)))
+                id, question, category, difficulty, is_required, created_at, activo, uso_count
+         FROM question_bank
+         WHERE activo = TRUE
+           AND id <> ALL($1::int[])
+           AND (category IS NULL OR LOWER(TRIM(category)) <> ALL($2::text[]))
+           AND ($3::text IS NULL OR LOWER(TRIM(question)) <> LOWER(TRIM($3::text)))
+         ORDER BY LOWER(TRIM(question)), id
+       )
+       SELECT id, question, category, difficulty, is_required, created_at, activo, uso_count
+       FROM eligible
+       ORDER BY RANDOM()
+       LIMIT $4`,
+      [excludedIds, excludedCategories, normalizedExcludedText, requestedCount]
+    );
+
+    if (result.rows.length < requestedCount) {
+      const error = new Error(`No hay suficientes preguntas activas elegibles: se necesitan ${requestedCount} y hay ${result.rows.length}.`);
+      error.statusCode = 409;
+      throw error;
+    }
+    return result.rows;
+  }
+
   async function createQuestion(payload) {
     await ensureSchema();
 
@@ -333,6 +408,7 @@ function createQuestionBankService(pool) {
     ensureSchema,
     seedInitialQuestions,
     listQuestions,
+    listRandomQuestions,
     createQuestion,
     updateQuestion,
     setQuestionActive,

@@ -673,6 +673,12 @@
   font-size: 15px;
 }
 
+.session-summary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .analysis-section {
   padding-bottom: 22px;
 }

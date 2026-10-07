@@ -1,98 +1,45 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { buildApiUrl } from "../config/api";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
+import { apiRequest } from "../utils/apiClient";
 import "../styles/interview.css";
 
-const QUESTIONS = [
-  {
-    id: "purpose",
-    text: "¿Cuál es el motivo principal de su viaje a los Estados Unidos?",
-    english: "What is the main purpose of your trip to the United States?",
-    weak:
-      "Voy de turismo, a pasear un rato y ver qué pasa, tal vez visitar a unos amigos si me da tiempo.",
-    strong:
-      "Viajo a Orlando, Florida, por 10 días en diciembre con mi familia. Nuestro propósito principal es visitar los parques temáticos de Disney. Ya tenemos cotizados los vuelos y el hotel.",
-    weakNotes: [
-      "Suena improvisado y genera dudas sobre las intenciones reales.",
-      "Mencionar amigos sin especificar puede abrir preguntas sobre lazos y residencia en EE. UU.",
-    ],
-    strongNotes: [
-      "Muestra planificación concreta: destino específico y duración definida.",
-      "Establece un motivo legítimo de turismo congruente con la visa B1/B2.",
-    ],
-  },
-  {
-    id: "stay",
-    text: "¿Cuánto tiempo piensa quedarse y dónde se hospedará?",
-    english: "How long do you plan to stay and where will you stay?",
-    weak:
-      "No estoy seguro, quizás dos o tres semanas. Depende de cómo me vaya allá.",
-    strong:
-      "Pienso quedarme 8 días. Me hospedaré en un hotel cerca de International Drive y regresaré a Guatemala el domingo siguiente.",
-    weakNotes: [
-      "La respuesta parece abierta y poco planificada.",
-      "Decir que depende de cómo le vaya puede sonar a intención de permanecer más tiempo.",
-    ],
-    strongNotes: [
-      "Da una duración concreta y una ubicación clara.",
-      "Refuerza que existe un regreso definido al país.",
-    ],
-  },
-  {
-    id: "work",
-    text: "¿A qué se dedica actualmente en Guatemala?",
-    english: "What do you currently do in Guatemala?",
-    weak:
-      "Trabajo en algunas cosas y también estoy viendo oportunidades nuevas.",
-    strong:
-      "Trabajo como asistente administrativo en una empresa de logística desde hace 3 años. Tengo permiso de vacaciones aprobado para las fechas del viaje.",
-    weakNotes: [
-      "No demuestra estabilidad laboral.",
-      "La palabra oportunidades puede abrir dudas sobre búsqueda de trabajo en EE. UU.",
-    ],
-    strongNotes: [
-      "Presenta ocupación, empresa, tiempo y arraigo laboral.",
-      "Conecta el viaje con vacaciones autorizadas.",
-    ],
-  },
-  {
-    id: "funds",
-    text: "¿Quién pagará los gastos de su viaje?",
-    english: "Who will pay for your trip?",
-    weak:
-      "Creo que yo, aunque si necesito apoyo, también me puede ayudar mi familia.",
-    strong:
-      "Yo pagaré mis gastos con mis ahorros personales. Tengo estados de cuenta que respaldan el presupuesto del viaje.",
-    weakNotes: [
-      "Muestra incertidumbre sobre capacidad financiera.",
-      "No deja claro quién será responsable de los gastos.",
-    ],
-    strongNotes: [
-      "Identifica una fuente de fondos clara.",
-      "Menciona evidencia concreta para respaldar la respuesta.",
-    ],
-  },
-  {
-    id: "return",
-    text: "¿Qué lo motiva a regresar a Guatemala después del viaje?",
-    english: "What motivates you to return to Guatemala after your trip?",
-    weak:
-      "Pues aquí vive mi familia, aunque me gustaría ver si puedo quedarme más tiempo.",
-    strong:
-      "Regreso porque tengo mi empleo, mi familia y compromisos académicos en Guatemala. El viaje es solo por vacaciones y debo reincorporarme al trabajo al volver.",
-    weakNotes: [
-      "Sugiere posible intención de quedarse más tiempo.",
-      "No comunica compromisos concretos de retorno.",
-    ],
-    strongNotes: [
-      "Presenta lazos claros con Guatemala.",
-      "Explica por qué el viaje tiene un inicio y fin definidos.",
-    ],
-  },
-];
+const INTRO_QUESTION = {
+  id: "intro",
+  text: "¿Cuál es su nombre completo y cuál es el propósito de su viaje?",
+  english: "What is your full name and what is the purpose of your trip?",
+};
+
+const INTRO_ANALYSIS = {
+  weak:
+    "Voy de turismo, a pasear un rato y ver qué pasa, tal vez visitar a unos amigos si me da tiempo.",
+  strong:
+    "Viajo a Orlando, Florida, por 10 días en diciembre con mi familia. Nuestro propósito principal es visitar los parques temáticos de Disney. Ya tenemos cotizados los vuelos y el hotel.",
+  weakNotes: [
+    "Suena improvisado y genera dudas sobre las intenciones reales.",
+    "Mencionar amigos sin especificar puede abrir preguntas sobre lazos y residencia en EE. UU.",
+  ],
+  strongNotes: [
+    "Muestra planificación concreta: destino específico y duración definida.",
+    "Establece un motivo legítimo de turismo congruente con la visa B1/B2.",
+  ],
+};
+
+const GENERAL_ANALYSIS = {
+  weakNotes: [
+    "Evita respuestas vagas, suposiciones o datos que no puedas explicar.",
+    "Escucha la pregunta completa y responde solo lo que te solicitan.",
+  ],
+  strongNotes: [
+    "Responde con claridad, honestidad y datos concretos de tu situación.",
+    "Mantén tus respuestas coherentes con tu solicitud y tus documentos.",
+  ],
+};
+
+const normalizeQuestionText = (text) => String(text || "").trim().toLocaleLowerCase("es");
 
 function MicIcon() {
   return (
@@ -179,10 +126,10 @@ function formatTime(seconds) {
   return `${mins}:${secs}`;
 }
 
-function ProgressBars({ currentIndex, recordings }) {
+function ProgressBars({ questions, currentIndex, recordings }) {
   return (
     <div className="sim-progress" aria-label="Progreso del simulador">
-      {QUESTIONS.map((question, index) => (
+      {questions.map((question, index) => (
         <span
           className={`sim-progress__bar${
             index === currentIndex ? " sim-progress__bar--active" : ""
@@ -213,9 +160,9 @@ function AnalysisCard({ type, title, subtitle, quote, notes }) {
         </div>
       </div>
 
-      <blockquote>{quote}</blockquote>
+      {quote && <blockquote>{quote}</blockquote>}
 
-      <h4>{isStrong ? "¿Por qué es fuerte?" : "¿Por qué es débil?"}</h4>
+      <h4>{quote ? (isStrong ? "¿Por qué es fuerte?" : "¿Por qué es débil?") : "Recomendaciones"}</h4>
       <ul>
         {notes.map((note) => (
           <li key={note}>{note}</li>
@@ -229,6 +176,9 @@ export default function InterviewSimulator() {
   const { isValidating, session } = useRequireAuth();
   const navigate = useNavigate();
   const modoSenior = useModoSenior();
+  const [questions, setQuestions] = useState([]);
+  const [questionStatus, setQuestionStatus] = useState("loading");
+  const [questionError, setQuestionError] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [recordings, setRecordings] = useState({});
   const [isRecording, setIsRecording] = useState(false);
@@ -241,27 +191,121 @@ export default function InterviewSimulator() {
   const timerRef = useRef(null);
   const elapsedRef = useRef(0);
   const recordingsRef = useRef({});
+  const questionRequestRef = useRef(null);
+  const submitRequestRef = useRef(null);
+  const recordingRequestRef = useRef(0);
+  const sessionGenerationRef = useRef(0);
+  const objectUrlsRef = useRef(new Set());
+  const mountedRef = useRef(true);
 
-  const currentQuestion = QUESTIONS[currentIndex];
-  const remaining = QUESTIONS.length - currentIndex - 1;
+  const currentQuestion = questions[currentIndex];
+  const remaining = questions.length - currentIndex - 1;
   const recordedCount = Object.keys(recordings).length;
-  const isLastQuestion = currentIndex === QUESTIONS.length - 1;
+  const isLastQuestion = currentIndex === questions.length - 1;
+
+  const cleanupSessionResources = useCallback(() => {
+    sessionGenerationRef.current += 1;
+    recordingRequestRef.current += 1;
+    questionRequestRef.current?.abort();
+    questionRequestRef.current = null;
+    submitRequestRef.current?.abort();
+    submitRequestRef.current = null;
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+
+    const recorder = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      if (recorder.state === "recording") {
+        try {
+          recorder.stop();
+        } catch {
+          // El grabador puede haberse detenido entre la comprobación y stop().
+        }
+      }
+    }
+
+    const stream = streamRef.current;
+    streamRef.current = null;
+    stream?.getTracks().forEach((track) => track.stop());
+    chunksRef.current = [];
+    for (const url of objectUrlsRef.current) URL.revokeObjectURL(url);
+    objectUrlsRef.current.clear();
+    recordingsRef.current = {};
+  }, []);
+
+  const loadQuestions = useCallback(async () => {
+    questionRequestRef.current?.abort();
+    const controller = new AbortController();
+    const generation = sessionGenerationRef.current;
+    questionRequestRef.current = controller;
+    setQuestionStatus("loading");
+    setQuestionError("");
+
+    try {
+      const path = `/questions/random?count=4&exclude=intro&excludeText=${encodeURIComponent(INTRO_QUESTION.text)}`;
+      const data = await apiRequest(path, {
+        signal: controller.signal,
+        fallbackMessage: "No se pudieron cargar las preguntas de la entrevista.",
+      });
+      if (controller.signal.aborted || !mountedRef.current || generation !== sessionGenerationRef.current) return;
+
+      const selected = data?.questions;
+      if (!Array.isArray(selected) || selected.length !== 4) {
+        throw new Error("El banco no devolvió cuatro preguntas diferentes. Inténtalo de nuevo.");
+      }
+      const ids = selected.map((item) => String(item.id));
+      const texts = selected.map((item) => normalizeQuestionText(item.question));
+      if (selected.some((item) => !Number.isInteger(item?.id) || !String(item.question || "").trim()) ||
+          new Set(ids).size !== 4 || new Set(texts).size !== 4 ||
+          texts.includes(normalizeQuestionText(INTRO_QUESTION.text))) {
+        throw new Error("El banco no devolvió cuatro preguntas diferentes. Inténtalo de nuevo.");
+      }
+
+      setQuestions([
+        INTRO_QUESTION,
+        ...selected.map((item) => ({ id: `bank-${item.id}`, text: item.question })),
+      ]);
+      setQuestionStatus("ready");
+    } catch (loadError) {
+      if (controller.signal.aborted || !mountedRef.current || generation !== sessionGenerationRef.current) return;
+      setQuestionError(loadError.message || "No se pudieron cargar las preguntas.");
+      setQuestionStatus("error");
+    } finally {
+      if (questionRequestRef.current === controller) questionRequestRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isValidating && session) loadQuestions();
+  }, [isValidating, session, loadQuestions]);
 
   useEffect(() => {
     recordingsRef.current = recordings;
   }, [recordings]);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      clearInterval(timerRef.current);
-      Object.values(recordingsRef.current).forEach((recording) => {
-        if (recording?.url) URL.revokeObjectURL(recording.url);
-      });
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
+      mountedRef.current = false;
+      cleanupSessionResources();
     };
-  }, []);
+  }, [cleanupSessionResources]);
+
+  const startNewSession = () => {
+    cleanupSessionResources();
+    setRecordings({});
+    setCurrentIndex(0);
+    setIsRecording(false);
+    setSubmittingSession(false);
+    setElapsed(0);
+    elapsedRef.current = 0;
+    setError("");
+    setQuestions([]);
+    loadQuestions();
+  };
 
   const startRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
@@ -269,9 +313,18 @@ export default function InterviewSimulator() {
       return;
     }
 
+    const recordingRequest = ++recordingRequestRef.current;
+    const generation = sessionGenerationRef.current;
+    const isCurrentRecording = () => mountedRef.current &&
+      generation === sessionGenerationRef.current &&
+      recordingRequest === recordingRequestRef.current;
     try {
       setError("");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!isCurrentRecording()) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
       chunksRef.current = [];
       elapsedRef.current = 0;
@@ -281,20 +334,30 @@ export default function InterviewSimulator() {
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (isCurrentRecording() && event.data?.size > 0) {
           chunksRef.current.push(event.data);
         }
       };
 
       recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        if (streamRef.current === stream) streamRef.current = null;
+        if (mediaRecorderRef.current === recorder) mediaRecorderRef.current = null;
+        if (!isCurrentRecording()) return;
         const blob = new Blob(chunksRef.current, {
           type: recorder.mimeType || "audio/webm",
         });
+        chunksRef.current = [];
         const url = URL.createObjectURL(blob);
+        objectUrlsRef.current.add(url);
 
         setRecordings((currentRecordings) => {
+          if (!isCurrentRecording()) {
+            if (objectUrlsRef.current.delete(url)) URL.revokeObjectURL(url);
+            return currentRecordings;
+          }
           const previousUrl = currentRecordings[currentQuestion.id]?.url;
-          if (previousUrl) URL.revokeObjectURL(previousUrl);
+          if (previousUrl && objectUrlsRef.current.delete(previousUrl)) URL.revokeObjectURL(previousUrl);
 
           return {
             ...currentRecordings,
@@ -306,18 +369,21 @@ export default function InterviewSimulator() {
             },
           };
         });
-
-        stream.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
       };
 
       recorder.start();
       setIsRecording(true);
       timerRef.current = setInterval(() => {
+        if (!isCurrentRecording()) return;
         elapsedRef.current += 1;
         setElapsed(elapsedRef.current);
       }, 1000);
     } catch (recordingError) {
+      if (!isCurrentRecording()) return;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      mediaRecorderRef.current = null;
+      chunksRef.current = [];
       setError(
         recordingError?.name === "NotAllowedError"
           ? "Activa el permiso del micrófono para grabar tu respuesta."
@@ -328,10 +394,15 @@ export default function InterviewSimulator() {
 
   const stopRecording = () => {
     if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        // Un evento del navegador puede haber detenido ya el grabador.
+      }
     }
 
     clearInterval(timerRef.current);
+    timerRef.current = null;
     setIsRecording(false);
   };
 
@@ -347,7 +418,7 @@ export default function InterviewSimulator() {
   const handleNext = () => {
     if (isRecording) return;
 
-    setCurrentIndex((index) => Math.min(index + 1, QUESTIONS.length - 1));
+    setCurrentIndex((index) => Math.min(index + 1, questions.length - 1));
     setElapsed(0);
     elapsedRef.current = 0;
     setError("");
@@ -356,13 +427,16 @@ export default function InterviewSimulator() {
   const handleFinishSession = async () => {
     if (isRecording || submittingSession) return;
 
-    if (recordedCount < QUESTIONS.length) {
+    if (recordedCount < questions.length) {
       setError(
         "Graba las 5 respuestas para finalizar la entrevista y enviarla a retroalimentación."
       );
       return;
     }
 
+    const controller = new AbortController();
+    const generation = sessionGenerationRef.current;
+    submitRequestRef.current = controller;
     try {
       setSubmittingSession(true);
       setError("");
@@ -372,7 +446,7 @@ export default function InterviewSimulator() {
         "session",
         JSON.stringify({
           user: session,
-          questions: QUESTIONS.map((question) => ({
+          questions: questions.map((question) => ({
             id: question.id,
             text: question.text,
             recorded: Boolean(recordings[question.id]),
@@ -381,7 +455,7 @@ export default function InterviewSimulator() {
         })
       );
 
-      QUESTIONS.forEach((question) => {
+      questions.forEach((question) => {
         const recording = recordings[question.id];
         if (recording?.blob) {
           formData.append(
@@ -395,8 +469,10 @@ export default function InterviewSimulator() {
       const response = await fetch(buildApiUrl("/interview-sessions"), {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
       const data = await response.json();
+      if (controller.signal.aborted || !mountedRef.current || generation !== sessionGenerationRef.current) return;
 
       if (!response.ok) {
         throw new Error(
@@ -406,12 +482,14 @@ export default function InterviewSimulator() {
 
       navigate("/entrevista/retroalimentacion", { state: { sessionId: data.session.id } });
     } catch (submitError) {
+      if (controller.signal.aborted || !mountedRef.current || generation !== sessionGenerationRef.current) return;
       setError(
         submitError.message ||
           "No se pudo enviar la entrevista. Inténtalo de nuevo."
       );
     } finally {
-      setSubmittingSession(false);
+      if (submitRequestRef.current === controller) submitRequestRef.current = null;
+      if (!controller.signal.aborted && mountedRef.current && generation === sessionGenerationRef.current) setSubmittingSession(false);
     }
   };
 
@@ -429,7 +507,9 @@ export default function InterviewSimulator() {
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(
-      `${currentQuestion.text}. ${currentQuestion.english}`
+      currentQuestion.english
+        ? `${currentQuestion.text}. ${currentQuestion.english}`
+        : currentQuestion.text
     );
     utterance.lang = "es-US";
     utterance.rate = 0.92;
@@ -442,6 +522,24 @@ export default function InterviewSimulator() {
         <Sidebar currentPage="entrevista" />
         <main id="main-content" tabIndex="-1" className="interview-main">
           <p className="interview-loading">Verificando sesión...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (questionStatus !== "ready") {
+    return (
+      <div className="interview-shell">
+        <Sidebar currentPage="entrevista" />
+        <main id="main-content" tabIndex="-1" className="interview-main simulator-main">
+          <p className="interview-loading" role="status">
+            {questionStatus === "loading" ? "Cargando preguntas de la entrevista..." : questionError}
+          </p>
+          {questionStatus === "error" && (
+            <button className="secondary-sim-button" type="button" onClick={loadQuestions}>
+              Reintentar
+            </button>
+          )}
         </main>
       </div>
     );
@@ -461,7 +559,7 @@ export default function InterviewSimulator() {
             <span className="interview-pill">Simulador en curso</span>
             <h1>
               Pregunta <strong>{currentIndex + 1}</strong>{" "}
-              <span>de {QUESTIONS.length}</span>
+              <span>de {questions.length}</span>
             </h1>
             <p>
               Faltan <strong>{remaining}</strong>{" "}
@@ -469,7 +567,7 @@ export default function InterviewSimulator() {
               sesión de práctica.
             </p>
           </div>
-          <ProgressBars currentIndex={currentIndex} recordings={recordings} />
+          <ProgressBars questions={questions} currentIndex={currentIndex} recordings={recordings} />
         </section>
 
         <section className="question-card">
@@ -486,7 +584,9 @@ export default function InterviewSimulator() {
             onClick={speakQuestion}
           >
             <PlayIcon />
-            Escuchar pronunciación (Inglés/Español)
+            {currentQuestion.english
+              ? "Escuchar pronunciación (Inglés/Español)"
+              : "Escuchar pregunta en español"}
           </button>
 
           {recordings[currentQuestion.id] && (
@@ -545,21 +645,23 @@ export default function InterviewSimulator() {
 
         <section className="session-summary" aria-label="Resumen de práctica">
           <div>
-            <span>{recordedCount} de {QUESTIONS.length}</span>
+            <span>{recordedCount} de {questions.length}</span>
             <strong>respuestas grabadas</strong>
-            {isLastQuestion && recordedCount < QUESTIONS.length && (
+            {isLastQuestion && recordedCount < questions.length && (
               <small className="session-summary__hint">
                 Completa las 5 respuestas para enviar la entrevista a
                 retroalimentación.
               </small>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => (window.location.href = "/entrevista")}
-          >
-            Volver a preparación
-          </button>
+          <div className="session-summary__actions">
+            <button type="button" onClick={startNewSession}>
+              Nueva sesión
+            </button>
+            <button type="button" onClick={() => (window.location.href = "/entrevista")}>
+              Volver a preparación
+            </button>
+          </div>
         </section>
 
         <section className="analysis-section">
@@ -572,17 +674,17 @@ export default function InterviewSimulator() {
           <div className="analysis-grid">
             <AnalysisCard
               type="weak"
-              title="Respuesta Débil"
-              subtitle="Falta de detalles"
-              quote={currentQuestion.weak}
-              notes={currentQuestion.weakNotes}
+              title={currentQuestion.id === "intro" ? "Respuesta Débil" : "Evita respuestas vagas"}
+              subtitle={currentQuestion.id === "intro" ? "Ejemplo sobre el propósito del viaje" : "Orientación general"}
+              quote={currentQuestion.id === "intro" ? INTRO_ANALYSIS.weak : null}
+              notes={currentQuestion.id === "intro" ? INTRO_ANALYSIS.weakNotes : GENERAL_ANALYSIS.weakNotes}
             />
             <AnalysisCard
               type="strong"
-              title="Respuesta Fuerte"
-              subtitle="Clara y específica"
-              quote={currentQuestion.strong}
-              notes={currentQuestion.strongNotes}
+              title={currentQuestion.id === "intro" ? "Respuesta Fuerte" : "Responde con claridad"}
+              subtitle={currentQuestion.id === "intro" ? "Ejemplo sobre el propósito del viaje" : "Orientación general"}
+              quote={currentQuestion.id === "intro" ? INTRO_ANALYSIS.strong : null}
+              notes={currentQuestion.id === "intro" ? INTRO_ANALYSIS.strongNotes : GENERAL_ANALYSIS.strongNotes}
             />
           </div>
         </section>

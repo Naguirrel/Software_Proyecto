@@ -8,6 +8,7 @@ function createQuestionBankRoutes(pool, { requireAdmin = (_req, _res, next) => n
   const controller = createQuestionBankController(service);
 
   router.get("/", controller.listQuestions);
+  router.get("/random", controller.listRandomQuestions);
   router.get("/admin", requireAdmin, controller.listAdminQuestions);
   router.post("/", requireAdmin, controller.createQuestion);
   router.put("/:id", requireAdmin, controller.updateQuestion);
