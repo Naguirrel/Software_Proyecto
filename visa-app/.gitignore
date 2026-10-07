@@ -104,3 +104,7 @@ id_ed25519
 backend/uploads/
 backend/local_uploads/
 .codex_pptx_inspect/
+
+# SCRUM-204: credenciales y resultados locales de k6
+tests/users.local.json
+tests/results/*.json
