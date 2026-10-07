@@ -29,6 +29,15 @@ function createQuestionBankController(questionBankService) {
     }
   }
 
+  async function listRandomQuestions(req, res) {
+    try {
+      const questions = await questionBankService.listRandomQuestions(req.query);
+      return res.json({ questions });
+    } catch (error) {
+      return handleError(res, error);
+    }
+  }
+
   async function createQuestion(req, res) {
     try {
       const question = await questionBankService.createQuestion(req.body);
@@ -83,6 +92,7 @@ function createQuestionBankController(questionBankService) {
 
   return {
     listQuestions,
+    listRandomQuestions,
     listAdminQuestions,
     createQuestion,
     updateQuestion,

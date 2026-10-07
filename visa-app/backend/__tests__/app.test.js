@@ -1305,6 +1305,59 @@ describe("app endpoints", () => {
     expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("WHERE activo = TRUE"));
   });
 
+  test("GET /questions/random entrega cuatro preguntas activas y distintas", async () => {
+    mockQuery.mockImplementation((sql, values) => {
+      if (String(sql).includes("FROM eligible")) {
+        return Promise.resolve({ rows: [1, 2, 3, 4].map((id) => ({ id, question: `Pregunta ${id}`, activo: true })) });
+      }
+      return defaultQueryHandler(sql, values);
+    });
+
+    const response = await request(app).get("/questions/random?count=4&exclude=intro").expect(200);
+    expect(response.body.questions).toHaveLength(4);
+    expect(new Set(response.body.questions.map((item) => item.id)).size).toBe(4);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("ORDER BY RANDOM()"), [[], ["viaje"], null, 4]);
+  });
+
+  test("GET /questions/random excluye el texto introductorio aunque esté en otra categoría", async () => {
+    const intro = "¿Cuál es su nombre completo y cuál es el propósito de su viaje?";
+    mockQuery.mockImplementation((sql, values) => {
+      if (String(sql).includes("FROM eligible")) {
+        const catalog = [
+          { id: 40, question: `  ${intro.toUpperCase()}  `, category: "General", activo: true },
+          ...[1, 2, 3, 4].map((id) => ({ id, question: `Pregunta ${id}`, category: "General", activo: true })),
+        ];
+        return Promise.resolve({ rows: catalog.filter((item) => item.question.trim().toLocaleLowerCase("es") !== values[2].trim().toLocaleLowerCase("es")) });
+      }
+      return defaultQueryHandler(sql, values);
+    });
+
+    const response = await request(app)
+      .get("/questions/random")
+      .query({ count: 4, exclude: "intro", excludeText: intro })
+      .expect(200);
+    expect(response.body.questions).toHaveLength(4);
+    expect(response.body.questions.some((item) => item.id === 40)).toBe(false);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("LOWER(TRIM(question)) <> LOWER(TRIM($3::text))"),
+      [[], ["viaje"], intro, 4]
+    );
+  });
+
+  test("GET /questions/random valida parámetros y falta de elegibles", async () => {
+    const invalidCount = await request(app).get("/questions/random?count=0").expect(400);
+    expect(invalidCount.body.error).toMatch(/count/);
+    await request(app).get("/questions/random?count=4&exclude=id:0").expect(400);
+    await request(app).get("/questions/random?count=4&excludeText=").expect(400);
+
+    mockQuery.mockImplementation((sql, values) => {
+      if (String(sql).includes("FROM eligible")) return Promise.resolve({ rows: [] });
+      return defaultQueryHandler(sql, values);
+    });
+    const insufficient = await request(app).get("/questions/random?count=4&exclude=intro").expect(409);
+    expect(insufficient.body.error).toMatch(/No hay suficientes preguntas activas elegibles/);
+  });
+
   test("GET /questions/admin exige administrador y lista preguntas inactivas", async () => {
     await request(app).get("/questions/admin").expect(401);
 
