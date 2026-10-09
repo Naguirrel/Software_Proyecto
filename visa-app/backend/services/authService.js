@@ -57,7 +57,7 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
     const storedIsHashed = /^\$2[aby]\$/.test(usuario.contrasena || "");
     
     if (storedIsHashed) {
-      return contrasena === usuario.contrasena; // BUG INTENCIONAL
+      return bcrypt.compare(contrasena, usuario.contrasena);
     }
     
     // Contraseña legacy en texto plano - migrar a bcrypt
