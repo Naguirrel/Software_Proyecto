@@ -179,7 +179,10 @@ export default function Cronologia() {
         };
         const [tramiteResult, ds160Result, documentsResult] = await Promise.allSettled([
           fetchJson("/estado-tramite", postJson),
-          fetchJson("/ds160/load", postJson),
+          fetchJson("/ds160/load", {
+            method: "POST",
+            headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+          }),
           fetchJson("/documentos/listar", {
             method: "POST",
             headers: buildSessionHeaders({ "Content-Type": "application/json" }),

@@ -89,6 +89,31 @@ describe("Dashboard", () => {
     );
   });
 
+  it("envía el token de sesión al cargar el DS-160 y muestra el porcentaje guardado", async () => {
+    localStorage.setItem("visaguide_session", JSON.stringify({ ...authState.session, token: "token-ana" }));
+    vi.spyOn(globalThis, "fetch").mockImplementation((url, options = {}) => {
+      const requestUrl = String(url);
+
+      if (requestUrl.includes("/ds160/load")) {
+        // El backend exige sesión: sin Authorization responde 401.
+        if (options.headers?.Authorization !== "Bearer token-ana") {
+          return Promise.resolve({ ok: false, status: 401, json: async () => ({ error: "No autorizado" }) });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ datos: {}, seccion_actual: 6, completado: false }),
+        });
+      }
+
+      return Promise.resolve({ ok: true, json: async () => (requestUrl.includes("/documentos") ? [] : {}) });
+    });
+
+    render(<Dashboard />);
+
+    expect(await screen.findByText("50%", { selector: ".dash-stat-card__value" })).toBeInTheDocument();
+    expect(screen.queryByText(/no pudieron actualizarse/i)).not.toBeInTheDocument();
+  });
+
   it("muestra el aviso de verificación cuando el correo no está verificado y permite reenviarlo", async () => {
     authState.session = { ...authState.session, emailVerificado: false };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
