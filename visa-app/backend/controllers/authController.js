@@ -1,5 +1,6 @@
 const { issueSessionToken } = require("../auth");
 const { createSafeEmailSender } = require("../services/emailReminderService");
+const { accountLocked } = require("../templates/emailTemplates");
 
 function getFrontendBaseUrl(env = process.env) {
   if (env.FRONTEND_URL) return env.FRONTEND_URL.replace(/\/+$/, "");
@@ -17,6 +18,19 @@ function presentLoginUser(row) {
     emailVerificado: row.email_verificado !== false,
     idioma: row.idioma === "en" ? "en" : "es",
   };
+}
+
+function minutesUntil(date) {
+  return Math.max(1, Math.ceil((date.getTime() - Date.now()) / 60000));
+}
+
+function respondAccountLocked(res, lockedUntil) {
+  const minutos = minutesUntil(lockedUntil);
+  return res.status(423).json({
+    error: `Tu cuenta está bloqueada temporalmente por varios intentos fallidos. Intenta de nuevo en ${minutos} ${minutos === 1 ? "minuto" : "minutos"} o usa el enlace que enviamos a tu correo para desbloquearla.`,
+    bloqueadoHasta: lockedUntil.toISOString(),
+    minutosRestantes: minutos,
+  });
 }
 
 function createAuthController(authService, { activityLogService, testUsersReady, sendEmail }) {
@@ -49,6 +63,33 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       entityType: "usuario",
       entityId: usuarioRow.id_usuario,
       description: "Solicitud de verificación de correo",
+    });
+  }
+
+  async function notifyAccountLocked(usuarioRow, lockedUntil, req) {
+    const token = await authService.createUnlockToken(usuarioRow);
+    const email = accountLocked({
+      nombre: usuarioRow.nombre,
+      minutos: Math.round(authService.ACCOUNT_LOCK_MS / 60000),
+      unlockUrl: `${getFrontendBaseUrl()}/desbloquear-cuenta?token=${token}`,
+      resetUrl: `${getFrontendBaseUrl()}/recuperar-contrasena`,
+    });
+
+    await sendAuthEmail({
+      to: usuarioRow.correo,
+      subject: "Tu cuenta fue bloqueada temporalmente - VisaGuide",
+      ...email,
+    });
+
+    await activityLogService.logActivity({
+      req,
+      userId: usuarioRow.id_usuario,
+      userEmail: usuarioRow.correo,
+      role: usuarioRow.rol,
+      action: "user.account_locked",
+      entityType: "usuario",
+      entityId: usuarioRow.id_usuario,
+      description: `Cuenta bloqueada hasta ${lockedUntil.toISOString()} por intentos fallidos`,
     });
   }
 
@@ -112,15 +153,33 @@ function createAuthController(authService, { activityLogService, testUsersReady,
     try {
       await testUsersReady;
       const usuarioRow = await authService.findUserByEmail(correo);
+
+      // Mientras dure el bloqueo no se evalúa la contraseña, para frenar ataques de fuerza bruta.
+      const activeLock = authService.getActiveLock(usuarioRow);
+      if (activeLock) {
+        return respondAccountLocked(res, activeLock);
+      }
+
       const passwordMatches = await authService.verifyPassword(contrasena, usuarioRow);
 
       if (!passwordMatches) {
+        const attempt = await authService.registerFailedLogin({ usuario: usuarioRow, correo, ip: req.ip });
+        if (attempt.locked) {
+          try {
+            await notifyAccountLocked(usuarioRow, attempt.lockedUntil, req);
+          } catch (notifyError) {
+            console.error("ERROR NOTIFY ACCOUNT LOCKED:", notifyError);
+          }
+          return respondAccountLocked(res, attempt.lockedUntil);
+        }
         return res.status(401).json({ error: "El correo o la contraseña son incorrectos" });
       }
 
       if (usuarioRow.activo === false) {
         return res.status(403).json({ error: "Cuenta desactivada. Contacta a un administrador." });
       }
+
+      await authService.clearFailedLogins(usuarioRow);
 
       const usuario = presentLoginUser(usuarioRow);
       
@@ -260,9 +319,41 @@ function createAuthController(authService, { activityLogService, testUsersReady,
     }
   }
 
+  async function unlockAccount(req, res) {
+    const { token } = req.body || {};
+
+    if (!token) {
+      return res.status(400).json({ error: "El token de desbloqueo es obligatorio" });
+    }
+
+    try {
+      const usuarioRow = await authService.unlockWithToken(token);
+      if (!usuarioRow) {
+        return res.status(400).json({ error: "El enlace de desbloqueo es inválido o expiró" });
+      }
+
+      await activityLogService.logActivity({
+        req,
+        userId: usuarioRow.id_usuario,
+        userEmail: usuarioRow.correo,
+        role: usuarioRow.rol,
+        action: "user.account_unlocked",
+        entityType: "usuario",
+        entityId: usuarioRow.id_usuario,
+        description: "Cuenta desbloqueada desde el enlace del correo",
+      });
+
+      res.json({ message: "Tu cuenta fue desbloqueada. Ya puedes iniciar sesión." });
+    } catch (error) {
+      console.error("ERROR UNLOCK ACCOUNT:", error);
+      res.status(500).json({ error: "No fue posible desbloquear la cuenta" });
+    }
+  }
+
   return {
     register,
     login,
+    unlockAccount,
     validateSession,
     forgotPassword,
     resetPassword,

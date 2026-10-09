@@ -10,7 +10,13 @@ const VALID_ROLES = new Set(["cliente", "asesor", "admin"]);
 const VALID_DS160_STATES = new Set(["en_progreso", "por_revisar", "correccion", "aprobado"]);
 
 function number(value) { return Number(value) || 0; }
+function activeLockUntil(row) {
+  if (!row.bloqueado_hasta) return null;
+  const lockedUntil = new Date(row.bloqueado_hasta);
+  return lockedUntil > new Date() ? lockedUntil.toISOString() : null;
+}
 function presentUser(row) {
+  const bloqueadoHasta = activeLockUntil(row);
   return {
     id: row.id_usuario,
     nombre: row.nombre,
@@ -18,6 +24,8 @@ function presentUser(row) {
     rol: row.rol,
     perfil: row.perfil || null,
     activo: row.activo !== false,
+    bloqueado: Boolean(bloqueadoHasta),
+    bloqueadoHasta,
     telefono: row.telefono || "",
     ciudad: row.ciudad || "",
     pais: row.pais || "",
@@ -368,6 +376,25 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
       if (error.code === "23505") return res.status(409).json({ error: "El correo ya está registrado" });
       console.error("ERROR UPDATE ADMIN USER:", error);
       res.status(500).json({ error: "No fue posible actualizar el usuario" });
+    }
+  });
+
+  router.post("/users/:id/unlock", async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Usuario inválido" });
+    try {
+      await schemaReady;
+      const result = await pool.query(
+        `UPDATE usuario SET bloqueado_hasta = NULL, intentos_reset_en = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+         WHERE id_usuario = $1 RETURNING *`,
+        [id]
+      );
+      if (!result.rows.length) return res.status(404).json({ error: "Usuario no encontrado" });
+      await logActivity(req.auth.id_usuario, "Cuenta desbloqueada", result.rows[0].correo);
+      res.json({ usuario: presentUser(result.rows[0]) });
+    } catch (error) {
+      console.error("ERROR UNLOCK ADMIN USER:", error);
+      res.status(500).json({ error: "No fue posible desbloquear la cuenta" });
     }
   });
 

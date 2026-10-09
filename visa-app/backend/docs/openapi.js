@@ -238,6 +238,7 @@ const endpoints = [
   ["post", "/reset-password", "Autenticación", "Restablecer contraseña", null, "ResetPasswordRequest"],
   ["post", "/verificar-email", "Autenticación", "Verificar correo", null, "TokenRequest"],
   ["post", "/reenviar-verificacion", "Autenticación", "Reenviar verificación", null, "EmailRequest"],
+  ["post", "/desbloquear-cuenta", "Autenticación", "Desbloquear cuenta con el enlace del correo", null, "TokenRequest"],
   ["post", "/guardar-perfil", "Perfil y trámite", "Guardar perfil de visa", null, "ProfileRequest"],
   ["post", "/estado-tramite", "Perfil y trámite", "Consultar estado del trámite", null, "UserEmailRequest"],
   ["post", "/usuario-perfil", "Perfil y trámite", "Consultar perfil del usuario", null, "UserEmailRequest"],
@@ -302,6 +303,7 @@ const endpoints = [
   ["get", "/admin/users/{id}", "Administración", "Consultar usuario", "admin"],
   ["post", "/admin/users", "Administración", "Crear usuario", "admin", "AdminUserRequest", 201],
   ["patch", "/admin/users/{id}", "Administración", "Actualizar usuario", "admin", "GenericRequest"],
+  ["post", "/admin/users/{id}/unlock", "Administración", "Desbloquear cuenta bloqueada por intentos fallidos", "admin"],
   ["get", "/admin/advisors", "Administración", "Listar asesores", "admin"],
   ["post", "/admin/advisors", "Administración", "Crear asesor", "admin", "AdminUserRequest", 201],
   ["get", "/admin/assignments", "Administración", "Listar asignaciones", "admin"],
@@ -393,6 +395,12 @@ paths["/questions/random"].get.parameters = [
   { name: "exclude", in: "query", schema: { type: "string", example: "intro,id:12,category:Finanzas" }, description: "Lista separada por comas: intro, id:<entero> o category:<categoría>. intro equivale a category:Viaje." },
   { name: "excludeText", in: "query", schema: { type: "string", minLength: 1, maxLength: 500 }, description: "Excluye una pregunta cuyo texto coincida tras TRIM y comparación sin distinguir mayúsculas/minúsculas. Acepta un solo texto." },
 ];
+paths["/login"].post.description = "Tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos (RNF-13) y se envía un correo con un enlace de desbloqueo. Durante el bloqueo responde 423 aunque la contraseña sea correcta.";
+paths["/login"].post.responses[423] = {
+  description: "Cuenta bloqueada temporalmente por intentos fallidos. Incluye bloqueadoHasta y minutosRestantes.",
+  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+};
+
 paths["/questions/random"].get.responses[409] = {
   description: "No hay suficientes preguntas activas elegibles para la cantidad solicitada.",
   content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },

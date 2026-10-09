@@ -36,7 +36,9 @@ ALTER TABLE usuario
   ADD COLUMN IF NOT EXISTS pais                VARCHAR(120),
   ADD COLUMN IF NOT EXISTS notificaciones_email BOOLEAN DEFAULT TRUE,
   ADD COLUMN IF NOT EXISTS idioma              VARCHAR(10)  DEFAULT 'es',
-  ADD COLUMN IF NOT EXISTS email_verificado    BOOLEAN DEFAULT TRUE;
+  ADD COLUMN IF NOT EXISTS email_verificado    BOOLEAN DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS bloqueado_hasta     TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS intentos_reset_en   TIMESTAMP;
 
 ALTER TABLE usuario
   ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE,
@@ -223,6 +225,28 @@ CREATE TABLE IF NOT EXISTS email_verifications (
 );
 
 CREATE INDEX IF NOT EXISTS email_verifications_usuario_idx ON email_verifications(id_usuario);
+
+-- Bloqueo de cuenta tras intentos fallidos de login (RNF-13)
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id SERIAL PRIMARY KEY,
+  id_usuario INT REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+  correo VARCHAR(200) NOT NULL,
+  ip VARCHAR(64),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS login_attempts_usuario_idx ON login_attempts(id_usuario, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS account_unlock_tokens (
+  id SERIAL PRIMARY KEY,
+  id_usuario INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+  token_hash VARCHAR(64) NOT NULL UNIQUE,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS account_unlock_tokens_usuario_idx ON account_unlock_tokens(id_usuario);
 
 CREATE TABLE IF NOT EXISTS notificaciones (
   id SERIAL PRIMARY KEY,

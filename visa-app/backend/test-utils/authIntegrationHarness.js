@@ -10,6 +10,8 @@ function createInMemoryAuthDb() {
     tramites: [],
     passwordResets: [],
     emailVerifications: [],
+    loginAttempts: [],
+    unlockTokens: [],
     nextUserId: 1,
     nextRecordId: 1,
   };
@@ -113,6 +115,53 @@ function createInMemoryAuthDb() {
       return { rows: [] };
     }
 
+    if (text.startsWith("INSERT INTO login_attempts")) {
+      const [id_usuario, correo, ip, created_at] = values;
+      state.loginAttempts.push({ id: state.nextRecordId++, id_usuario, correo, ip, created_at });
+      return { rows: [] };
+    }
+
+    if (text.startsWith("SELECT COUNT(*)::int AS total FROM login_attempts WHERE id_usuario = $1 AND created_at > $2")) {
+      const since = new Date(values[1]);
+      const total = state.loginAttempts
+        .filter((row) => row.id_usuario === values[0] && new Date(row.created_at) > since).length;
+      return { rows: [{ total }] };
+    }
+
+    if (text.startsWith("UPDATE usuario SET bloqueado_hasta = $1, intentos_reset_en = $2 WHERE id_usuario = $3")) {
+      const user = findUser((row) => row.id_usuario === values[2]);
+      if (user) Object.assign(user, { bloqueado_hasta: values[0], intentos_reset_en: values[1] });
+      return { rows: [] };
+    }
+
+    if (text.startsWith("UPDATE usuario SET bloqueado_hasta = NULL, intentos_reset_en = $1 WHERE id_usuario = $2")) {
+      const user = findUser((row) => row.id_usuario === values[1]);
+      if (user) Object.assign(user, { bloqueado_hasta: null, intentos_reset_en: values[0] });
+      return { rows: user ? [publicUser(user)] : [] };
+    }
+
+    if (text.startsWith("INSERT INTO account_unlock_tokens")) {
+      state.unlockTokens.push({
+        id: state.nextRecordId++,
+        id_usuario: values[0],
+        token_hash: values[1],
+        expires_at: values[2],
+        used_at: null,
+      });
+      return { rows: [] };
+    }
+
+    if (text.includes("FROM account_unlock_tokens WHERE token_hash = $1")) {
+      const record = state.unlockTokens.find((row) => row.token_hash === values[0]);
+      return { rows: record ? [{ ...record }] : [] };
+    }
+
+    if (text.startsWith("UPDATE account_unlock_tokens SET used_at")) {
+      const record = state.unlockTokens.find((row) => row.id === values[0]);
+      if (record) record.used_at = new Date();
+      return { rows: [] };
+    }
+
     throw new Error(`Consulta no soportada por la base en memoria: ${text}`);
   }
 
@@ -137,6 +186,7 @@ function createAuthIntegrationApp({ sendEmail } = {}) {
     tramiteSchemaReady: schemaReady,
     passwordResetSchemaReady: schemaReady,
     emailVerificationSchemaReady: schemaReady,
+    loginSecuritySchemaReady: schemaReady,
     testUsersReady: schemaReady,
     requireSession,
     activityLogService,
@@ -152,4 +202,9 @@ function extractTokenFromMail(message) {
   return match ? match[1] : null;
 }
 
-module.exports = { createAuthIntegrationApp, extractTokenFromMail };
+function extractUnlockTokenFromMail(message) {
+  const match = message.text.match(/desbloquear-cuenta\?token=([a-f0-9]+)/);
+  return match ? match[1] : null;
+}
+
+module.exports = { createAuthIntegrationApp, extractTokenFromMail, extractUnlockTokenFromMail };

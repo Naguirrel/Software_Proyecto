@@ -252,6 +252,40 @@ function stageChange({ nombre, newStage, dashboardUrl }) {
   };
 }
 
+// Template: Cuenta bloqueada por intentos fallidos (RNF-13)
+function accountLocked({ nombre, minutos, unlockUrl, resetUrl }) {
+  const safeName = String(nombre || "").replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${BRAND_NAVY};">
+      Bloqueamos tu cuenta temporalmente
+    </h2>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
+      Hola <strong>${safeName}</strong>,
+    </p>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
+      Detectamos varios intentos fallidos de inicio de sesión en tu cuenta de VisaGuide. Para protegerla, la bloqueamos durante <strong>${minutos} minutos</strong>.
+    </p>
+    <p style="margin: 0 0 32px; text-align: center;">
+      <a href="${unlockUrl}" style="${buttonStyle()}">
+        Desbloquear mi cuenta
+      </a>
+    </p>
+    <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280;">
+      O copia y pega este enlace en tu navegador:
+    </p>
+    <p style="margin: 0 0 24px; font-size: 13px; color: #9ca3af; word-break: break-all;">
+      ${unlockUrl}
+    </p>
+    <p style="margin: 0; font-size: 14px; color: #6b7280;">
+      Si no fuiste tú, te recomendamos <a href="${resetUrl}" style="color: ${BRAND_COLOR};">restablecer tu contraseña</a> cuanto antes.
+    </p>
+  `;
+  return {
+    html: baseTemplate(content, "Tu cuenta de VisaGuide fue bloqueada temporalmente"),
+    text: `Hola ${nombre},\n\nDetectamos varios intentos fallidos de inicio de sesión en tu cuenta de VisaGuide. Para protegerla, la bloqueamos durante ${minutos} minutos.\n\nPuedes desbloquearla ahora con este enlace:\n\n${unlockUrl}\n\nSi no fuiste tú, restablece tu contraseña cuanto antes: ${resetUrl}`,
+  };
+}
+
 module.exports = {
   emailVerification,
   passwordReset,
@@ -259,4 +293,5 @@ module.exports = {
   documentReminder,
   interviewFeedback,
   stageChange,
+  accountLocked,
 };

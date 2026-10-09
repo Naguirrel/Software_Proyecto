@@ -121,6 +121,7 @@ function App() {
         <Route path="/recuperar-contrasena"           element={<ForgotPassword />} />
         <Route path="/restablecer-contrasena"         element={<ResetPassword />} />
         <Route path="/verificar-email"                element={<VerifyEmail />} />
+        <Route path="/desbloquear-cuenta"             element={<UnlockAccount />} />
         <Route path="/upload"                         element={<Upload />} />
         <Route path="/perfil"                         element={<Perfil />} />
         <Route path="/seleccion-perfil"               element={<ProfileSelection />} />
@@ -190,6 +191,7 @@ function Login() {
   const [correo, setCorreo]       = useState("");
   const [contrasena, setContrasena] = useState("");
   const [error, setError]         = useState("");
+  const [accountLocked, setAccountLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -204,8 +206,9 @@ function Login() {
   }, [navigate]);
 
   useEffect(() => {
-    if (error) { const t = setTimeout(() => setError(""), 5000); return () => clearTimeout(t); }
-  }, [error]);
+    // El aviso de cuenta bloqueada se mantiene visible: el usuario necesita leerlo completo.
+    if (error && !accountLocked) { const t = setTimeout(() => setError(""), 5000); return () => clearTimeout(t); }
+  }, [error, accountLocked]);
 
   const validate = () => {
     if (!correo.trim()) { setError("El correo es obligatorio"); return false; }
@@ -217,7 +220,7 @@ function Login() {
   const handleLogin = async (event) => {
     event?.preventDefault();
     if (!validate()) return;
-    setIsLoading(true); setError("");
+    setIsLoading(true); setError(""); setAccountLocked(false);
     try {
       const res = await fetch(buildApiUrl("/login"), {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -229,8 +232,11 @@ function Login() {
         SessionManager.saveSession(usuario, data.token);
         localStorage.setItem("correoUsuario", correo);
         navigate(getLoginDestination(usuario), { replace: true });
+      } else if (res.status === 423) {
+        setAccountLocked(true);
+        setError(data.error || "Tu cuenta está bloqueada temporalmente por varios intentos fallidos. Intenta de nuevo más tarde.");
       } else {
-        setError(res.status === 401 ? "El correo o la contraseña son incorrectos. Verifica tus datos e intenta de nuevo." : data.error || "Ocurrió un error al iniciar sesión. Intenta más tarde.");
+        setError(res.status === 401 ? "El correo o la contraseña son incorrectos. Verifica tus datos e intenta de nuevo. Por seguridad, la cuenta se bloquea 15 minutos tras 5 intentos fallidos." : data.error || "Ocurrió un error al iniciar sesión. Intenta más tarde.");
       }
     } catch { setError("Error de conexión."); }
     finally { setIsLoading(false); }
@@ -551,6 +557,71 @@ function VerifyEmail() {
 
       <footer className="auth-form-footer">
         <p><Link to="/login">Ir a iniciar sesión</Link></p>
+      </footer>
+    </AuthLayout>
+  );
+}
+
+/* ══════════════════════════
+   Desbloquear cuenta
+   ══════════════════════════ */
+function UnlockAccount() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") || "";
+  const [status, setStatus] = useState(token ? "unlocking" : "error");
+  const [message, setMessage] = useState(token ? "" : "El enlace de desbloqueo no es válido.");
+
+  useEffect(() => {
+    if (!token) return;
+
+    const unlock = async () => {
+      try {
+        const res = await fetch(buildApiUrl("/desbloquear-cuenta"), {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setStatus("success");
+          setMessage(data.message || "Tu cuenta fue desbloqueada. Ya puedes iniciar sesión.");
+        } else {
+          setStatus("error");
+          setMessage(data.error || "No fue posible desbloquear la cuenta.");
+        }
+      } catch {
+        setStatus("error");
+        setMessage("Error de conexión.");
+      }
+    };
+    unlock();
+  }, [token]);
+
+  return (
+    <AuthLayout>
+      <header className="auth-form-heading">
+        <h2>Desbloquear cuenta</h2>
+        <p>Recupera el acceso a tu cuenta después de varios intentos fallidos.</p>
+      </header>
+
+      {status === "unlocking" && (
+        <div className="auth-message" role="status" aria-live="polite">
+          <Loader2 className="auth-spinner" aria-hidden="true" /><span>Desbloqueando...</span>
+        </div>
+      )}
+      {status === "success" && (
+        <div className="auth-message auth-message--success" role="status" aria-live="polite">
+          <CheckCircle2 aria-hidden="true" /><span>{message}</span>
+        </div>
+      )}
+      {status === "error" && (
+        <div className="auth-message auth-message--error" role="alert" aria-live="assertive">
+          <AlertCircle aria-hidden="true" /><span>{message}</span>
+        </div>
+      )}
+
+      <footer className="auth-form-footer">
+        <p><Link to="/login">Ir a iniciar sesión</Link></p>
+        {status === "error" && <p><Link to="/recuperar-contrasena">Restablecer mi contraseña</Link></p>}
       </footer>
     </AuthLayout>
   );

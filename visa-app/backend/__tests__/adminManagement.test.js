@@ -445,4 +445,66 @@ describe("admin management integration", () => {
       ["VisaGuide", "", "", "es", "America/Guatemala", false]
     );
   });
+
+  test("lists the lock status of users blocked by failed logins", async () => {
+    const lockedUntil = new Date(Date.now() + 10 * 60 * 1000);
+    const { app } = createApp(async (sql) => {
+      if (sql.includes("FROM usuario WHERE id_usuario")) return { rows: [admin] };
+      if (sql.includes("FROM usuario u")) {
+        return { rows: [
+          { ...client, bloqueado_hasta: lockedUntil },
+          { ...client, id_usuario: 5, correo: "otro@test.dev", bloqueado_hasta: new Date(Date.now() - 60 * 1000) },
+        ] };
+      }
+      return { rows: [] };
+    });
+
+    const response = await request(app)
+      .get("/admin/users")
+      .set("Authorization", `Bearer ${issueSessionToken(admin)}`)
+      .expect(200);
+
+    expect(response.body.usuarios[0]).toMatchObject({ bloqueado: true, bloqueadoHasta: lockedUntil.toISOString() });
+    expect(response.body.usuarios[1]).toMatchObject({ bloqueado: false, bloqueadoHasta: null });
+  });
+
+  test("lets an admin unlock an account blocked by failed logins", async () => {
+    const { app, pool } = createApp(async (sql) => {
+      if (sql.includes("FROM usuario WHERE id_usuario")) return { rows: [admin] };
+      if (sql.includes("UPDATE usuario SET bloqueado_hasta = NULL")) return { rows: [{ ...client, bloqueado_hasta: null }] };
+      return { rows: [] };
+    });
+
+    const response = await request(app)
+      .post("/admin/users/4/unlock")
+      .set("Authorization", `Bearer ${issueSessionToken(admin)}`)
+      .expect(200);
+
+    expect(response.body.usuario).toMatchObject({ id: 4, bloqueado: false });
+    expect(pool.query).toHaveBeenCalledWith(expect.stringContaining("UPDATE usuario SET bloqueado_hasta = NULL"), [4]);
+    expect(pool.query).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO admin_activity"),
+      [1, "Cuenta desbloqueada", "client@test.dev"]
+    );
+  });
+
+  test("validates the user when unlocking an account", async () => {
+    const { app } = createApp(async (sql) => {
+      if (sql.includes("FROM usuario WHERE id_usuario")) return { rows: [admin] };
+      return { rows: [] };
+    });
+    const auth = `Bearer ${issueSessionToken(admin)}`;
+
+    await request(app).post("/admin/users/abc/unlock").set("Authorization", auth).expect(400);
+    await request(app).post("/admin/users/999/unlock").set("Authorization", auth).expect(404);
+  });
+
+  test("only admins can unlock accounts", async () => {
+    const { app } = createApp(async () => ({ rows: [client] }));
+    await request(app).post("/admin/users/4/unlock").expect(401);
+    await request(app)
+      .post("/admin/users/4/unlock")
+      .set("Authorization", `Bearer ${issueSessionToken(client)}`)
+      .expect(403);
+  });
 });
