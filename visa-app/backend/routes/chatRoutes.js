@@ -8,7 +8,7 @@ module.exports = function createChatRoutes(pool, { requireSession }) {
 
   router.get("/", async (req, res) => {
     if (req.auth.rol !== "cliente") return res.status(403).json({ error: "Este chat corresponde a solicitantes" });
-    try { return res.json(await service.getClientConversation(req.auth.id_usuario)); }
+    try { return res.json(await service.getClientConversation(req.auth.id_usuario, req.query)); }
     catch (error) { return res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : "No fue posible cargar el chat" }); }
   });
 

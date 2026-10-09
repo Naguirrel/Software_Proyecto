@@ -218,7 +218,7 @@ function createInterviewSessionService(pool) {
     return result.rows.map(presentSession);
   }
 
-  async function getSession(id, { advisorId } = {}) {
+  async function getSession(id, { advisorId, userId } = {}) {
     await ensureSchema();
 
     const parsedId = Number(id);
@@ -230,6 +230,9 @@ function createInterviewSessionService(pool) {
 
     const values = [parsedId];
     if (advisorId) values.push(Number(advisorId));
+    if (userId) values.push(Number(userId));
+    const advisorParameter = advisorId ? 2 : null;
+    const userParameter = userId ? values.length : null;
     const result = await pool.query(
       `SELECT id, user_id, user_name, user_email, status, responses,
               feedback, rating, created_at, reviewed_at
@@ -237,8 +240,9 @@ function createInterviewSessionService(pool) {
        WHERE s.id = $1
          ${advisorId ? `AND EXISTS (
            SELECT 1 FROM tramite t
-           WHERE t.id_usuario = s.user_id AND t.id_asesor = $2
-         )` : ""}`,
+           WHERE t.id_usuario = s.user_id AND t.id_asesor = $${advisorParameter}
+         )` : ""}
+         ${userId ? `AND s.user_id = $${userParameter}` : ""}`,
       values
     );
 
@@ -251,7 +255,7 @@ function createInterviewSessionService(pool) {
     return presentSession(result.rows[0]);
   }
 
-  async function getSessionAudio(id, questionId) {
+  async function getSessionAudio(id, questionId, { userId } = {}) {
     await ensureSchema();
 
     const parsedId = Number(id);
@@ -261,11 +265,13 @@ function createInterviewSessionService(pool) {
       throw error;
     }
 
+    const values = [parsedId];
+    if (userId) values.push(Number(userId));
     const result = await pool.query(
       `SELECT id, responses
        FROM interview_sessions
-       WHERE id = $1`,
-      [parsedId]
+       WHERE id = $1${userId ? " AND user_id = $2" : ""}`,
+      values
     );
 
     const session = result.rows[0];

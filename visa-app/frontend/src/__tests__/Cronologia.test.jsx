@@ -12,12 +12,21 @@ const authState = vi.hoisted(() => ({
   },
 }));
 
+const workflowState = vi.hoisted(() => ({
+  workflow: { assigned: true, gates: { ds160: { allowed: true } } },
+  isLoading: false,
+}));
+
 vi.mock("../hooks/useRequireAuth", () => ({
   default: () => authState,
 }));
 
 vi.mock("../hooks/useModoSenior", () => ({
   default: () => false,
+}));
+
+vi.mock("../hooks/useClientWorkflow", () => ({
+  default: () => workflowState,
 }));
 
 vi.mock("../components/Sidebar", () => ({
@@ -34,6 +43,10 @@ describe("Cronologia", () => {
         correo: "ana@example.com",
         perfil: "turismo_negocios",
       },
+    });
+    Object.assign(workflowState, {
+      workflow: { assigned: true, gates: { ds160: { allowed: true } } },
+      isLoading: false,
     });
   });
 
@@ -102,5 +115,21 @@ describe("Cronologia", () => {
 
     expect(await screen.findByRole("heading", { name: "Pago de visa" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Hablar con el asesor/i })).toBeInTheDocument();
+  });
+
+  it("sin asesor explica la espera y no consulta ni habilita el DS-160", async () => {
+    workflowState.workflow = { assigned: false, gates: { ds160: { allowed: false } } };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      if (String(url).includes("/estado-tramite")) {
+        return Promise.resolve({ ok: true, json: async () => ({ progreso: 17 }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(<Cronologia />);
+
+    expect(await screen.findByText(/esperando asignación de asesor/i)).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/ds160"))).toBe(false);
+    expect(screen.queryByRole("button", { name: /DS-160/i })).not.toBeInTheDocument();
   });
 });

@@ -183,6 +183,7 @@ const schemas = {
       dueAt: { type: "string", format: "date-time", nullable: true },
       priority: { type: "string", enum: ["normal", "high"] },
       status: { type: "string", enum: ["pending", "completed"] },
+      userId: { type: "integer", nullable: true },
     },
   },
   AdvisorQuestionRequest: {
@@ -405,6 +406,15 @@ paths["/questions/random"].get.responses[409] = {
   description: "No hay suficientes preguntas activas elegibles para la cantidad solicitada.",
   content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
 };
+
+const messagePaginationParameters = [
+  { name: "afterId", in: "query", required: false, schema: { type: "integer", minimum: 1 }, description: "Devuelve mensajes posteriores al identificador." },
+  { name: "beforeId", in: "query", required: false, schema: { type: "integer", minimum: 1 }, description: "Devuelve mensajes anteriores al identificador." },
+  { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },
+];
+for (const path of ["/chat", "/advisor/conversations/{userId}/messages"]) {
+  paths[path].get.parameters = [...(paths[path].get.parameters || []), ...messagePaginationParameters];
+}
 
 module.exports = {
   openapi: "3.0.3",

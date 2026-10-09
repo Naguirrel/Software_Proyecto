@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import { buildApiUrl } from "../config/api";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
+import { buildSessionHeaders } from "../utils/sessionAuth";
 import "../styles/interview.css";
 
 const PREP_CARDS = [
@@ -151,7 +152,7 @@ export default function Entrevista() {
       try {
         const response = await fetch(buildApiUrl("/interview-sessions/user"), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: buildSessionHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ userId: session.id }),
           signal: controller.signal,
         });

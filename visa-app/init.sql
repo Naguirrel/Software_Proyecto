@@ -66,6 +66,43 @@ ALTER TABLE tramite
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 CREATE INDEX IF NOT EXISTS tramite_asesor_idx ON tramite(id_asesor);
 
+CREATE TABLE IF NOT EXISTS advisor_chat_messages (
+  id SERIAL PRIMARY KEY,
+  advisor_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+  user_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+  sender_role VARCHAR(20) NOT NULL CHECK (sender_role IN ('advisor', 'client')),
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  read_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS advisor_chat_conversation_idx
+ON advisor_chat_messages(advisor_id, user_id, created_at, id);
+
+CREATE INDEX IF NOT EXISTS advisor_chat_cursor_idx
+ON advisor_chat_messages(advisor_id, user_id, id);
+
+CREATE INDEX IF NOT EXISTS advisor_chat_unread_idx
+ON advisor_chat_messages(advisor_id, user_id, sender_role, id)
+WHERE read_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS advisor_tasks (
+  id SERIAL PRIMARY KEY,
+  advisor_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+  user_id INT REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+  title VARCHAR(240) NOT NULL,
+  due_at TIMESTAMPTZ,
+  priority VARCHAR(20) NOT NULL DEFAULT 'normal'
+    CHECK (priority IN ('normal', 'high')),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'completed')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS advisor_tasks_owner_idx
+ON advisor_tasks(advisor_id, status, due_at, id);
+
 CREATE TABLE IF NOT EXISTS process_change_history (
   id SERIAL PRIMARY KEY,
   process_id INT NOT NULL REFERENCES tramite(id_tramite) ON DELETE CASCADE,

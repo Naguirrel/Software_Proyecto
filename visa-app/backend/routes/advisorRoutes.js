@@ -334,7 +334,7 @@ module.exports = function createAdvisorRoutes(pool, {
     catch (error) { return handleError(res, error, "No fue posible cargar las conversaciones"); }
   });
   router.get("/conversations/:userId/messages", async (req, res) => {
-    try { return res.json(await communicationService.listMessages(req.auth.id_usuario, req.params.userId, "advisor")); }
+    try { return res.json(await communicationService.listMessages(req.auth.id_usuario, req.params.userId, "advisor", req.query)); }
     catch (error) { return handleError(res, error, "No fue posible cargar los mensajes"); }
   });
   router.post("/conversations/:userId/messages", async (req, res) => {

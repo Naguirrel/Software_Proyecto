@@ -7,6 +7,7 @@ import AuthLayout from "./components/auth/AuthLayout";
 import RequireAdmin from "./components/admin/RequireAdmin";
 import RequireStaff from "./components/RequireStaff";
 import RequireAdvisor from "./components/advisor/RequireAdvisor";
+import RequireWorkflowStep from "./components/RequireWorkflowStep";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import "./components/auth/auth.css";
 
@@ -128,9 +129,9 @@ function App() {
         <Route path="/dashboard"                      element={<Dashboard />} />
         <Route path="/informacion"                    element={<Informacion />} />
         <Route path="/cronologia"                     element={<Cronologia />} />
-        <Route path="/entrevista"                     element={<Entrevista />} />
-        <Route path="/entrevista/simulador"           element={<InterviewSimulator />} />
-        <Route path="/entrevista/retroalimentacion"   element={<InterviewFeedback />} />
+        <Route path="/entrevista"                     element={<RequireWorkflowStep step="interview"><Entrevista /></RequireWorkflowStep>} />
+        <Route path="/entrevista/simulador"           element={<RequireWorkflowStep step="interview"><InterviewSimulator /></RequireWorkflowStep>} />
+        <Route path="/entrevista/retroalimentacion"   element={<RequireWorkflowStep step="interview"><InterviewFeedback /></RequireWorkflowStep>} />
         <Route path="/admin"                          element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="/admin/users"                    element={<RequireAdmin><AdminUsers /></RequireAdmin>} />
         <Route path="/admin/users/:id"                element={<RequireAdmin><AdminUserDetail /></RequireAdmin>} />
@@ -157,13 +158,13 @@ function App() {
         <Route path="/advisor/tareas"                 element={<RequireAdvisor><AdvisorTasks /></RequireAdvisor>} />
         <Route path="/advisor/preguntas"              element={<RequireAdvisor><AdvisorQuestions /></RequireAdvisor>} />
         <Route path="/advisor/perfil"                 element={<RequireAdvisor><AdvisorProfile /></RequireAdvisor>} />
-        <Route path="/questions"                      element={<QuestionBank />} />
+        <Route path="/questions"                      element={<RequireWorkflowStep step="interview"><QuestionBank /></RequireWorkflowStep>} />
         <Route path="/documents"                      element={<Documents />} />
-        <Route path="/ds160"                          element={<DS160Form />} />
-        <Route path="/chat"                           element={<Chat />} />
+        <Route path="/ds160"                          element={<RequireWorkflowStep step="ds160"><DS160Form /></RequireWorkflowStep>} />
+        <Route path="/chat"                           element={<RequireWorkflowStep step="chat"><Chat /></RequireWorkflowStep>} />
         <Route path="/notificaciones"                 element={<Notificaciones />} />
-        <Route path="/pagos"                          element={<ConsularPayment />} />
-        <Route path="/citas"                          element={<ConsularAppointments />} />
+        <Route path="/pagos"                          element={<RequireWorkflowStep step="payment"><ConsularPayment /></RequireWorkflowStep>} />
+        <Route path="/citas"                          element={<RequireWorkflowStep step="appointment"><ConsularAppointments /></RequireWorkflowStep>} />
         <Route path="/gestion-consular"               element={<RequireStaff><ConsularManagement /></RequireStaff>} />
         </Routes>
         </Suspense>

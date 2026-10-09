@@ -2,7 +2,7 @@ import { buildAdvisorWhatsappUrl } from "./advisorContact";
 import { translate } from "../i18n/translations";
 
 const TOTAL_DS160_SECTIONS = 10;
-const REQUIRED_DOCUMENT_COUNT = 4;
+const REQUIRED_DOCUMENT_COUNT = 3;
 
 const STEP_PATHS = {
   1: { path: "/perfil" },

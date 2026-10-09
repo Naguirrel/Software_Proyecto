@@ -5,18 +5,18 @@ function handleError(res, error) {
   return res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : "No fue posible procesar la solicitud" });
 }
 
-function createConsularRoutes({ requireSession, requireStaff, paymentService, appointmentService,
+function createConsularRoutes({ requireSession, requireStaff, requireWorkflowStep = () => (_req, _res, next) => next(), paymentService, appointmentService,
   schemaReady, upload, uploadStoredFile, deleteStoredFile }) {
   const router = express.Router();
   router.use(async (_req, res, next) => {
     try { await schemaReady; return next(); } catch (error) { return handleError(res, error); }
   });
 
-  router.get("/payments/me", requireSession, async (req, res) => {
+  router.get("/payments/me", requireSession, requireWorkflowStep("payment"), async (req, res) => {
     try { return res.json(await paymentService.getSummary(req.auth.id_usuario)); }
     catch (error) { return handleError(res, error); }
   });
-  router.post("/payments/bank-transfer", requireSession,
+  router.post("/payments/bank-transfer", requireSession, requireWorkflowStep("payment"),
     upload.single("file"), upload.handleUploadError, async (req, res) => {
     let storedFile;
     try {
@@ -29,7 +29,7 @@ function createConsularRoutes({ requireSession, requireStaff, paymentService, ap
       return handleError(res, error);
     }
   });
-  router.get("/appointments/me", requireSession, async (req, res) => {
+  router.get("/appointments/me", requireSession, requireWorkflowStep("appointment"), async (req, res) => {
     try { return res.json({ appointments: await appointmentService.listForUser(req.auth.id_usuario) }); }
     catch (error) { return handleError(res, error); }
   });

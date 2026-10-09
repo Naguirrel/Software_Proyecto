@@ -5,6 +5,7 @@ import { buildApiUrl } from "../config/api";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
 import { apiRequest } from "../utils/apiClient";
+import { buildSessionHeaders } from "../utils/sessionAuth";
 import "../styles/interview.css";
 
 const INTRO_QUESTION = {
@@ -468,6 +469,7 @@ export default function InterviewSimulator() {
 
       const response = await fetch(buildApiUrl("/interview-sessions"), {
         method: "POST",
+        headers: buildSessionHeaders(),
         body: formData,
         signal: controller.signal,
       });

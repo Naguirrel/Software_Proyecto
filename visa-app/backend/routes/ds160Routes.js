@@ -2,7 +2,12 @@ const express = require("express");
 const createDs160Controller = require("../controllers/ds160Controller");
 const createDs160Service = require("../services/ds160Service");
 
-function createDs160Routes(pool, { activityLogService, notificacionService, requireSession }) {
+function createDs160Routes(pool, {
+  activityLogService,
+  notificacionService,
+  requireSession = (_req, _res, next) => next(),
+  requireWorkflowStep = () => (_req, _res, next) => next(),
+}) {
   const router = express.Router();
 
   const ds160Service = createDs160Service(pool, { activityLogService, notificacionService });
@@ -18,17 +23,19 @@ function createDs160Routes(pool, { activityLogService, notificacionService, requ
     return requireSession(req, res, next);
   };
 
-  router.post("/ds160/load", authenticate, ds160Controller.loadDs160);
   router.get("/ds160", (_req, res) => {
     res.status(405).json({ error: "Usa POST /ds160/load con tu sesión iniciada" });
   });
-
-  router.post("/ds160", authenticate, ds160Controller.saveDs160);
-
-  router.post("/ds160/pdf", authenticate, ds160Controller.exportPdf);
   router.get("/ds160/pdf", (_req, res) => {
     res.status(405).json({ error: "Usa POST /ds160/pdf con tu sesión iniciada" });
   });
+
+  router.use("/ds160", authenticate, requireWorkflowStep("ds160"));
+  router.post("/ds160/load", ds160Controller.loadDs160);
+
+  router.post("/ds160", ds160Controller.saveDs160);
+
+  router.post("/ds160/pdf", ds160Controller.exportPdf);
 
   return router;
 }

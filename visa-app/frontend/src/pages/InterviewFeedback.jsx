@@ -4,6 +4,8 @@ import Sidebar from "../components/Sidebar";
 import { buildApiUrl } from "../config/api";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
+import { buildSessionHeaders } from "../utils/sessionAuth";
+import AuthenticatedAudio from "../components/AuthenticatedAudio";
 import "../styles/interview.css";
 
 function formatDate(value) {
@@ -80,7 +82,7 @@ export default function InterviewFeedback() {
           buildApiUrl(sessionId ? "/interview-sessions/detail" : "/interview-sessions/user"),
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: buildSessionHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify(sessionId ? { sessionId } : { userId: session?.id }),
             signal: controller.signal,
           }
@@ -250,7 +252,7 @@ export default function InterviewFeedback() {
                         : "Sin grabación"}
                     </p>
                     {getAudioSource(response.audio) && (
-                      <audio controls src={getAudioSource(response.audio)} />
+                      <AuthenticatedAudio src={response.audio.url} />
                     )}
                   </div>
                   <strong
