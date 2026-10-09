@@ -176,5 +176,9 @@ describe("Sidebar", () => {
     await user.click(senior);
     expect(senior).toHaveAttribute("aria-pressed", "true");
     expect(localStorage.getItem("modoSenior")).toBe("true");
+    expect(document.documentElement).toHaveAttribute("data-modo-senior");
+
+    await user.click(senior);
+    expect(document.documentElement).not.toHaveAttribute("data-modo-senior");
   });
 });

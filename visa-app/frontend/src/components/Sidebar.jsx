@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
+import { setModoSenior as applyModoSenior } from "../utils/modoSenior";
 import useTheme from "../hooks/useTheme";
 import useIdioma from "../hooks/useIdioma";
 import TopActions from "./TopActions";
@@ -137,8 +138,7 @@ export default function Sidebar({ currentPage }) {
   const toggleModoSenior = () => {
     const next = !modoSenior;
     setModoSenior(next);
-    localStorage.setItem("modoSenior", next.toString());
-    window.dispatchEvent(new CustomEvent("modoSeniorChange", { detail: next }));
+    applyModoSenior(next);
   };
 
   const getPerfilLabel = (perfil) => {
