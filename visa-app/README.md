@@ -15,6 +15,14 @@ cp .env.example .env
 docker compose up --build
 ```
 
+Este comando carga automaticamente `docker-compose.override.yml` y ejecuta el backend en modo desarrollo. Para produccion, desde `visa-app/` y con la configuracion real protegida, use explicitamente:
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+```
+
+Consulte la [guia de infraestructura](docs/infraestructura.md) para arquitectura, variables, despliegue, backup y restauracion.
+
 - Frontend: `http://localhost:8080`
 - API: `http://localhost:3000`
 - Swagger: `http://localhost:3000/api-docs`

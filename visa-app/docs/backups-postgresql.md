@@ -1,6 +1,8 @@
 # Backups automaticos de PostgreSQL
 
-Esta guia cubre la configuracion de backups para la base `visa_db` de VisaGuide. La instalacion actual del proyecto usa Docker Compose con PostgreSQL 15 en el servicio `db`; dentro de la red de Docker se accede por `db:5432` y desde el host se expone como `127.0.0.1:5433`.
+Esta guia cubre la configuracion de backups de PostgreSQL de VisaGuide. Docker Compose usa PostgreSQL 15 en el servicio `db`; dentro de su red se accede por `db:5432`. La publicacion `5433:5432` de `docker-compose.yml` escucha en **todas las interfaces del host**, no solo en `127.0.0.1`. El script de backup puede conectarse a `127.0.0.1:5433` desde el host, pero eso no limita el acceso desde otras interfaces. Restrinja el puerto con el firewall y el security group de EC2: PostgreSQL no debe exponerse publicamente. El nombre y usuario efectivos de la base provienen de `DB_NAME` y `DB_USER`; los ejemplos de esta guia deben adaptarse al entorno real.
+
+Para arquitectura, despliegue y recuperacion completa, consulte [Infraestructura](infraestructura.md).
 
 ## Archivos generados
 
@@ -16,6 +18,8 @@ Cada backup se crea en formato custom de PostgreSQL con extension `.dump`, por e
 ```bash
 visa_db_20260927_030000.dump
 ```
+
+El dump contiene datos y metadatos de PostgreSQL, **no los bytes de los archivos**. Los documentos, audios y comprobantes pueden estar en el volumen nombrado `local_uploads` (fallback fuera de produccion) o en objetos de R2 (cuando esta configurado). Respalde esos archivos por separado y pruebe que se pueden recuperar junto con sus referencias en la base. Este repositorio no demuestra un backup automatizado de R2. El dump tampoco incluye configuracion externa, certificados, cron ni logs del host.
 
 La carpeta predeterminada dentro del proyecto es `backups/postgres`, ignorada por Git. En AWS se recomienda una carpeta dedicada fuera del repositorio, por ejemplo `/var/backups/visaguide/postgres`.
 
@@ -126,8 +130,7 @@ pg_restore \
   --port=5433 \
   --username=postgres \
   --dbname=visa_db_restore \
-  --clean \
-  --if-exists \
+  --exit-on-error \
   --no-owner \
   /var/backups/visaguide/postgres/visa_db_YYYYMMDD_HHMMSS.dump
 ```
@@ -144,7 +147,7 @@ psql --host=127.0.0.1 --port=5433 --username=postgres --dbname=visa_db_restore -
 1. Active una ventana de mantenimiento y detenga temporalmente la aplicacion si el restore afectara `visa_db`.
 2. Genere un backup previo al restore con `tools/backups/backup_postgres.sh`.
 3. Restaure primero en `visa_db_restore` y valide tablas/datos basicos.
-4. Si la validacion es correcta, restaure sobre `visa_db` con `pg_restore --clean --if-exists --no-owner`.
+4. **Operacion destructiva:** solo si la validacion es correcta y se autorizo la sustitucion de la base principal, planifique la restauracion sobre esa base. `pg_restore --clean --if-exists` elimina objetos existentes; verifique dos veces el destino antes de usarlo.
 5. Reinicie la aplicacion y valide login, dashboard y pantallas criticas.
 6. Guarde el log del incidente y el nombre exacto del backup usado.
 
