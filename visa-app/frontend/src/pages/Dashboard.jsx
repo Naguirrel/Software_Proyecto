@@ -3,6 +3,7 @@ import { buildApiUrl } from "../config/api";
 import Sidebar from "../components/Sidebar";
 import EmailVerificationNotice from "../components/EmailVerificationNotice";
 import useModoSenior from "../hooks/useModoSenior";
+import useIdioma from "../hooks/useIdioma";
 import useRequireAuth from "../hooks/useRequireAuth";
 import { SkeletonCard, SkeletonList } from "../components/SkeletonCard";
 import InformationSection from "../components/InformationSection";
@@ -36,6 +37,7 @@ if (!document.getElementById("vg-dash-anim")) {
 export default function Dashboard() {
   const { isValidating, session } = useRequireAuth();
   const modoSenior = useModoSenior();
+  const { idioma, t } = useIdioma();
   const activarTarjeta = (event, path) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -49,7 +51,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     ds160Percentage: 0,
     documentCount: 0,
-    currentStage: "Trámite no iniciado",
+    currentStageNumber: null,
   });
   const [documentSummary, setDocumentSummary] = useState(summarizeDocuments([]));
 
@@ -79,7 +81,10 @@ export default function Dashboard() {
         };
         const [tramiteResult, ds160Result, documentsResult] = await Promise.allSettled([
           fetchJson("/estado-tramite", postJson),
-          fetchJson("/ds160/load", postJson),
+          fetchJson("/ds160/load", {
+            method: "POST",
+            headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+          }),
           fetchJson("/documentos/listar", {
             method: "POST",
             headers: buildSessionHeaders({ "Content-Type": "application/json" }),
@@ -105,15 +110,15 @@ export default function Dashboard() {
         setStats({
           ds160Percentage,
           documentCount: documentsSummary.total,
-          currentStage: getProcessStageLabel(currentStageNumber),
+          currentStageNumber,
         });
 
         if ([tramiteResult, ds160Result, documentsResult].some((result) => result.status === "rejected")) {
-          setStatsError("Algunas estadísticas no pudieron actualizarse.");
+          setStatsError("dashboard.statsPartialError");
         }
       } catch (error) {
         if (error.name !== "AbortError") {
-          setStatsError("No se pudieron cargar las estadísticas.");
+          setStatsError("dashboard.statsError");
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -152,14 +157,16 @@ export default function Dashboard() {
     ds160Percentage: stats.ds160Percentage,
     documentSummary,
     tramite,
+    idioma,
   });
   const quickCards = getDashboardQuickCards({
     documentSummary,
     stageNumber: etapaActual,
+    idioma,
   });
   const showLegacyQuickCards = false;
 
-  const ETAPAS = getProcessTimeline(etapaActual).map((step) => ({
+  const ETAPAS = getProcessTimeline(etapaActual, {}, idioma).map((step) => ({
     n: step.number,
     label: step.shortLabel,
     done: step.done,
@@ -170,11 +177,11 @@ export default function Dashboard() {
     const p = session?.perfil;
     if (p === "turismo_negocios") return "B1/B2";
     if (p === "estudiante")       return "F/M";
-    if (p === "renovacion")       return "Renovación";
+    if (p === "renovacion")       return t("dashboard.visaRenovacion");
     return "B1/B2";
   };
 
-  const firstName = session?.nombre?.split(" ")[0] || "Usuario";
+  const firstName = session?.nombre?.split(" ")[0] || t("sidebar.user");
 
   const timelineEls = [];
   ETAPAS.forEach((e, i) => {
@@ -210,10 +217,10 @@ export default function Dashboard() {
         {/* GREETING */}
         <header className="dash-greeting">
           <h1 style={{ fontSize: modoSenior ? "44px" : "var(--vg-page-title)" }}>
-            ¡Hola, {firstName}!
+            {t("dashboard.greeting", { nombre: firstName })}
           </h1>
           <p style={{ fontSize: modoSenior ? "19px" : "var(--vg-body-size)" }}>
-            Continuemos con tu solicitud de visa {tipoVisa()}.
+            {t("dashboard.continue", { tipo: tipoVisa() })}
           </p>
         </header>
 
@@ -229,22 +236,22 @@ export default function Dashboard() {
             <section className="dash-progress-card">
               <div className="dash-progress-body">
                 <div className="dash-progress-head">
-                  <h2 style={{ fontSize: modoSenior ? "24px" : "var(--vg-card-title)" }}>Progreso general</h2>
+                  <h2 style={{ fontSize: modoSenior ? "24px" : "var(--vg-card-title)" }}>{t("dashboard.progressTitle")}</h2>
                 </div>
                 <p className="dash-progress-sub" style={{ fontSize: modoSenior ? "15px" : "13px" }}>
-                  Sigue estas etapas para completar tu proceso.
+                  {t("dashboard.progressSub")}
                 </p>
                 <div className="dash-timeline">{timelineEls}</div>
               </div>
 
               {/* Etapa actual ring */}
               <div className="dash-etapa-box">
-                <span className="dash-etapa-label">ETAPA ACTUAL</span>
+                <span className="dash-etapa-label">{t("dashboard.currentStage")}</span>
                 <div className="dash-etapa-num-row">
                   <span className="dash-etapa-num" style={{ fontSize: modoSenior ? "50px" : "42px" }}>
                     {etapaActual}
                   </span>
-                  <span className="dash-etapa-de">de {TOTAL_PROCESS_STEPS}</span>
+                  <span className="dash-etapa-de">{t("dashboard.ofTotal", { total: TOTAL_PROCESS_STEPS })}</span>
                 </div>
                 <div className="dash-ring-wrap">
                   <svg width="58" height="58" viewBox="0 0 60 60" aria-hidden="true">
@@ -259,13 +266,21 @@ export default function Dashboard() {
               </div>
             </section>
 
-            <DashboardStats loading={statsLoading} error={statsError} stats={stats} />
+            <DashboardStats
+              loading={statsLoading}
+              error={statsError ? t(statsError) : ""}
+              stats={{
+                ds160Percentage: stats.ds160Percentage,
+                documentCount: stats.documentCount,
+                currentStage: stats.currentStageNumber ? getProcessStageLabel(stats.currentStageNumber, idioma) : "",
+              }}
+            />
 
             {/* NEXT ACTION */}
             <section className="dash-action-section">
               <div className="dash-action-label">
                 <span className="dash-action-dot" />
-                <span style={{ fontSize: modoSenior ? "13px" : "11px" }}>SIGUIENTE ACCIÓN REQUERIDA</span>
+                <span style={{ fontSize: modoSenior ? "13px" : "11px" }}>{t("dashboard.nextAction")}</span>
               </div>
               <div className="dash-action-card">
                 <div className="dash-action-left">

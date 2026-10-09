@@ -164,4 +164,19 @@ describe("integración: registro, login y sesión", () => {
 
     expect(session.status).toBe(401);
   });
+
+  test("login y validar sesión devuelven el idioma preferido del usuario", async () => {
+    const { app, state } = createAuthIntegrationApp();
+    await request(app).post("/register").send(NEW_USER);
+
+    const loginDefault = await request(app).post("/login").send({ correo: NEW_USER.correo, contrasena: NEW_USER.contrasena });
+    expect(loginDefault.body.usuario.idioma).toBe("es");
+
+    state.users[0].idioma = "en";
+    const login = await request(app).post("/login").send({ correo: NEW_USER.correo, contrasena: NEW_USER.contrasena });
+    expect(login.body.usuario.idioma).toBe("en");
+
+    const session = await request(app).get("/validar-sesion").set("Authorization", `Bearer ${login.body.token}`);
+    expect(session.body.user.idioma).toBe("en");
+  });
 });

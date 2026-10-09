@@ -1,23 +1,15 @@
-const HIGHLIGHT = {
-  titulo: "¿Por qué es importante el DS-160?",
-  texto: "Es el documento oficial sobre el cual el oficial consular basará el 90% de su decisión. Cada respuesta es evaluada algorítmicamente antes de tu entrevista. La precisión y consistencia son fundamentales.",
-};
+import useIdioma from "../hooks/useIdioma";
 
-const ETAPAS = [
-  { numero: 1, titulo: "Perfil", descripcion: "Comienza creando tu perfil en nuestra plataforma. Esto nos ayuda a adaptar los requisitos a tu situación específica (estudiante, turista, etc.)." },
-  { numero: 2, titulo: "Formulario DS-160", descripcion: "El formulario oficial y más importante. Aquí recopilamos tus datos personales, de viaje y antecedentes. Debe llenarse con honestidad absoluta." },
-  { numero: 3, titulo: "Revisión Experta", descripcion: "Nuestro equipo de asesores revisará tu DS-160 buscando inconsistencias, omisiones o posibles alertas que puedan causar rechazo." },
-  { numero: 4, titulo: "Pago y Citas", descripcion: "Deberás pagar la tarifa MRV ($185 USD) en el banco autorizado y agendar dos citas: una para huellas (CAS) y otra para entrevista consular." },
-  { numero: 5, titulo: "Preparación (Entrevista)", descripcion: "Te guiamos para recolectar los documentos necesarios y usamos nuestro simulador para prepararte emocional y mentalmente para la entrevista." },
-];
+const ETAPAS = [1, 2, 3, 4, 5];
 
 export default function InformationSection({ modoSenior = false }) {
+  const { t } = useIdioma();
   return (
     <section id="informacion" className="info-section" aria-labelledby="information-title">
       <header className="info-section__header">
-        <h2 id="information-title" style={{ fontSize: modoSenior ? "36px" : "var(--vg-section-title)" }}>Información del proceso</h2>
+        <h2 id="information-title" style={{ fontSize: modoSenior ? "36px" : "var(--vg-section-title)" }}>{t("info.title")}</h2>
         <p style={{ fontSize: modoSenior ? "19px" : "var(--vg-body-size)" }}>
-          Conoce los detalles de cada etapa para obtener tu visa B1/B2 sin contratiempos.
+          {t("info.subtitle")}
         </p>
       </header>
 
@@ -30,19 +22,19 @@ export default function InformationSection({ modoSenior = false }) {
           </svg>
         </span>
         <div>
-          <h3 style={{ fontSize: modoSenior ? "24px" : "var(--vg-card-title)" }}>{HIGHLIGHT.titulo}</h3>
-          <p style={{ fontSize: modoSenior ? "18px" : "var(--vg-body-size)" }}>{HIGHLIGHT.texto}</p>
+          <h3 style={{ fontSize: modoSenior ? "24px" : "var(--vg-card-title)" }}>{t("info.highlightTitle")}</h3>
+          <p style={{ fontSize: modoSenior ? "18px" : "var(--vg-body-size)" }}>{t("info.highlightText")}</p>
         </div>
       </article>
 
       <div className="info-section__grid">
-        {ETAPAS.map((etapa) => (
-          <article className="info-card" key={etapa.numero}>
+        {ETAPAS.map((numero) => (
+          <article className="info-card" key={numero}>
             <div className="info-card__header">
-              <span aria-hidden="true">{etapa.numero}</span>
-              <h3 style={{ fontSize: modoSenior ? "22px" : "var(--vg-card-title)" }}>{etapa.titulo}</h3>
+              <span aria-hidden="true">{numero}</span>
+              <h3 style={{ fontSize: modoSenior ? "22px" : "var(--vg-card-title)" }}>{t(`info.${numero}.title`)}</h3>
             </div>
-            <p style={{ fontSize: modoSenior ? "18px" : "var(--vg-body-size)" }}>{etapa.descripcion}</p>
+            <p style={{ fontSize: modoSenior ? "18px" : "var(--vg-body-size)" }}>{t(`info.${numero}.description`)}</p>
           </article>
         ))}
       </div>

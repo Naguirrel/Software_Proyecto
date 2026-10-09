@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Link, Navigate, Routes, Route, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { buildApiUrl } from "./config/api";
+import { setIdiomaPreferido } from "./i18n/translations";
 import AuthLayout from "./components/auth/AuthLayout";
 import RequireAdmin from "./components/admin/RequireAdmin";
 import RequireStaff from "./components/RequireStaff";
@@ -78,6 +79,7 @@ const SessionManager = {
       token: token || userData.token || null,
       loginTime: new Date().toISOString(),
     }));
+    if (userData.idioma) setIdiomaPreferido(userData.idioma);
   },
   getSession: () => {
     const session = localStorage.getItem("visaguide_session");

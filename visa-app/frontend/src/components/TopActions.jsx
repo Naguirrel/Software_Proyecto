@@ -1,8 +1,10 @@
 import NotificationCenter from "./NotificationCenter";
 import { Link } from "react-router-dom";
 import { preloadRoute } from "../routes/lazyRoutes";
+import useIdioma from "../hooks/useIdioma";
 
 export default function TopActions({ userId, unreadCount = 0 }) {
+  const { t } = useIdioma();
   const handleInformationClick = (event) => {
     if (window.location.pathname !== "/dashboard") return;
     event.preventDefault();
@@ -11,11 +13,11 @@ export default function TopActions({ userId, unreadCount = 0 }) {
   };
 
   return (
-    <div className="vg-top-actions" role="group" aria-label="Acciones rápidas">
+    <div className="vg-top-actions" role="group" aria-label={t("topActions.label")}>
       <Link
         className="vg-top-action-button"
         to="/dashboard#informacion"
-        aria-label="Ir a información del proceso"
+        aria-label={t("topActions.info")}
         onClick={handleInformationClick}
         onMouseEnter={() => preloadRoute("/dashboard")}
         onFocus={() => preloadRoute("/dashboard")}

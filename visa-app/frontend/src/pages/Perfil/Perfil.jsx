@@ -3,6 +3,8 @@ import { buildApiUrl } from "../../config/api";
 import Sidebar from "../../components/Sidebar";
 import useModoSenior from "../../hooks/useModoSenior";
 import useRequireAuth from "../../hooks/useRequireAuth";
+import useIdioma from "../../hooks/useIdioma";
+import { setIdiomaPreferido, translateValue } from "../../i18n/translations";
 import "../../styles/perfil.css";
 
 // ---------------------------------------------------------------------
@@ -104,6 +106,7 @@ const Icon = {
 export default function Perfil() {
   const { isValidating, session } = useRequireAuth();
   const modoSenior = useModoSenior();
+  const { idioma, t } = useIdioma();
   const s = getS();
 
   // Estado del servidor
@@ -142,11 +145,12 @@ export default function Perfil() {
           signal: controller.signal,
         });
 
-        if (!res.ok) throw new Error("No se pudo cargar tu perfil.");
+        if (!res.ok) throw new Error("profile.loadError");
 
         const data = await res.json();
         setUsuario(data.usuario);
         setTramite(data.tramite);
+        if (data.usuario?.preferencias?.idioma) setIdiomaPreferido(data.usuario.preferencias.idioma);
         setForm({
           nombre:   data.usuario.nombre   || "",
           telefono: data.usuario.telefono || "",
@@ -156,7 +160,7 @@ export default function Perfil() {
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error(err);
-        setErrorCarga(err.message || "Error al cargar el perfil.");
+        setErrorCarga("profile.loadError");
       } finally {
         if (!controller.signal.aborted) setCargando(false);
       }
@@ -187,7 +191,7 @@ export default function Perfil() {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "No se pudo guardar.");
+      throw new Error(err.error || t("profile.saveError"));
     }
 
     const data = await res.json();
@@ -212,7 +216,7 @@ export default function Perfil() {
         }
       }
       setEditando(false);
-      setMensajeOk("Cambios guardados correctamente.");
+      setMensajeOk("profile.saved");
     } catch (err) {
       alert(err.message);
     } finally {
@@ -255,13 +259,21 @@ export default function Perfil() {
   // Cambio de idioma (siempre en vivo)
   const handleCambiarIdioma = async (nuevoIdioma) => {
     if (!usuario) return;
+    const idiomaAnterior = usuario.preferencias.idioma;
     setUsuario({
       ...usuario,
       preferencias: { ...usuario.preferencias, idioma: nuevoIdioma },
     });
+    setIdiomaPreferido(nuevoIdioma);
     try {
       await actualizarServidor({ idioma: nuevoIdioma });
     } catch (err) {
+      // Revertir si falla
+      setUsuario((u) => u && ({
+        ...u,
+        preferencias: { ...u.preferencias, idioma: idiomaAnterior },
+      }));
+      setIdiomaPreferido(idiomaAnterior);
       alert(err.message);
     }
   };
@@ -274,7 +286,7 @@ export default function Perfil() {
       <div style={s.layout}>
         <Sidebar currentPage="perfil" />
         <main id="main-content" tabIndex="-1" className="vg-authenticated-page" style={s.main}>
-          <p style={s.loading}>Cargando perfil…</p>
+          <p style={s.loading}>{t("profile.loading")}</p>
         </main>
       </div>
     );
@@ -285,7 +297,7 @@ export default function Perfil() {
       <div style={s.layout}>
         <Sidebar currentPage="perfil" />
         <main id="main-content" tabIndex="-1" className="vg-authenticated-page" style={s.main}>
-          <p style={s.error}>{errorCarga || "No se pudo cargar el perfil."}</p>
+          <p style={s.error}>{t("profile.loadError")}</p>
         </main>
       </div>
     );
@@ -303,10 +315,10 @@ export default function Perfil() {
         <header style={s.header} className="perfil-header">
           <div>
             <h1 style={{ ...s.title, fontSize: modoSenior ? "44px" : "var(--vg-page-title)" }}>
-              Perfil de Usuario
+              {t("profile.title")}
             </h1>
             <p style={{ ...s.subtitle, fontSize: modoSenior ? "19px" : "var(--vg-body-size)" }}>
-              Gestiona tu información personal y los detalles de tu trámite.
+              {t("profile.subtitle")}
             </p>
           </div>
 
@@ -317,7 +329,7 @@ export default function Perfil() {
               onClick={() => setEditando(true)}
             >
               <Icon.pencil />
-              <span>Editar perfil</span>
+              <span>{t("profile.edit")}</span>
             </button>
           ) : (
             <div style={s.editActions}>
@@ -327,7 +339,7 @@ export default function Perfil() {
                 onClick={handleCancelarEdicion}
                 disabled={guardando}
               >
-                Cancelar
+                {t("profile.cancel")}
               </button>
               <button
                 type="button"
@@ -339,7 +351,7 @@ export default function Perfil() {
                 onClick={handleGuardarEdicion}
                 disabled={guardando}
               >
-                {guardando ? "Guardando…" : "Guardar cambios"}
+                {guardando ? t("profile.saving") : t("profile.save")}
               </button>
             </div>
           )}
@@ -347,7 +359,7 @@ export default function Perfil() {
 
         <hr style={s.divider} />
 
-        {mensajeOk && <div style={s.toastOk}>{mensajeOk}</div>}
+        {mensajeOk && <div style={s.toastOk}>{t(mensajeOk)}</div>}
 
         {/* ====================== GRID PRINCIPAL ====================== */}
         <section style={s.grid} className="perfil-grid">
@@ -364,9 +376,9 @@ export default function Perfil() {
                 <button
                   type="button"
                   style={s.avatarCameraBtn}
-                  aria-label="Cambiar foto de perfil"
+                  aria-label={t("profile.changePhoto")}
                   onClick={() =>
-                    alert("Próximamente podrás subir una foto de perfil.")
+                    alert(t("profile.photoSoon"))
                   }
                 >
                   <Icon.camera />
@@ -384,7 +396,7 @@ export default function Perfil() {
                   onChange={(e) =>
                     setForm({ ...form, nombre: e.target.value })
                   }
-                  placeholder="Tu nombre completo"
+                  placeholder={t("profile.namePlaceholder")}
                 />
               ) : (
                 <h2 style={{ ...s.userName, fontSize: fz("22px", "26px") }}>
@@ -393,7 +405,7 @@ export default function Perfil() {
               )}
 
               <p style={{ ...s.userRole, fontSize: fz("14px", "16px") }}>
-                Solicitante Principal
+                {t("profile.role")}
               </p>
 
               <hr style={s.softDivider} />
@@ -425,7 +437,7 @@ export default function Perfil() {
                 ) : (
                   <span style={{ ...s.contactText, fontSize: fz("14px", "16px") }}>
                     {usuario.telefono || (
-                      <span style={s.placeholderText}>Sin registrar</span>
+                      <span style={s.placeholderText}>{t("profile.notRegistered")}</span>
                     )}
                   </span>
                 )}
@@ -443,7 +455,7 @@ export default function Perfil() {
                       onChange={(e) =>
                         setForm({ ...form, ciudad: e.target.value })
                       }
-                      placeholder="Ciudad"
+                      placeholder={t("profile.city")}
                     />
                     <input
                       type="text"
@@ -452,13 +464,13 @@ export default function Perfil() {
                       onChange={(e) =>
                         setForm({ ...form, pais: e.target.value })
                       }
-                      placeholder="País"
+                      placeholder={t("profile.country")}
                     />
                   </div>
                 ) : (
                   <span style={{ ...s.contactText, fontSize: fz("14px", "16px") }}>
                     {[usuario.ciudad, usuario.pais].filter(Boolean).join(", ") || (
-                      <span style={s.placeholderText}>Sin registrar</span>
+                      <span style={s.placeholderText}>{t("profile.notRegistered")}</span>
                     )}
                   </span>
                 )}
@@ -474,31 +486,39 @@ export default function Perfil() {
                 <div style={s.tramiteTitleWrap}>
                   <Icon.shield />
                   <h2 style={{ ...s.tramiteTitle, fontSize: fz("18px", "21px") }}>
-                    Datos del trámite
+                    {t("profile.processTitle")}
                   </h2>
                 </div>
                 {tramite?.activo && (
                   <span style={s.activoPill}>
                     <span style={s.activoDot} aria-hidden="true" />
-                    ACTIVO
+                    {t("profile.active")}
                   </span>
                 )}
               </header>
 
               <div style={s.tramiteGrid}>
-                <DatoCard label="TIPO DE VISA" valor={tramite?.tipoVisa} s={s} />
-                <DatoCard label="CONSULADO"    valor={tramite?.consulado} s={s} />
+                <DatoCard
+                  label={t("profile.visaType")}
+                  valor={usuario.perfil ? translateValue(idioma, "visaType", usuario.perfil) : t("profile.notDefined")}
+                  s={s}
+                />
+                <DatoCard
+                  label={t("profile.consulate")}
+                  valor={tramite?.consulado === "Sin definir" ? t("profile.notDefined") : tramite?.consulado}
+                  s={s}
+                />
               </div>
 
               <div style={s.estadoCard}>
                 <div>
-                  <div style={s.datoLabel}>ESTADO ACTUAL</div>
+                  <div style={s.datoLabel}>{t("profile.currentStatus")}</div>
                   <div style={{ ...s.datoValor, fontSize: fz("16px", "19px") }}>
-                    {tramite?.etapaActual}
+                    {translateValue(idioma, "serverStage", tramite?.etapaActual)}
                   </div>
                 </div>
                 <div style={s.etapaText}>
-                  Etapa {tramite?.etapa} de {tramite?.totalEtapas}
+                  {t("profile.stageOf", { etapa: tramite?.etapa, total: tramite?.totalEtapas })}
                 </div>
               </div>
             </article>
@@ -506,23 +526,24 @@ export default function Perfil() {
             {/* ----- Preferencias de cuenta ----- */}
             <article style={s.prefCard}>
               <h2 style={{ ...s.prefTitle, fontSize: fz("18px", "21px") }}>
-                Preferencias de cuenta
+                {t("profile.preferences")}
               </h2>
 
               {/* Notificaciones por Email */}
               <div style={s.prefRow}>
                 <div style={s.prefText}>
                   <div style={{ ...s.prefRowTitle, fontSize: fz("15px", "17px") }}>
-                    Notificaciones por Email
+                    {t("profile.emailNotifications")}
                   </div>
                   <div style={{ ...s.prefRowDesc, fontSize: fz("13px", "15px") }}>
-                    Recibir alertas de actualizaciones y mensajes del asesor.
+                    {t("profile.emailNotificationsDesc")}
                   </div>
                 </div>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={usuario.preferencias.notificacionesEmail}
+                  aria-label={t("profile.emailNotifications")}
                   style={{
                     ...s.toggle,
                     backgroundColor: usuario.preferencias.notificacionesEmail
@@ -535,8 +556,8 @@ export default function Perfil() {
                     style={{
                       ...s.toggleKnob,
                       transform: usuario.preferencias.notificacionesEmail
-                        ? "translateX(22px)"
-                        : "translateX(2px)",
+                        ? "translateX(20px)"
+                        : "translateX(0)",
                     }}
                   />
                 </button>
@@ -546,14 +567,15 @@ export default function Perfil() {
               <div style={s.prefRow}>
                 <div style={s.prefText}>
                   <div style={{ ...s.prefRowTitle, fontSize: fz("15px", "17px") }}>
-                    Idioma de la interfaz
+                    {t("profile.language")}
                   </div>
                   <div style={{ ...s.prefRowDesc, fontSize: fz("13px", "15px") }}>
-                    Idioma preferido para la plataforma VisaGuide.
+                    {t("profile.languageDesc")}
                   </div>
                 </div>
                 <select
                   style={s.select}
+                  aria-label={t("profile.language")}
                   value={usuario.preferencias.idioma}
                   onChange={(e) => handleCambiarIdioma(e.target.value)}
                 >
@@ -567,8 +589,7 @@ export default function Perfil() {
             <div style={s.notice}>
               <span style={s.noticeIcon}><Icon.info /></span>
               <p style={{ ...s.noticeText, fontSize: fz("14px", "16px") }}>
-                Si necesitas cambiar el tipo de trámite o el país de solicitud,
-                por favor comunícate con tu asesor a través del chat.
+                {t("profile.notice")}
               </p>
             </div>
           </div>
@@ -581,7 +602,7 @@ export default function Perfil() {
           onClick={() => (window.location.href = "/chat")}
         >
           <Icon.help />
-          <span>Ayuda rápida</span>
+          <span>{t("profile.quickHelp")}</span>
         </button>
       </main>
     </div>
@@ -901,10 +922,13 @@ function getS() {
     transition: "background-color 0.2s",
     flexShrink: 0,
     padding: 0,
+    boxSizing: "border-box",
+    overflow: "hidden",
   },
   toggleKnob: {
     position: "absolute",
     top: "2px",
+    left: "2px",
     width: "22px",
     height: "22px",
     borderRadius: "50%",

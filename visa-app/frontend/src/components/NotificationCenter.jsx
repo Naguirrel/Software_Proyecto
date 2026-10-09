@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
+import useIdioma from "../hooks/useIdioma";
 
 export default function NotificationCenter({ userId, unreadCount = 0 }) {
+  const { t } = useIdioma();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,12 +36,12 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
         body: JSON.stringify({ userId }),
         signal: controller.signal,
       });
-      if (!response.ok) throw new Error("No se pudieron cargar las notificaciones.");
+      if (!response.ok) throw new Error("notifications.error");
       const data = await response.json();
       setNotifications(data.notificaciones || []);
     } catch (requestError) {
       if (requestError.name !== "AbortError") {
-        setError("No se pudieron cargar las notificaciones.");
+        setError("notifications.error");
       }
     } finally {
       if (!controller.signal.aborted) setLoading(false);
@@ -83,7 +85,7 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
         ref={triggerRef}
         type="button"
         className="vg-notification-trigger"
-        aria-label={unreadCount > 0 ? `Abrir notificaciones, ${unreadCount} sin leer` : "Abrir notificaciones"}
+        aria-label={unreadCount > 0 ? t("notifications.openUnread", { count: unreadCount }) : t("notifications.open")}
         aria-expanded={open}
         aria-controls="vg-notification-panel"
         onClick={togglePanel}
@@ -105,19 +107,19 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
           aria-labelledby="vg-notification-title"
         >
           <header className="vg-notification-panel__header">
-            <h2 id="vg-notification-title">Notificaciones</h2>
-            <button ref={closeRef} type="button" onClick={() => closePanel()} aria-label="Cerrar notificaciones">×</button>
+            <h2 id="vg-notification-title">{t("notifications.title")}</h2>
+            <button ref={closeRef} type="button" onClick={() => closePanel()} aria-label={t("notifications.close")}>×</button>
           </header>
           <div className="vg-notification-panel__body" aria-live="polite">
             {loading ? (
-              <p className="vg-notification-empty" role="status">Cargando notificaciones…</p>
+              <p className="vg-notification-empty" role="status">{t("notifications.loading")}</p>
             ) : error ? (
               <div className="vg-notification-empty" role="alert">
-                <p>{error}</p>
-                <button type="button" onClick={loadNotifications}>Reintentar</button>
+                <p>{t(error)}</p>
+                <button type="button" onClick={loadNotifications}>{t("notifications.retry")}</button>
               </div>
             ) : notifications.length === 0 ? (
-              <p className="vg-notification-empty">Sin notificaciones</p>
+              <p className="vg-notification-empty">{t("notifications.empty")}</p>
             ) : (
               <ul className="vg-notification-list">
                 {notifications.map((notification) => (
