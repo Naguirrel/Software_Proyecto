@@ -44,7 +44,7 @@ function mockAdminSession() {
   let adminSettings = { nombre_comercial: "VisaGuide", razon_social: "", sitio_web: "", idioma: "es", zona_horaria: "America/Guatemala", notificaciones_automaticas: true };
   let adminUsers = [
     { id: 1, nombre: "Admin General", correo: "admin@prueba.com", rol: "admin", perfil: null, activo: true, telefono: "", ciudad: "", pais: "", asignados: 0, pendientes: 0, asesor: null, actividad: "2026-08-10T10:00:00.000Z" },
-    { id: 4, nombre: "Cliente Prueba", correo: "cliente@example.com", rol: "cliente", perfil: "Turismo B1/B2", activo: true, telefono: "", ciudad: "", pais: "", asignados: 0, pendientes: 0, asesor: null, actividad: "2026-08-05T10:00:00.000Z" },
+    { id: 4, nombre: "Cliente Prueba", correo: "cliente@example.com", rol: "cliente", perfil: "Turismo B1/B2", activo: true, bloqueado: true, bloqueadoHasta: "2026-08-10T10:15:00.000Z", telefono: "", ciudad: "", pais: "", asignados: 0, pendientes: 0, asesor: null, actividad: "2026-08-05T10:00:00.000Z" },
     { id: 7, nombre: "Laura Vásquez", correo: "laura@visaguide.com", rol: "asesor", perfil: null, activo: true, telefono: "", ciudad: "", pais: "", asignados: 3, pendientes: 1, asesor: null, actividad: "2026-08-06T10:00:00.000Z" },
   ];
   vi.spyOn(globalThis, "fetch").mockImplementation((url, options = {}) => {
@@ -118,6 +118,11 @@ function mockAdminSession() {
       const target = adminUsers.find((item) => item.id === id);
       if (!target) return Promise.resolve({ ok: false, status: 404, json: async () => ({ error: "Usuario no encontrado" }) });
       return Promise.resolve({ ok: true, json: async () => ({ usuario: target, tramite: null, casos: [], actividad: [] }) });
+    }
+    if (/\/admin\/users\/\d+\/unlock$/.test(String(url)) && options.method === "POST") {
+      const id = Number(String(url).match(/\/admin\/users\/(\d+)\/unlock$/)[1]);
+      adminUsers = adminUsers.map((item) => item.id === id ? { ...item, bloqueado: false, bloqueadoHasta: null } : item);
+      return Promise.resolve({ ok: true, json: async () => ({ usuario: adminUsers.find((item) => item.id === id) }) });
     }
     if (/\/admin\/users\/\d+$/.test(String(url)) && options.method === "PATCH") {
       const id = Number(String(url).match(/\/admin\/users\/(\d+)$/)[1]);
@@ -595,6 +600,28 @@ describe("panel de administracion", () => {
 
     expect(await screen.findByText("Cliente Editado")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Editar usuario" })).not.toBeInTheDocument();
+  });
+
+  it("muestra las cuentas bloqueadas por intentos fallidos y permite desbloquearlas", async () => {
+    window.history.pushState({}, "", "/admin/users");
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const table = await screen.findByRole("table");
+    const clientRow = within(table).getByText("Cliente Prueba").closest("tr");
+    const adminRow = within(table).getByText("Admin General").closest("tr");
+    expect(within(clientRow).getByText("Bloqueado")).toBeInTheDocument();
+    expect(within(adminRow).queryByRole("button", { name: "Desbloquear" })).not.toBeInTheDocument();
+
+    await user.click(within(clientRow).getByRole("button", { name: "Desbloquear" }));
+
+    expect(await screen.findByText("Cuenta de Cliente Prueba desbloqueada.")).toBeInTheDocument();
+    await waitFor(() => expect(within(clientRow).queryByText("Bloqueado")).not.toBeInTheDocument());
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/admin/users/4/unlock"),
+      expect.objectContaining({ method: "POST" })
+    );
   });
 
   it("muestra DS-160, documentos y entrevistas en el detalle de un usuario solicitante", async () => {

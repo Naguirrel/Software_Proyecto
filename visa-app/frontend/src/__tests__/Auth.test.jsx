@@ -437,4 +437,68 @@ describe("pantallas de autenticación", () => {
 
     await waitFor(() => expect(window.location.pathname).toBe(destination));
   });
+
+  it("muestra el aviso de cuenta bloqueada y no lo oculta automáticamente", async () => {
+    const user = userEvent.setup();
+    const lockMessage = "Tu cuenta está bloqueada temporalmente por varios intentos fallidos. Intenta de nuevo en 15 minutos o usa el enlace que enviamos a tu correo para desbloquearla.";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 423,
+      json: async () => ({ error: lockMessage, minutosRestantes: 15 }),
+    });
+    window.history.pushState({}, "", "/login");
+
+    render(<App />);
+
+    await user.type(screen.getByLabelText("Correo electrónico"), "persona@example.com");
+    await user.type(screen.getByLabelText("Contraseña"), "secreto");
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await user.click(screen.getByRole("button", { name: /Ingresar/i }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(lockMessage));
+    vi.advanceTimersByTime(6000);
+    expect(screen.getByRole("alert")).toHaveTextContent(lockMessage);
+    vi.useRealTimers();
+  });
+
+  it("desbloquea la cuenta con el enlace del correo", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: "Tu cuenta fue desbloqueada. Ya puedes iniciar sesión." }),
+    });
+    window.history.pushState({}, "", "/desbloquear-cuenta?token=abc123");
+
+    render(<App />);
+
+    expect(await screen.findByText("Tu cuenta fue desbloqueada. Ya puedes iniciar sesión.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/desbloquear-cuenta"), expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ token: "abc123" }),
+    }));
+    expect(screen.getByRole("link", { name: "Ir a iniciar sesión" })).toBeInTheDocument();
+  });
+
+  it("explica cuando el enlace de desbloqueo es inválido y ofrece restablecer la contraseña", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "El enlace de desbloqueo es inválido o expiró" }),
+    });
+    window.history.pushState({}, "", "/desbloquear-cuenta?token=vencido");
+
+    render(<App />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("El enlace de desbloqueo es inválido o expiró");
+    expect(screen.getByRole("link", { name: "Restablecer mi contraseña" })).toHaveAttribute("href", "/recuperar-contrasena");
+  });
+
+  it("no llama al backend si el enlace de desbloqueo no trae token", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    window.history.pushState({}, "", "/desbloquear-cuenta");
+
+    render(<App />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("El enlace de desbloqueo no es válido.");
+    expect(fetchMock).not.toHaveBeenCalledWith(buildApiUrl("/desbloquear-cuenta"), expect.anything());
+  });
 });
