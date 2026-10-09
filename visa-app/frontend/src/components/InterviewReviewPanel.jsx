@@ -5,11 +5,11 @@ import { getAdminHeaders } from "../utils/adminHeaders";
 import { AdminSearch, AdminTabs } from "./admin/AdminShared";
 import AdminAdvancedFilters from "./admin/AdminAdvancedFilters";
 import { EMPTY_ADMIN_FILTERS, advisorOptions, matchesAdminFilters } from "../utils/adminFilters";
+import AuthenticatedAudio from "./AuthenticatedAudio";
 
 function getErrorMessage(data, fallback) { return data?.error || data?.message || fallback; }
 function getSessionResponses(session) { return Array.isArray(session?.responses) ? session.responses : []; }
 function getRecordedCount(session) { return getSessionResponses(session).filter((response) => response.recorded).length; }
-function getAudioSource(audio) { return audio?.url ? (audio.url.startsWith("/") ? buildApiUrl(audio.url) : audio.url) : ""; }
 
 function getSessionDate(value) {
   if (!value) return { date: "Sin fecha", time: "Hora no disponible" };
@@ -131,7 +131,7 @@ export default function InterviewReviewPanel({ showHeader = false, onToast }) {
       </div>
       <div className="question-feedback-reference__responses">
         <strong>Respuestas grabadas ({selectedRecordedCount} de {selectedResponses.length})</strong>
-        {selectedResponses.map((response, index) => <article key={`${selectedInterviewSession.id}-${response.id}`}><div><span>Pregunta {index + 1}</span><p>{response.text}</p></div>{getAudioSource(response.audio) ? <audio controls src={getAudioSource(response.audio)}>Tu navegador no puede reproducir este audio.</audio> : <small>Sin audio grabado</small>}</article>)}
+        {selectedResponses.map((response, index) => <article key={`${selectedInterviewSession.id}-${response.id}`}><div><span>Pregunta {index + 1}</span><p>{response.text}</p></div>{response.audio?.url ? <AuthenticatedAudio src={response.audio.url} /> : <small>Sin audio grabado</small>}</article>)}
       </div>
       <label>Retroalimentación del administrador<textarea value={feedbackDraft} onChange={(event) => setFeedbackDraft(event.target.value)} placeholder="Escribe observaciones claras para el usuario..." /></label>
       <div className="question-feedback-reference__actions"><label>Calificación<select value={ratingDraft} onChange={(event) => setRatingDraft(event.target.value)}><option value="">Sin calificación</option><option value="1">1 - Necesita mejorar</option><option value="2">2 - Básica</option><option value="3">3 - Aceptable</option><option value="4">4 - Buena</option><option value="5">5 - Excelente</option></select></label><button type="button" disabled={savingFeedback || !feedbackDraft.trim()} onClick={handleSaveFeedback}>{savingFeedback ? "Guardando..." : "Guardar retroalimentación"}</button></div>

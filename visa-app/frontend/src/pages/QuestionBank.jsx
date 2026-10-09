@@ -5,6 +5,7 @@ import InterviewReviewPanel from "../components/InterviewReviewPanel";
 import QuestionBankModal from "../components/QuestionBankModal";
 import QuestionBankToast from "../components/QuestionBankToast";
 import { buildApiUrl } from "../config/api";
+import { buildSessionHeaders } from "../utils/sessionAuth";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
 import { getAdminHeaders } from "../utils/adminHeaders";
@@ -95,7 +96,7 @@ export default function QuestionBank() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(buildApiUrl("/questions"), { signal });
+      const response = await fetch(buildApiUrl("/questions"), { signal, headers: buildSessionHeaders() });
       const data = await response.json();
 
       if (!response.ok) {

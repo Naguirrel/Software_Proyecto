@@ -377,6 +377,22 @@ img, video, canvas, svg {
   visibility: visible;
 }
 
+.vg-sidebar-locked-link {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+.vg-sidebar-workflow-note {
+  margin: 0 12px 10px;
+  border-radius: 8px;
+  background: var(--vg-warning-bg);
+  color: var(--vg-warning-text);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  padding: 8px 10px;
+}
+
 .vg-sidebar-expand-button {
   position: absolute;
   top: 73px;
@@ -473,6 +489,42 @@ img, video, canvas, svg {
   background: var(--vg-bg-alt) !important;
   color: var(--vg-text) !important;
 }
+
+.workflow-blocked {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 32px;
+}
+
+.workflow-blocked__card {
+  display: grid;
+  width: min(100%, 620px);
+  justify-items: center;
+  gap: 14px;
+  border: 1px solid var(--vg-border);
+  border-radius: 20px;
+  background: var(--vg-card);
+  padding: clamp(28px, 6vw, 56px);
+  text-align: center;
+  box-shadow: var(--vg-shadow-sm);
+}
+
+.workflow-blocked__card > svg { width: 48px; height: 48px; color: var(--vg-red); }
+.workflow-blocked__card > span { color: var(--vg-red); font-size: 12px; font-weight: 900; letter-spacing: .09em; }
+.workflow-blocked__card h1 { margin: 0; color: var(--vg-text); }
+.workflow-blocked__card p { margin: 0 0 8px; color: var(--vg-text-muted); line-height: 1.6; }
+.workflow-blocked__card a,
+.workflow-blocked > button {
+  border: 0;
+  border-radius: 10px;
+  background: var(--vg-red);
+  color: white;
+  padding: 12px 18px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.workflow-blocked__card .workflow-blocked__secondary { background: transparent; color: var(--vg-text-muted); }
 
 .vg-sidebar-logout:hover {
   background: rgba(225, 29, 72, .09) !important;

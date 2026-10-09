@@ -19,6 +19,7 @@ import {
   TOTAL_PROCESS_STEPS,
 } from "../utils/dashboardStats";
 import { buildSessionHeaders } from "../utils/sessionAuth";
+import useClientWorkflow from "../hooks/useClientWorkflow";
 import "../styles/dashboard.css";
 
 // Pulse animation for active node
@@ -38,6 +39,7 @@ export default function Dashboard() {
   const { isValidating, session } = useRequireAuth();
   const modoSenior = useModoSenior();
   const { idioma, t } = useIdioma();
+  const { workflow, isLoading: workflowLoading } = useClientWorkflow({ enabled: !isValidating && Boolean(session) });
   const activarTarjeta = (event, path) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -63,7 +65,7 @@ export default function Dashboard() {
   }, [isValidating]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || workflowLoading || !workflow) return;
     const controller = new AbortController();
     const fetchDashboardData = async () => {
       try {
@@ -76,15 +78,12 @@ export default function Dashboard() {
         const correoBody = JSON.stringify({ correo: session.correo });
         const postJson = {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: buildSessionHeaders({ "Content-Type": "application/json" }),
           body: correoBody,
         };
         const [tramiteResult, ds160Result, documentsResult] = await Promise.allSettled([
           fetchJson("/estado-tramite", postJson),
-          fetchJson("/ds160/load", {
-            method: "POST",
-            headers: buildSessionHeaders({ "Content-Type": "application/json" }),
-          }),
+          workflow.gates?.ds160?.allowed ? fetchJson("/ds160/load", postJson) : Promise.resolve(null),
           fetchJson("/documentos/listar", {
             method: "POST",
             headers: buildSessionHeaders({ "Content-Type": "application/json" }),
@@ -129,7 +128,7 @@ export default function Dashboard() {
     };
     fetchDashboardData();
     return () => controller.abort();
-  }, [session]);
+  }, [session, workflow, workflowLoading]);
 
   if (isValidating) {
     return (
@@ -152,18 +151,31 @@ export default function Dashboard() {
   const pct  = Math.round((etapaActual / TOTAL_PROCESS_STEPS) * 100);
   const r    = 26;
   const circ = 2 * Math.PI * r;
-  const nextAction = getDashboardNextAction({
+  const calculatedNextAction = getDashboardNextAction({
     stageNumber: etapaActual,
     ds160Percentage: stats.ds160Percentage,
     documentSummary,
     tramite,
     idioma,
   });
-  const quickCards = getDashboardQuickCards({
+  const nextAction = workflow && !workflow.assigned
+    ? {
+        priority: "ACCIÓN DISPONIBLE",
+        timeEstimate: "Mientras asignamos tu asesor",
+        title: "Prepara tus documentos",
+        description: "Puedes completar tu perfil y subir los documentos obligatorios. El resto del proceso se habilitará en orden cuando tengas un asesor asignado.",
+        path: "/documents",
+        buttonLabel: "Subir documentos",
+      }
+    : calculatedNextAction;
+  const calculatedQuickCards = getDashboardQuickCards({
     documentSummary,
     stageNumber: etapaActual,
     idioma,
   });
+  const quickCards = workflow && !workflow.assigned
+    ? calculatedQuickCards.filter((card) => card.path !== "/entrevista")
+    : calculatedQuickCards;
   const showLegacyQuickCards = false;
 
   const ETAPAS = getProcessTimeline(etapaActual, {}, idioma).map((step) => ({
@@ -232,6 +244,12 @@ export default function Dashboard() {
           <DashSkeleton />
         ) : (
           <>
+            {workflow && !workflow.assigned && (
+              <section className="dash-assignment-notice" role="status">
+                <strong>Tu solicitud está pendiente de asignación prioritaria</strong>
+                <p>Un administrador asignará un asesor según disponibilidad. Mientras tanto puedes actualizar tu perfil y completar tus documentos.</p>
+              </section>
+            )}
             {/* PROGRESS CARD */}
             <section className="dash-progress-card">
               <div className="dash-progress-body">

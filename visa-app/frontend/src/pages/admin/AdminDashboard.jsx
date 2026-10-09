@@ -56,6 +56,13 @@ export default function AdminDashboard() {
     {advisors.error && <p role="alert">No se pudieron cargar los asesores. <button type="button" onClick={advisors.retry}>Reintentar asesores</button></p>}
     <AdminResourceState {...resource} />
     {data && !resource.isLoading && !resource.error && <>
+      {data.resumen.sinAsignar > 0 && (
+        <Link className="admin-assignment-alert" to="/admin/assignments">
+          <UserRoundPlus aria-hidden="true" />
+          <span><strong>{data.resumen.sinAsignar} solicitudes esperan un asesor</strong><small>Estas asignaciones bloquean el avance de los solicitantes y deben atenderse primero.</small></span>
+          <b>Asignar ahora →</b>
+        </Link>
+      )}
       <section className="admin-stats-grid" aria-label="Indicadores administrativos">
         {headlineStats.map(([label, key, path, tone, icon]) => <article className={`admin-stat-card admin-stat-card--${tone}`} key={key}><span className="admin-stat-card__icon">{icon}</span><strong>{data.resumen[key]}</strong><h3>{label}</h3><Link to={path}>Ver detalles →</Link></article>)}
       </section>
@@ -65,7 +72,7 @@ export default function AdminDashboard() {
         <section className="admin-panel-card" aria-labelledby="recent-activity-title"><div className="admin-panel-card__header"><h2 id="recent-activity-title">Actividad reciente</h2></div>{data.actividad.length ? <ol className="admin-activity-list">{data.actividad.map((item) => <li key={item.id}><strong>{item.accion}</strong><span>{item.actor || "Sistema"}{item.detalle ? ` · ${item.detalle}` : ""}</span><small>{formatActivityDate(item.created_at)}</small>{item.destino && <Link to={item.destino}>Ver detalle</Link>}</li>)}</ol> : <div className="admin-empty-state"><strong>Sin actividad reciente</strong><p>Los eventos de la plataforma aparecerán aquí.</p></div>}</section>
       </div>
 
-      <section className="admin-panel-card admin-dashboard-section"><div className="admin-panel-card__header"><h2>Casos que requieren atención</h2><Link to="/admin/processes">Ver todos</Link></div>{data.atencion.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Solicitante</th><th>Tipo / etapa</th><th>Motivo</th><th>Acción</th></tr></thead><tbody>{data.atencion.map((item) => <tr key={item.id}><td><strong>{item.nombre}</strong><small>{item.correo}</small></td><td>{item.perfil || "Sin perfil"}<small>{item.etapa_actual}</small></td><td><span className="admin-status admin-status--correction">{item.asesor ? item.estado : "Sin asignar"}</span></td><td><Link className="admin-secondary-button" to={`/admin/processes/${item.id}`}>Resolver</Link></td></tr>)}</tbody></table></div> : <div className="admin-empty-state admin-empty-state--compact"><strong>No hay casos que requieran atención</strong></div>}</section>
+      <section className="admin-panel-card admin-dashboard-section"><div className="admin-panel-card__header"><h2>Casos que requieren atención</h2><Link to="/admin/processes">Ver todos</Link></div>{data.atencion.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Solicitante</th><th>Tipo / etapa</th><th>Motivo</th><th>Acción</th></tr></thead><tbody>{data.atencion.map((item) => <tr className={!item.asesor ? "admin-attention-row--urgent" : ""} key={item.id}><td><strong>{item.nombre}</strong><small>{item.correo}</small></td><td>{item.perfil || "Sin perfil"}<small>{item.etapa_actual}</small></td><td><span className="admin-status admin-status--correction">{item.asesor ? item.estado : "Sin asignar · bloqueado"}</span></td><td><Link className="admin-secondary-button" to={item.asesor ? `/admin/processes/${item.id}` : "/admin/assignments"}>{item.asesor ? "Resolver" : "Asignar"}</Link></td></tr>)}</tbody></table></div> : <div className="admin-empty-state admin-empty-state--compact"><strong>No hay casos que requieran atención</strong></div>}</section>
 
       <div className="admin-dashboard-grid admin-dashboard-grid--operations">
         <section className="admin-panel-card" aria-labelledby="pending-title"><div className="admin-panel-card__header"><h2 id="pending-title">Pendientes por atender</h2></div><div className="admin-pending-list">{data.pendientes.map((item) => <Link to={item.destino} key={item.id}><span>{item.label}</span><strong>{item.total}</strong><small>Revisar →</small></Link>)}</div></section>

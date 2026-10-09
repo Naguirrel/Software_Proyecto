@@ -108,7 +108,7 @@ export default function AdminProcesses() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
         },
-        body: JSON.stringify({ ...draft, asesorId: draft.asesorId || null }),
+        body: JSON.stringify({ ...draft, asesorId: draft.asesorId || null, expectedUpdatedAt: selected.updatedAt || null }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No fue posible actualizar el trámite.");
@@ -201,7 +201,7 @@ export default function AdminProcesses() {
               <button type="button" onClick={closeManager} aria-label="Cerrar gestión"><X aria-hidden="true" /></button>
             </header>
             <form onSubmit={saveProcess}>
-              <label>Asesor asignado<select value={draft.asesorId} onChange={(event) => setDraft({ ...draft, asesorId: event.target.value })}><option value="">Sin asignar</option>{advisors.map((advisor) => <option key={advisor.id} value={advisor.id}>{advisor.nombre}</option>)}</select></label>
+              <label>Asesor asignado<select value={draft.asesorId} onChange={(event) => setDraft({ ...draft, asesorId: event.target.value })}><option value="">Sin asignar</option>{advisors.map((advisor) => { const atCapacity = Number(advisor.capacidad) > 0 && Number(advisor.asignados) >= Number(advisor.capacidad); const unavailable = advisor.disponible === false || atCapacity; return <option key={advisor.id} value={advisor.id} disabled={unavailable && Number(draft.asesorId) !== Number(advisor.id)}>{advisor.nombre}{unavailable ? " · no disponible" : ""}</option>; })}</select></label>
               <label>Estado<select value={draft.estado} onChange={(event) => setDraft({ ...draft, estado: event.target.value })}>{STATES.map((status) => <option key={status}>{status}</option>)}</select></label>
               <label>Etapa actual<select value={draft.etapaActual} onChange={(event) => setDraft({ ...draft, etapaActual: event.target.value })}>{STAGES.map((stage) => <option key={stage}>{stage}</option>)}</select></label>
               {error && <p className="admin-feedback admin-feedback--error" role="alert">{error}</p>}

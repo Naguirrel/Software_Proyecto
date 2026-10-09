@@ -10,6 +10,7 @@ import {
   FileText,
   Folder,
   LayoutGrid,
+  LockKeyhole,
   LogOut,
   MessageSquare,
   Moon,
@@ -25,16 +26,17 @@ import TopActions from "./TopActions";
 import VisaGuideLogo from "./VisaGuideLogo";
 import EmailVerificationNotice from "./EmailVerificationNotice";
 import { preloadRoute } from "../routes/lazyRoutes";
+import useClientWorkflow from "../hooks/useClientWorkflow";
 
 const menuItems = [
   { id: "inicio", labelKey: "sidebar.inicio", icon: <LayoutGrid size={20} strokeWidth={2} aria-hidden="true" />, path: "/dashboard" },
-  { id: "ds160", labelKey: "sidebar.ds160", icon: <FileText size={20} strokeWidth={2} aria-hidden="true" />, path: "/ds160" },
+  { id: "ds160", labelKey: "sidebar.ds160", gate: "ds160", icon: <FileText size={20} strokeWidth={2} aria-hidden="true" />, path: "/ds160" },
   { id: "cronologia", labelKey: "sidebar.cronologia", icon: <Clock3 size={20} strokeWidth={2} aria-hidden="true" />, path: "/cronologia" },
   { id: "documentos", labelKey: "sidebar.documentos", icon: <Folder size={20} strokeWidth={2} aria-hidden="true" />, path: "/documents" },
-  { id: "pagos", labelKey: "sidebar.pagos", icon: <CreditCard size={20} strokeWidth={2} aria-hidden="true" />, path: "/pagos" },
-  { id: "citas", labelKey: "sidebar.citas", icon: <CalendarDays size={20} strokeWidth={2} aria-hidden="true" />, path: "/citas" },
-  { id: "entrevista", labelKey: "sidebar.entrevista", icon: <Users size={20} strokeWidth={2} aria-hidden="true" />, path: "/entrevista" },
-  { id: "chat", labelKey: "sidebar.chat", icon: <MessageSquare size={20} strokeWidth={2} aria-hidden="true" />, path: "/chat" },
+  { id: "pagos", labelKey: "sidebar.pagos", gate: "payment", icon: <CreditCard size={20} strokeWidth={2} aria-hidden="true" />, path: "/pagos" },
+  { id: "citas", labelKey: "sidebar.citas", gate: "appointment", icon: <CalendarDays size={20} strokeWidth={2} aria-hidden="true" />, path: "/citas" },
+  { id: "entrevista", labelKey: "sidebar.entrevista", gate: "interview", icon: <Users size={20} strokeWidth={2} aria-hidden="true" />, path: "/entrevista" },
+  { id: "chat", labelKey: "sidebar.chat", gate: "chat", icon: <MessageSquare size={20} strokeWidth={2} aria-hidden="true" />, path: "/chat" },
 ];
 
 const staffMenuItem = { id: "gestion-consular", labelKey: "sidebar.gestionConsular", icon: <CreditCard size={20} strokeWidth={2} aria-hidden="true" />, path: "/gestion-consular" };
@@ -60,6 +62,8 @@ export default function Sidebar({ currentPage }) {
 
   const [usuario, setUsuario] = useState(readUsuario);
   const [noLeidas, setNoLeidas] = useState(0);
+  const isClient = usuario?.rol === "cliente";
+  const { workflow } = useClientWorkflow({ enabled: isClient });
 
   useEffect(() => {
     document.body.classList.add("vg-has-top-actions");
@@ -220,10 +224,32 @@ export default function Sidebar({ currentPage }) {
         <div id="vg-sidebar-content" className="vg-sidebar-content">
         <nav style={s.nav}>
           <p className="vg-sidebar-label" style={s.menuLabel}>{t("sidebar.menu")}</p>
+          {isClient && workflow && !workflow.assigned && (
+            <p className="vg-sidebar-label vg-sidebar-workflow-note">Asesor pendiente · documentos habilitados</p>
+          )}
           <ul style={s.menuList}>
             {(usuario?.rol === "asesor" ? [menuItems[0], staffMenuItem, ...menuItems.slice(1)] : menuItems).map((item) => {
               const isActive = currentPage === item.id;
               const label = t(item.labelKey);
+              const itemGate = item.gate ? workflow?.gates?.[item.gate] : null;
+              const isLocked = Boolean(isClient && item.gate && (!workflow || !itemGate?.allowed));
+              if (isLocked) {
+                return (
+                  <li key={item.id}>
+                    <span
+                      className="vg-sidebar-locked-link"
+                      style={s.menuItem}
+                      aria-disabled="true"
+                      data-tooltip={itemGate?.reason || "Validando etapa…"}
+                      title={itemGate?.reason || "Validando etapa…"}
+                    >
+                      <span style={s.menuIcon}>{item.icon}</span>
+                      <span className="vg-sidebar-label" style={{ ...s.menuText, fontSize: modoSenior ? "17px" : "14px" }}>{label}</span>
+                      <LockKeyhole className="vg-sidebar-label" size={15} aria-hidden="true" />
+                    </span>
+                  </li>
+                );
+              }
               return (
                 <li key={item.id}>
                   <Link

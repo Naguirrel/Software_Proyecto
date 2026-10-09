@@ -65,6 +65,27 @@ jest.mock("../storage", () => ({
 function defaultQueryHandler(sql, values) {
   const normalized = String(sql).replace(/\s+/g, " ").trim();
 
+  if (normalized.includes("SELECT u.id_usuario, u.perfil") && normalized.includes("AS appointment_scheduled")) {
+    return Promise.resolve({
+      rows: [{
+        id_usuario: values[0],
+        perfil: "turismo_negocios",
+        id_tramite: 80,
+        id_asesor: 9,
+        estado: "En proceso",
+        etapa_actual: "Formulario DS-160",
+        progreso: 17,
+        ds160_complete: true,
+        required_documents_uploaded: 3,
+        required_documents_approved: 3,
+        payment_started: true,
+        consular_paid: true,
+        appointment_scheduled: true,
+        interview_started: false,
+      }],
+    });
+  }
+
   if (normalized.includes("SELECT COUNT(*)::int AS total FROM question_bank")) {
     return Promise.resolve({ rows: [{ total: 1 }] });
   }
@@ -1297,7 +1318,7 @@ describe("app endpoints", () => {
   });
 
   test("GET /questions lista preguntas desde el servicio", async () => {
-    const response = await request(app).get("/questions");
+    const response = await request(app).get("/questions").set("Authorization", `Bearer ${adminToken}`);
 
     expect(response.status).toBe(200);
     expect(response.body.questions).toHaveLength(1);
@@ -1313,7 +1334,7 @@ describe("app endpoints", () => {
       return defaultQueryHandler(sql, values);
     });
 
-    const response = await request(app).get("/questions/random?count=4&exclude=intro").expect(200);
+    const response = await request(app).get("/questions/random?count=4&exclude=intro").set("Authorization", `Bearer ${adminToken}`).expect(200);
     expect(response.body.questions).toHaveLength(4);
     expect(new Set(response.body.questions.map((item) => item.id)).size).toBe(4);
     expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("ORDER BY RANDOM()"), [[], ["viaje"], null, 4]);
@@ -1334,6 +1355,7 @@ describe("app endpoints", () => {
 
     const response = await request(app)
       .get("/questions/random")
+      .set("Authorization", `Bearer ${adminToken}`)
       .query({ count: 4, exclude: "intro", excludeText: intro })
       .expect(200);
     expect(response.body.questions).toHaveLength(4);
@@ -1345,16 +1367,16 @@ describe("app endpoints", () => {
   });
 
   test("GET /questions/random valida parámetros y falta de elegibles", async () => {
-    const invalidCount = await request(app).get("/questions/random?count=0").expect(400);
+    const invalidCount = await request(app).get("/questions/random?count=0").set("Authorization", `Bearer ${adminToken}`).expect(400);
     expect(invalidCount.body.error).toMatch(/count/);
-    await request(app).get("/questions/random?count=4&exclude=id:0").expect(400);
-    await request(app).get("/questions/random?count=4&excludeText=").expect(400);
+    await request(app).get("/questions/random?count=4&exclude=id:0").set("Authorization", `Bearer ${adminToken}`).expect(400);
+    await request(app).get("/questions/random?count=4&excludeText=").set("Authorization", `Bearer ${adminToken}`).expect(400);
 
     mockQuery.mockImplementation((sql, values) => {
       if (String(sql).includes("FROM eligible")) return Promise.resolve({ rows: [] });
       return defaultQueryHandler(sql, values);
     });
-    const insufficient = await request(app).get("/questions/random?count=4&exclude=intro").expect(409);
+    const insufficient = await request(app).get("/questions/random?count=4&exclude=intro").set("Authorization", `Bearer ${adminToken}`).expect(409);
     expect(insufficient.body.error).toMatch(/No hay suficientes preguntas activas elegibles/);
   });
 
@@ -1462,6 +1484,7 @@ describe("app endpoints", () => {
   test("POST /interview-sessions crea una sesion sin usar R2 real cuando no hay archivos", async () => {
     const response = await request(app)
       .post("/interview-sessions")
+      .set("Authorization", `Bearer ${adminToken}`)
       .field(
         "session",
         JSON.stringify({
@@ -1491,6 +1514,7 @@ describe("app endpoints", () => {
   test("POST /interview-sessions guarda audios con storage y expone URL del backend", async () => {
     const response = await request(app)
       .post("/interview-sessions")
+      .set("Authorization", `Bearer ${adminToken}`)
       .field(
         "session",
         JSON.stringify({
@@ -1527,6 +1551,7 @@ describe("app endpoints", () => {
   test("POST /interview-sessions rechaza audio con extension no permitida", async () => {
     const response = await request(app)
       .post("/interview-sessions")
+      .set("Authorization", `Bearer ${adminToken}`)
       .field(
         "session",
         JSON.stringify({
@@ -1563,7 +1588,8 @@ describe("app endpoints", () => {
     });
 
     const response = await request(app)
-      .get("/interview-sessions/30/audio/purpose");
+      .get("/interview-sessions/30/audio/purpose")
+      .set("Authorization", `Bearer ${adminToken}`);
 
     expect(response.status).toBe(200);
     expect(response.headers["content-type"]).toMatch(/^audio\/webm/);

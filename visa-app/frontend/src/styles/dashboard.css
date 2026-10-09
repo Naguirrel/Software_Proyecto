@@ -567,3 +567,15 @@
     padding: 20px;
   }
 }
+.dash-assignment-notice {
+  margin-bottom: 22px;
+  border: 1px solid color-mix(in srgb, var(--vg-red) 34%, var(--vg-border));
+  border-left: 5px solid var(--vg-red);
+  border-radius: 14px;
+  background: var(--vg-card);
+  padding: 18px 20px;
+  box-shadow: var(--vg-shadow-sm);
+}
+
+.dash-assignment-notice strong { color: var(--vg-text); font-size: 17px; }
+.dash-assignment-notice p { margin: 6px 0 0; color: var(--vg-text-muted); line-height: 1.55; }

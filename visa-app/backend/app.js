@@ -22,6 +22,7 @@ const createAdminManagementRoutes = require("./routes/adminManagementRoutes");
 const createConsularRoutes = require("./routes/consularRoutes");
 const createAdvisorRoutes = require("./routes/advisorRoutes");
 const createChatRoutes = require("./routes/chatRoutes");
+const { createWorkflowRoutes, createWorkflowStepMiddleware } = require("./routes/workflowRoutes");
 const { createRoleMiddleware, createSessionMiddleware, issueSessionToken } = require("./auth");
 const createInterviewSessionService = require("./services/interviewSessionService");
 const { createQuestionBankService } = require("./services/questionBankService");
@@ -340,7 +341,8 @@ questionBankService.seedInitialQuestions().catch((error) => {
 });
 
 const interviewSessionService = createInterviewSessionService(pool);
-interviewSessionService.ensureSchema().catch((error) => {
+const interviewSchemaReady = interviewSessionService.ensureSchema();
+interviewSchemaReady.catch((error) => {
   console.error("ERROR INTERVIEW SESSION SCHEMA:", error);
 });
 
@@ -359,6 +361,13 @@ const consularSchemaReady = consularPaymentService.ensureSchema()
 consularSchemaReady.catch((error) => {
   console.error("ERROR CONSULAR MODULE SCHEMA:", error);
 });
+const workflowSchemaReady = Promise.all([
+  adminSchemaReady,
+  documentSchemaReady,
+  interviewSchemaReady,
+  consularSchemaReady,
+]);
+const requireWorkflowStep = createWorkflowStepMiddleware(pool, { schemaReady: workflowSchemaReady });
 
 const activityLogService = createActivityLogService(pool);
 activityLogService.ensureSchema().catch((error) => {
@@ -443,17 +452,19 @@ app.get("/", (req, res) => {
   res.send("Backend funcionando");
 });
 
-app.use("/interview-sessions", createInterviewSessionRoutes(pool, { requireAdmin, notificacionService, activityLogService }));
-app.use("/questions", createQuestionBankRoutes(pool, { requireAdmin }));
+app.use("/interview-sessions", createInterviewSessionRoutes(pool, { requireAdmin, requireSession, requireWorkflowStep, notificacionService, activityLogService }));
+app.use("/questions", createQuestionBankRoutes(pool, { requireAdmin, requireSession, requireWorkflowStep }));
 app.use("/", createPerfilRoutes(pool, { userSchemaReady, tramiteSchemaReady, activityLogService, notificacionService }));
 app.use("/", createAuthRoutes(pool, { userSchemaReady, tramiteSchemaReady, passwordResetSchemaReady, emailVerificationSchemaReady, loginSecuritySchemaReady, testUsersReady, requireSession, activityLogService }));
 app.use("/notificaciones", createNotificacionRoutes(pool, { requireSession, requireAdmin }));
 app.use("/chat", createChatRoutes(pool, { requireSession }));
+app.use("/workflow", createWorkflowRoutes(pool, { requireSession, schemaReady: workflowSchemaReady }));
 app.use("/", createDocumentRoutes(pool, { documentSchemaReady, activityLogService, requireSession }));
-app.use("/", createDs160Routes(pool, { activityLogService, notificacionService, requireSession }));
+app.use("/", createDs160Routes(pool, { activityLogService, notificacionService, requireSession, requireWorkflowStep }));
 app.use("/", createConsularRoutes({
   requireSession,
   requireStaff,
+  requireWorkflowStep,
   paymentService: consularPaymentService,
   appointmentService: consularAppointmentService,
   schemaReady: consularSchemaReady,

@@ -1,6 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
-const createProcessChangeHistoryService = require("../services/processChangeHistoryService");
+const createAdvisorAssignmentService = require("../services/advisorAssignmentService");
 const { parseAdminSearch, buildDashboardCohort } = require("../services/adminSearchFilter");
 const createActivityLogService = require("../services/activityLogService");
 const createEmailReminderService = require("../services/emailReminderService");
@@ -43,7 +43,7 @@ function presentUser(row) {
 
 module.exports = function createAdminManagementRoutes(pool, { requireAdmin, schemaReady, notificacionService, activityLogService, emailReminderService }) {
   const router = express.Router();
-  const processHistoryService = createProcessChangeHistoryService(pool);
+  const advisorAssignmentService = createAdvisorAssignmentService(pool);
   const activeActivityLogService = activityLogService || createActivityLogService(pool);
   const activeEmailReminderService = emailReminderService || createEmailReminderService(pool);
   router.use(requireAdmin);
@@ -189,13 +189,13 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
             FROM interview_sessions i
           ) actividad
           ORDER BY actividad.created_at DESC LIMIT 10`),
-        query(`SELECT t.id_tramite AS id, t.estado, t.etapa_actual,
+        query(`SELECT t.id_tramite AS id, t.estado, t.etapa_actual, t.created_at,
           applicant.nombre, applicant.correo, applicant.perfil,
           advisor.nombre AS asesor
           FROM tramite t JOIN usuario applicant ON applicant.id_usuario = t.id_usuario
           LEFT JOIN usuario advisor ON advisor.id_usuario = t.id_asesor
           WHERE t.id_asesor IS NULL OR t.estado = 'Pendiente'
-          ORDER BY t.id_asesor NULLS FIRST, t.id_tramite DESC LIMIT 8`),
+          ORDER BY t.id_asesor NULLS FIRST, t.created_at ASC NULLS FIRST, t.id_tramite ASC LIMIT 8`),
       ]);
       const row = summary.rows[0] || {};
       const total = number(row.solicitudes_total);
@@ -439,7 +439,7 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
       const [cases, advisors] = await Promise.all([
         pool.query(`SELECT t.id_tramite AS id, t.estado, t.etapa_actual, t.progreso, t.created_at,
           u.nombre, u.correo, u.perfil FROM tramite t JOIN usuario u ON u.id_usuario = t.id_usuario
-          WHERE t.id_asesor IS NULL ORDER BY t.id_tramite DESC`),
+          WHERE t.id_asesor IS NULL ORDER BY t.created_at ASC NULLS FIRST, t.id_tramite ASC`),
         pool.query(`SELECT u.id_usuario AS id, u.nombre, u.correo, u.capacidad_asesor AS capacidad,
           u.disponible_asesor AS disponible, COUNT(t.id_tramite) AS asignados
           FROM usuario u LEFT JOIN tramite t ON t.id_asesor = u.id_usuario
@@ -458,31 +458,16 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
     if (!tramiteId || !asesorId) return res.status(400).json({ error: "Trámite y asesor son obligatorios" });
     try {
       await schemaReady;
-      const advisor = await pool.query("SELECT id_usuario, nombre FROM usuario WHERE id_usuario = $1 AND rol = 'asesor' AND activo = TRUE", [asesorId]);
-      if (!advisor.rows.length) return res.status(400).json({ error: "Asesor no disponible" });
-      const currentResult = await pool.query(
-        "SELECT id_tramite, id_usuario, id_asesor FROM tramite WHERE id_tramite = $1 LIMIT 1",
-        [tramiteId]
-      );
-      const currentProcess = currentResult.rows[0];
-      if (!currentProcess || currentProcess.id_asesor !== null) {
-        return res.status(409).json({ error: "El trámite ya fue asignado o no existe" });
-      }
-
-      const result = await pool.query("UPDATE tramite SET id_asesor = $1, updated_at = CURRENT_TIMESTAMP WHERE id_tramite = $2 AND id_asesor IS NULL RETURNING id_tramite, id_usuario, id_asesor", [asesorId, tramiteId]);
-      if (!result.rows.length) return res.status(409).json({ error: "El trámite ya fue asignado o no existe" });
-      await processHistoryService.recordChanges({
+      const assignment = await advisorAssignmentService.assignUnassigned({
         processId: tramiteId,
+        advisorId: asesorId,
         changedBy: req.auth?.id_usuario || null,
-        changes: [
-          processHistoryService.buildChange("id_asesor", currentProcess.id_asesor, result.rows[0].id_asesor),
-        ],
       });
-      await logActivity(req.auth.id_usuario, "Solicitud asignada", `Trámite ${tramiteId} → ${advisor.rows[0].nombre}`);
+      await logActivity(req.auth.id_usuario, "Solicitud asignada", `Trámite ${tramiteId} → ${assignment.advisor.nombre}`);
       await activeActivityLogService.logActivity({
         req,
         actor: req.auth,
-        userId: result.rows[0].id_usuario,
+        userId: assignment.process.id_usuario,
         adminId: req.auth?.id_usuario,
         userEmail: req.auth?.correo,
         role: req.auth?.rol || "admin",
@@ -492,13 +477,13 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
         description: "Asesor asignado a trámite",
         metadata: {
           asesorId,
-          asesorNombre: advisor.rows[0].nombre,
+          asesorNombre: assignment.advisor.nombre,
         },
       });
-      if (notificacionService && result.rows[0].id_usuario) {
+      if (notificacionService && assignment.process.id_usuario) {
         try {
           await notificacionService.crearNotificacion({
-            userId: result.rows[0].id_usuario,
+            userId: assignment.process.id_usuario,
             titulo: "Asesor asignado",
             mensaje: "Se te asigno un asesor para acompanar tu tramite.",
             tipo: "info",
@@ -510,6 +495,7 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
       }
       res.json({ message: "Solicitud asignada correctamente" });
     } catch (error) {
+      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
       console.error("ERROR CREATE ASSIGNMENT:", error);
       res.status(500).json({ error: "No fue posible asignar la solicitud" });
     }

@@ -43,6 +43,15 @@ npm run dev
 
 Configura las variables de `.env.example`. Las obligatorias son la conexión PostgreSQL (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) y `SESSION_SECRET`.
 
+### Actualizaciones de base de datos
+
+`init.sql` prepara instalaciones nuevas. Para una base existente, aplica las migraciones pendientes antes de desplegar el backend:
+
+```bash
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/migrations/001_advisor_communication.sql
+```
+
 ## Autenticación
 
 `POST /login` devuelve el token de sesión. Los endpoints protegidos reciben:

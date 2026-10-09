@@ -15,12 +15,21 @@ const authState = vi.hoisted(() => ({
   },
 }));
 
+const workflowState = vi.hoisted(() => ({
+  workflow: { assigned: true, gates: { ds160: { allowed: true } } },
+  isLoading: false,
+}));
+
 vi.mock("../hooks/useRequireAuth", () => ({
   default: () => authState,
 }));
 
 vi.mock("../hooks/useModoSenior", () => ({
   default: () => false,
+}));
+
+vi.mock("../hooks/useClientWorkflow", () => ({
+  default: () => workflowState,
 }));
 
 vi.mock("../components/Sidebar", () => ({
@@ -37,6 +46,10 @@ describe("Dashboard", () => {
         correo: "ana@example.com",
         perfil: "turismo_negocios",
       },
+    });
+    Object.assign(workflowState, {
+      workflow: { assigned: true, gates: { ds160: { allowed: true } } },
+      isLoading: false,
     });
   });
 

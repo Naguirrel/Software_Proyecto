@@ -1,5 +1,6 @@
 const express = require("express");
 const createProcessChangeHistoryService = require("../services/processChangeHistoryService");
+const createAdvisorAssignmentService = require("../services/advisorAssignmentService");
 
 const VALID_STATES = new Set(["En proceso", "Pendiente", "Aprobado", "Inactivo", "Completado"]);
 const STAGES = {
@@ -196,6 +197,7 @@ async function notifyProcessUpdates(notificacionService, { processId, userId, pr
 module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaReady, notificacionService, activityLogService }) {
   const router = express.Router();
   const processHistoryService = createProcessChangeHistoryService(pool);
+  const advisorAssignmentService = createAdvisorAssignmentService(pool);
 
   router.use(requireAdmin);
 
@@ -215,9 +217,13 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
           ORDER BY t.id_tramite DESC
         `),
         pool.query(`
-          SELECT id_usuario AS id, nombre, correo
-          FROM usuario
-          WHERE rol = 'asesor'
+          SELECT advisor.id_usuario AS id, advisor.nombre, advisor.correo,
+                 advisor.capacidad_asesor AS capacidad,
+                 advisor.disponible_asesor AS disponible,
+                 (SELECT COUNT(*)::int FROM tramite assigned
+                  WHERE assigned.id_asesor = advisor.id_usuario) AS asignados
+          FROM usuario advisor
+          WHERE advisor.rol = 'asesor' AND advisor.activo = TRUE
           ORDER BY nombre
         `),
       ]);
@@ -338,7 +344,7 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
 
   router.put("/:id", async (req, res) => {
     const processId = Number(req.params.id);
-    const { estado, etapaActual, asesorId } = req.body || {};
+    const { estado, etapaActual, asesorId, expectedUpdatedAt } = req.body || {};
 
     if (!Number.isInteger(processId) || processId <= 0) {
       return res.status(400).json({ error: "Trámite inválido" });
@@ -357,55 +363,17 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
 
     try {
       await schemaReady;
-      const currentResult = await pool.query(
-        `SELECT id_tramite, id_usuario, estado, etapa_actual, id_asesor
-         FROM tramite
-         WHERE id_tramite = $1
-         LIMIT 1`,
-        [processId]
-      );
-      const currentProcess = currentResult.rows[0];
-      if (!currentProcess) return res.status(404).json({ error: "TrÃ¡mite no encontrado" });
-
-      if (normalizedAdvisorId !== null) {
-        const advisor = await pool.query(
-          "SELECT id_usuario FROM usuario WHERE id_usuario = $1 AND rol = 'asesor'",
-          [normalizedAdvisorId]
-        );
-        if (!advisor.rows.length) return res.status(400).json({ error: "El asesor seleccionado no existe" });
-      }
-
-      const result = await pool.query(
-        `UPDATE tramite
-         SET estado = $1, etapa_actual = $2, progreso = $3, id_asesor = $4
-         WHERE id_tramite = $5
-         RETURNING id_tramite`,
-        [estado, etapaActual, STAGES[etapaActual], normalizedAdvisorId, processId]
-      );
-      if (!result.rows.length) return res.status(404).json({ error: "Trámite no encontrado" });
-
-      const refreshed = await pool.query(`
-        SELECT t.*, applicant.nombre AS solicitante_nombre,
-               applicant.correo AS solicitante_correo,
-               applicant.perfil AS solicitante_perfil,
-               advisor.nombre AS asesor_nombre,
-               advisor.correo AS asesor_correo
-        FROM tramite t
-        JOIN usuario applicant ON applicant.id_usuario = t.id_usuario
-        LEFT JOIN usuario advisor ON advisor.id_usuario = t.id_asesor
-        WHERE t.id_tramite = $1
-      `, [processId]);
-
-      const refreshedProcess = refreshed.rows[0];
-      await processHistoryService.recordChanges({
+      const update = await advisorAssignmentService.updateProcess({
         processId,
+        state: estado,
+        stage: etapaActual,
+        progress: STAGES[etapaActual],
+        advisorId: normalizedAdvisorId,
         changedBy: req.auth?.id_usuario || null,
-        changes: [
-          processHistoryService.buildChange("estado", currentProcess.estado, refreshedProcess.estado),
-          processHistoryService.buildChange("etapa_actual", currentProcess.etapa_actual, refreshedProcess.etapa_actual),
-          processHistoryService.buildChange("id_asesor", currentProcess.id_asesor, refreshedProcess.id_asesor),
-        ],
+        expectedUpdatedAt,
       });
+      const currentProcess = update.previous;
+      const refreshedProcess = update.process;
 
       await notifyProcessUpdates(notificacionService, {
         processId,
@@ -437,6 +405,7 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
 
       res.json({ message: "Trámite actualizado correctamente", tramite: presentProcess(refreshedProcess) });
     } catch (error) {
+      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
       console.error("ERROR UPDATE ADMIN PROCESS:", error);
       res.status(500).json({ error: "No fue posible actualizar el trámite" });
     }

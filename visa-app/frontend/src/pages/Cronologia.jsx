@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useIdioma from "../hooks/useIdioma";
 import useRequireAuth from "../hooks/useRequireAuth";
+import useClientWorkflow from "../hooks/useClientWorkflow";
 import { SkeletonList } from "../components/SkeletonCard";
 import {
   calculateDs160Percentage,
@@ -148,6 +149,9 @@ function EtapaItem({ etapa, esUltima, senior }) {
 
 export default function Cronologia() {
   const { isValidating, session } = useRequireAuth();
+  const { workflow, isLoading: workflowLoading } = useClientWorkflow({
+    enabled: !isValidating && Boolean(session),
+  });
   const senior = useModoSenior();
   const { idioma, t } = useIdioma();
   const [progress, setProgress] = useState({ stage: 1, data: {} });
@@ -155,7 +159,7 @@ export default function Cronologia() {
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    if (isValidating) return undefined;
+    if (isValidating || workflowLoading || !workflow) return undefined;
 
     const controller = new AbortController();
     const fetchTimelineData = async () => {
@@ -178,15 +182,12 @@ export default function Cronologia() {
         const correoBody = JSON.stringify({ correo: session.correo || "" });
         const postJson = {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: buildSessionHeaders({ "Content-Type": "application/json" }),
           body: correoBody,
         };
         const [tramiteResult, ds160Result, documentsResult] = await Promise.allSettled([
           fetchJson("/estado-tramite", postJson),
-          fetchJson("/ds160/load", {
-            method: "POST",
-            headers: buildSessionHeaders({ "Content-Type": "application/json" }),
-          }),
+          workflow.gates?.ds160?.allowed ? fetchJson("/ds160/load", postJson) : Promise.resolve(null),
           fetchJson("/documentos/listar", {
             method: "POST",
             headers: buildSessionHeaders({ "Content-Type": "application/json" }),
@@ -228,9 +229,12 @@ export default function Cronologia() {
 
     fetchTimelineData();
     return () => controller.abort();
-  }, [isValidating, session]);
+  }, [isValidating, session, workflow, workflowLoading]);
 
-  const timeline = getProcessTimeline(progress.stage, progress.data, idioma);
+  const baseTimeline = getProcessTimeline(progress.stage, progress.data, idioma);
+  const timeline = workflow?.assigned
+    ? baseTimeline
+    : baseTimeline.map((stage) => ({ ...stage, action: null }));
 
   return (
     <div className="vg-layout">
@@ -248,13 +252,19 @@ export default function Cronologia() {
 
         <hr className="cron-divisor" />
 
+        {workflow && !workflow.assigned && (
+          <p className="cron-message cron-message--warning" role="status">
+            Tu solicitud está esperando asignación de asesor. Puedes completar el perfil y subir documentos; las etapas posteriores permanecerán bloqueadas.
+          </p>
+        )}
+
         {loadError && (
           <p className="cron-message cron-message--warning" role="alert">
             {t(loadError)}
           </p>
         )}
 
-        {isValidating || loading ? (
+        {isValidating || workflowLoading || loading ? (
           <SkeletonList variant="timeline" count={1} />
         ) : (
           <ol className="cron-timeline" aria-label={t("timeline.stagesLabel")}>

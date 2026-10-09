@@ -1,4 +1,28 @@
 function createInterviewSessionController(interviewSessionService, { notificacionService, activityLogService } = {}) {
+  function scopeSessionPayload(req) {
+    if (req.auth?.rol !== "cliente") return req.body.session;
+    let parsed;
+    try {
+      parsed = typeof req.body.session === "string"
+        ? JSON.parse(req.body.session)
+        : { ...(req.body.session || {}) };
+    } catch {
+      const error = new Error("Formato de sesión inválido");
+      error.statusCode = 400;
+      throw error;
+    }
+    parsed.user = {
+      id: req.auth.id_usuario,
+      nombre: req.auth.nombre,
+      correo: req.auth.correo,
+    };
+    return parsed;
+  }
+
+  function clientScope(req) {
+    return req.auth?.rol === "cliente" ? { userId: req.auth.id_usuario } : {};
+  }
+
   function handleError(res, error) {
     const status = error.statusCode || 500;
     const message =
@@ -14,7 +38,7 @@ function createInterviewSessionController(interviewSessionService, { notificacio
   async function createSession(req, res) {
     try {
       const session = await interviewSessionService.createSession(
-        req.body.session,
+        scopeSessionPayload(req),
         req.files || [],
         { baseUrl: `${req.protocol}://${req.get("host")}` }
       );
@@ -56,7 +80,7 @@ function createInterviewSessionController(interviewSessionService, { notificacio
   async function listUserSessions(req, res) {
     try {
       const sessions = await interviewSessionService.listUserSessions(
-        req.params.userId
+        req.auth?.rol === "cliente" ? req.auth.id_usuario : req.params.userId
       );
       return res.json({ sessions });
     } catch (error) {
@@ -66,7 +90,9 @@ function createInterviewSessionController(interviewSessionService, { notificacio
 
   async function listUserSessionsFromBody(req, res) {
     try {
-      const { userId } = req.body || {};
+      const { userId } = req.auth?.rol === "cliente"
+        ? { userId: req.auth.id_usuario }
+        : req.body || {};
       if (!userId) {
         return res.status(400).json({ error: "userId requerido en el body" });
       }
@@ -79,7 +105,7 @@ function createInterviewSessionController(interviewSessionService, { notificacio
 
   async function getSession(req, res) {
     try {
-      const session = await interviewSessionService.getSession(req.params.id);
+      const session = await interviewSessionService.getSession(req.params.id, clientScope(req));
       return res.json({ session });
     } catch (error) {
       return handleError(res, error);
@@ -92,7 +118,7 @@ function createInterviewSessionController(interviewSessionService, { notificacio
       if (!sessionId) {
         return res.status(400).json({ error: "sessionId requerido en el body" });
       }
-      const session = await interviewSessionService.getSession(sessionId);
+      const session = await interviewSessionService.getSession(sessionId, clientScope(req));
       return res.json({ session });
     } catch (error) {
       return handleError(res, error);
@@ -103,7 +129,8 @@ function createInterviewSessionController(interviewSessionService, { notificacio
     try {
       const audio = await interviewSessionService.getSessionAudio(
         req.params.id,
-        req.params.questionId
+        req.params.questionId,
+        clientScope(req)
       );
 
       if (audio.redirectUrl) {
