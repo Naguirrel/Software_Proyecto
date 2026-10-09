@@ -15,6 +15,7 @@ function presentLoginUser(row) {
     perfil: row.perfil || null,
     rol: row.rol || "cliente",
     emailVerificado: row.email_verificado !== false,
+    idioma: row.idioma === "en" ? "en" : "es",
   };
 }
 

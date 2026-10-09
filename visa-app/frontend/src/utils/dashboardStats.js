@@ -1,59 +1,31 @@
 import { buildAdvisorWhatsappUrl } from "./advisorContact";
+import { translate } from "../i18n/translations";
 
 const TOTAL_DS160_SECTIONS = 10;
 const REQUIRED_DOCUMENT_COUNT = 4;
 
-export const PROCESS_STEPS = [
-  {
-    number: 1,
-    shortLabel: "Perfil",
-    label: "Creación de perfil",
-    description: "Completa tu registro y selecciona el perfil de visa para iniciar tu solicitud.",
-    action: { label: "Completar perfil", path: "/perfil" },
-  },
-  {
-    number: 2,
-    shortLabel: "DS-160",
-    label: "Completar DS-160",
-    description: "Llena el formulario oficial con tu información personal, familiar, laboral y de viaje.",
-    action: { label: "Continuar llenando", path: "/ds160" },
-  },
-  {
-    number: 3,
-    shortLabel: "Documentos",
-    label: "Subir documentos",
-    description: "Carga los documentos requeridos para respaldar tu solicitud antes de continuar con el pago.",
-    action: { label: "Subir documentos", path: "/documents" },
-  },
-  {
-    number: 4,
-    shortLabel: "Pago",
-    label: "Pago de visa",
-    description: "Prepara o registra el pago de la tarifa consular antes de programar tu cita.",
-    action: { label: "Hablar con el asesor", path: buildAdvisorWhatsappUrl(), external: true },
-  },
-  {
-    number: 5,
-    shortLabel: "Cita",
-    label: "Agendar cita",
-    description: "Revisa la información para programar tu cita consular y organizar los siguientes pasos.",
-    action: { label: "Hablar con el asesor", path: buildAdvisorWhatsappUrl(), external: true },
-  },
-  {
-    number: 6,
-    shortLabel: "Entrevista",
-    label: "Preparación de entrevista",
-    description: "Practica respuestas y revisa recomendaciones para llegar con más seguridad a tu entrevista.",
-    action: { label: "Practicar ahora", path: "/entrevista" },
-  },
-  {
-    number: 7,
-    shortLabel: "Decisión",
-    label: "Decisión final",
-    description: "Da seguimiento a las notificaciones y al resultado final de tu proceso.",
-    action: { label: "Ver notificaciones", path: "/notificaciones" },
-  },
-];
+const STEP_PATHS = {
+  1: { path: "/perfil" },
+  2: { path: "/ds160" },
+  3: { path: "/documents" },
+  4: { path: buildAdvisorWhatsappUrl(), external: true },
+  5: { path: buildAdvisorWhatsappUrl(), external: true },
+  6: { path: "/entrevista" },
+  7: { path: "/notificaciones" },
+};
+
+export function getProcessSteps(idioma = "es") {
+  const t = (key) => translate(idioma, key);
+  return Object.entries(STEP_PATHS).map(([number, action]) => ({
+    number: Number(number),
+    shortLabel: t(`step.${number}.short`),
+    label: t(`step.${number}.label`),
+    description: t(`step.${number}.description`),
+    action: { ...action, label: t(`step.${number}.action`) },
+  }));
+}
+
+export const PROCESS_STEPS = getProcessSteps("es");
 
 export const TOTAL_PROCESS_STEPS = PROCESS_STEPS.length;
 
@@ -90,14 +62,6 @@ export function summarizeDocuments(documents) {
     pending: summary.pending + missingRequiredDocuments,
     required: REQUIRED_DOCUMENT_COUNT,
   };
-}
-
-function pluralizeDocument(count) {
-  return count === 1 ? "documento" : "documentos";
-}
-
-function agreementRequires(count) {
-  return count === 1 ? "requiere" : "requieren";
 }
 
 function clampStage(stageNumber) {
@@ -139,11 +103,11 @@ export function getCurrentProcessStage({
   return Math.max(4, stageFromTramite(tramite));
 }
 
-export function getProcessStageLabel(stageNumber) {
-  return PROCESS_STEPS[clampStage(stageNumber) - 1]?.label || PROCESS_STEPS[0].label;
+export function getProcessStageLabel(stageNumber, idioma = "es") {
+  return translate(idioma, `step.${clampStage(stageNumber)}.label`);
 }
 
-export function getProcessTimeline(stageNumber, data = {}) {
+export function getProcessTimeline(stageNumber, data = {}, idioma = "es") {
   const currentStage = clampStage(stageNumber);
   const { tramite, ds160, documents } = data;
 
@@ -168,7 +132,7 @@ export function getProcessTimeline(stageNumber, data = {}) {
     }
   };
 
-  return PROCESS_STEPS.map((step) => ({
+  return getProcessSteps(idioma).map((step) => ({
     ...step,
     estado: step.number < currentStage ? "completada" : step.number === currentStage ? "actual" : "pendiente",
     done: step.number < currentStage,
@@ -182,76 +146,80 @@ export function getDashboardNextAction({
   ds160Percentage = 0,
   documentSummary = {},
   tramite = {},
+  idioma = "es",
 } = {}) {
+  const t = (key, vars) => translate(idioma, key, vars);
   const correctionCount = Number(documentSummary.correction) || 0;
+  // siguiente_paso viene del backend en español; en otro idioma se usa el texto traducido.
+  const serverNextStep = idioma === "es" ? tramite?.siguientePaso : null;
 
   if (correctionCount > 0) {
     return {
-      priority: "PRIORIDAD ALTA",
-      timeEstimate: "Tiempo est.: 10 min",
-      title: "Corregir documentos",
-      description: `Tienes ${correctionCount} ${pluralizeDocument(correctionCount)} con correcciones pendientes. Atiende los comentarios para continuar con tu proceso.`,
+      priority: t("action.priorityHigh"),
+      timeEstimate: t("action.timeEstimate", { min: 10 }),
+      title: t("action.correction.title"),
+      description: t("action.correction.description", { count: correctionCount }),
       path: "/documents",
-      buttonLabel: "Corregir ahora",
+      buttonLabel: t("action.correction.button"),
     };
   }
 
   const actionsByStage = {
     1: {
-      priority: "PRIORIDAD ALTA",
-      timeEstimate: "Tiempo est.: 8 min",
-      title: "Completar perfil",
-      description: "Agrega tu tipo de visa y datos principales para iniciar correctamente el seguimiento de tu trámite.",
+      priority: t("action.priorityHigh"),
+      timeEstimate: t("action.timeEstimate", { min: 8 }),
+      title: t("action.1.title"),
+      description: t("action.1.description"),
       path: "/perfil",
-      buttonLabel: "Completar perfil",
+      buttonLabel: t("action.1.button"),
     },
     2: {
-      priority: ds160Percentage > 0 ? "EN PROGRESO" : "PRIORIDAD ALTA",
-      timeEstimate: "Tiempo est.: 45 min",
-      title: "Completar formulario DS-160",
-      description: "El formulario oficial requiere tu información personal, laboral y de viaje. Puedes guardar tu progreso por secciones.",
+      priority: ds160Percentage > 0 ? t("action.inProgress") : t("action.priorityHigh"),
+      timeEstimate: t("action.timeEstimate", { min: 45 }),
+      title: t("action.2.title"),
+      description: t("action.2.description"),
       path: "/ds160",
-      buttonLabel: ds160Percentage > 0 ? "Continuar sección" : "Iniciar sección",
+      buttonLabel: ds160Percentage > 0 ? t("action.2.buttonContinue") : t("action.2.buttonStart"),
     },
     3: {
-      priority: "PRIORIDAD ALTA",
-      timeEstimate: "Tiempo est.: 15 min",
-      title: "Subir documentos",
-      description: "Ya completaste el DS-160. Ahora carga los documentos requeridos para que tu expediente quede listo antes del pago.",
+      priority: t("action.priorityHigh"),
+      timeEstimate: t("action.timeEstimate", { min: 15 }),
+      title: t("action.3.title"),
+      description: t("action.3.description"),
       path: "/documents",
-      buttonLabel: "Subir documentos",
+      buttonLabel: t("action.3.button"),
     },
     4: {
-      priority: "PRIORIDAD ALTA",
-      timeEstimate: "Tiempo est.: 20 min",
-      title: tramite?.siguientePaso || "Realizar el pago de la tarifa de visa",
-      description: "Ya completaste el DS-160. El siguiente paso es registrar o preparar el pago de la tarifa antes de programar tu cita.",
+      priority: t("action.priorityHigh"),
+      timeEstimate: t("action.timeEstimate", { min: 20 }),
+      title: serverNextStep || t("action.4.title"),
+      description: t("action.4.description"),
       path: buildAdvisorWhatsappUrl(),
-      buttonLabel: "Hablar con el asesor",
+      buttonLabel: t("action.talkToAdvisor"),
     },
     5: {
-      priority: "IMPORTANTE",
-      timeEstimate: "Tiempo est.: 15 min",
-      title: tramite?.siguientePaso || "Programar tu cita consular",
-      description: "Organiza la fecha, revisa la ubicación del consulado y confirma que tus documentos estén listos antes de avanzar.",
+      priority: t("action.important"),
+      timeEstimate: t("action.timeEstimate", { min: 15 }),
+      title: serverNextStep || t("action.5.title"),
+      description: t("action.5.description"),
       path: buildAdvisorWhatsappUrl(),
-      buttonLabel: "Hablar con el asesor",
+      buttonLabel: t("action.talkToAdvisor"),
     },
     6: {
-      priority: "IMPORTANTE",
-      timeEstimate: "Tiempo est.: 25 min",
-      title: tramite?.siguientePaso || "Prepararte para la entrevista consular",
-      description: "Practica respuestas, revisa preguntas frecuentes y prepara tus documentos para llegar con más seguridad a la entrevista.",
+      priority: t("action.important"),
+      timeEstimate: t("action.timeEstimate", { min: 25 }),
+      title: serverNextStep || t("action.6.title"),
+      description: t("action.6.description"),
       path: "/entrevista",
-      buttonLabel: "Practicar ahora",
+      buttonLabel: t("action.6.button"),
     },
     7: {
-      priority: "SEGUIMIENTO",
-      timeEstimate: "Tiempo est.: 5 min",
-      title: tramite?.siguientePaso || "Esperar la decisión final del consulado",
-      description: "Tu proceso está en la etapa final. Mantente pendiente de notificaciones y revisa la cronología para próximos pasos.",
+      priority: t("action.followUp"),
+      timeEstimate: t("action.timeEstimate", { min: 5 }),
+      title: serverNextStep || t("action.7.title"),
+      description: t("action.7.description"),
       path: "/notificaciones",
-      buttonLabel: "Ver notificaciones",
+      buttonLabel: t("action.7.button"),
     },
   };
 
@@ -261,7 +229,9 @@ export function getDashboardNextAction({
 export function getDashboardQuickCards({
   documentSummary = {},
   stageNumber = 1,
+  idioma = "es",
 } = {}) {
+  const t = (key, vars) => translate(idioma, key, vars);
   const correctionCount = Number(documentSummary.correction) || 0;
   const pendingCount = Number(documentSummary.pending) || 0;
   const reviewCount = Number(documentSummary.review) || 0;
@@ -269,29 +239,29 @@ export function getDashboardQuickCards({
 
   const documentCard = correctionCount > 0
     ? {
-        badge: "IMPORTANTE",
-        title: "Revisión de documentos",
-        description: `Tienes ${correctionCount} ${pluralizeDocument(correctionCount)} que ${agreementRequires(correctionCount)} corrección.`,
-        cta: "Corregir ahora",
+        badge: t("action.important"),
+        title: t("cards.docsReview.title"),
+        description: t("cards.docsReview.description", { count: correctionCount }),
+        cta: t("action.correction.button"),
         path: "/documents",
         tone: "yellow",
       }
     : pendingCount > 0
     ? {
-        badge: "PENDIENTE",
-        title: "Subir documentos",
-        description: `Te faltan ${pendingCount} ${pluralizeDocument(pendingCount)} requeridos para completar tu expediente.`,
-        cta: "Subir ahora",
+        badge: t("cards.badgePending"),
+        title: t("cards.docsUpload.title"),
+        description: t("cards.docsUpload.description", { count: pendingCount }),
+        cta: t("cards.docsUpload.cta"),
         path: "/documents",
         tone: "yellow",
       }
     : {
-        badge: reviewCount > 0 ? "EN REVISIÓN" : "LISTO",
-        title: "Documentos",
+        badge: reviewCount > 0 ? t("cards.badgeReview") : t("cards.badgeReady"),
+        title: t("cards.docs.title"),
         description: totalCount > 0
-          ? `Tienes ${totalCount} ${pluralizeDocument(totalCount)} asociados a tu cuenta.`
-          : "Aún no tienes documentos asociados a tu cuenta.",
-        cta: "Ver documentos",
+          ? t("cards.docs.description", { count: totalCount })
+          : t("cards.docs.empty"),
+        cta: t("cards.docs.cta"),
         path: "/documents",
         tone: "white",
       };
@@ -299,18 +269,18 @@ export function getDashboardQuickCards({
   return [
     documentCard,
     {
-      title: "Ver cronología completa",
-      description: "Revisa todos los pasos de tu proceso y qué esperar en cada etapa.",
-      cta: stageNumber >= 4 ? "Revisar avance" : "Explorar",
+      title: t("cards.timeline.title"),
+      description: t("cards.timeline.description"),
+      cta: stageNumber >= 4 ? t("cards.timeline.ctaProgress") : t("cards.timeline.ctaExplore"),
       path: "/cronologia",
       tone: "white",
     },
     {
-      title: stageNumber >= 6 ? "Preparación de entrevista" : "Simulador de entrevista",
+      title: stageNumber >= 6 ? t("cards.interview.titlePrep") : t("cards.interview.titleSim"),
       description: stageNumber >= 6
-        ? "Tu trámite ya está en etapa de entrevista. Practica antes de tu cita consular."
-        : "Practica con preguntas reales para ganar confianza antes de tu cita consular.",
-      cta: stageNumber >= 6 ? "Practicar ahora" : "Prepararme",
+        ? t("cards.interview.descriptionPrep")
+        : t("cards.interview.descriptionSim"),
+      cta: stageNumber >= 6 ? t("cards.interview.ctaPrep") : t("cards.interview.ctaSim"),
       path: "/entrevista",
       tone: "dark",
     },

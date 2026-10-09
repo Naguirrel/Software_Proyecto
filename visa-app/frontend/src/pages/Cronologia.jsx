@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { buildApiUrl } from "../config/api";
 import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
+import useIdioma from "../hooks/useIdioma";
 import useRequireAuth from "../hooks/useRequireAuth";
 import { SkeletonList } from "../components/SkeletonCard";
 import {
@@ -56,10 +57,11 @@ function Nodo({ numero, estado }) {
 }
 
 function TarjetaCompletada({ etapa, senior }) {
+  const { idioma, t } = useIdioma();
   const formatDate = (dateStr) => {
     if (!dateStr) return null;
     const date = new Date(dateStr);
-    return date.toLocaleDateString("es-GT", { day: "numeric", month: "short", year: "numeric" });
+    return date.toLocaleDateString(idioma === "en" ? "en-US" : "es-GT", { day: "numeric", month: "short", year: "numeric" });
   };
 
   return (
@@ -69,7 +71,7 @@ function TarjetaCompletada({ etapa, senior }) {
           {etapa.label}
         </h3>
         <span className={`cron-card__fecha${senior ? " cron-card__fecha--senior" : ""}`}>
-          {etapa.completedAt ? `Completado el ${formatDate(etapa.completedAt)}` : "Completado"}
+          {etapa.completedAt ? t("timeline.completedOn", { fecha: formatDate(etapa.completedAt) }) : t("timeline.completed")}
         </span>
       </div>
       <p className={`cron-card__desc${senior ? " cron-card__desc--senior" : ""}`}>
@@ -80,14 +82,15 @@ function TarjetaCompletada({ etapa, senior }) {
 }
 
 function TarjetaActual({ etapa, senior }) {
+  const { t } = useIdioma();
   return (
     <article className="cron-card cron-card--actual">
-      <span className="cron-badge-actual">▶ ACTUAL</span>
+      <span className="cron-badge-actual">{t("timeline.current")}</span>
       <div className="cron-card__head cron-card__head--actual">
         <h3 className={`cron-card__title cron-card__title--actual${senior ? " cron-card__title--senior" : ""}`}>
           {etapa.label}
         </h3>
-        <span className="cron-badge-progreso">En progreso</span>
+        <span className="cron-badge-progreso">{t("timeline.inProgress")}</span>
       </div>
       <p className={`cron-card__desc${senior ? " cron-card__desc--senior" : ""}`}>
         {etapa.description}
@@ -146,7 +149,8 @@ function EtapaItem({ etapa, esUltima, senior }) {
 export default function Cronologia() {
   const { isValidating, session } = useRequireAuth();
   const senior = useModoSenior();
-  const [timeline, setTimeline] = useState(() => getProcessTimeline(1));
+  const { idioma, t } = useIdioma();
+  const [progress, setProgress] = useState({ stage: 1, data: {} });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -156,7 +160,7 @@ export default function Cronologia() {
     const controller = new AbortController();
     const fetchTimelineData = async () => {
       if (!session) {
-        setTimeline(getProcessTimeline(1));
+        setProgress({ stage: 1, data: {} });
         setLoading(false);
         return;
       }
@@ -204,19 +208,18 @@ export default function Cronologia() {
           documentSummary,
         });
 
-        setTimeline(getProcessTimeline(currentStage, {
-          tramite: tramiteData,
-          ds160: ds160Data,
-          documents: documentsData,
-        }));
+        setProgress({
+          stage: currentStage,
+          data: { tramite: tramiteData, ds160: ds160Data, documents: documentsData },
+        });
 
         if ([tramiteResult, ds160Result, documentsResult].some((result) => result.status === "rejected")) {
-          setLoadError("Algunas etapas no pudieron actualizarse con datos recientes.");
+          setLoadError("timeline.partialError");
         }
       } catch (error) {
         if (error.name !== "AbortError") {
-          setTimeline(getProcessTimeline(1));
-          setLoadError("No se pudo actualizar la cronología.");
+          setProgress({ stage: 1, data: {} });
+          setLoadError("timeline.error");
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -227,6 +230,8 @@ export default function Cronologia() {
     return () => controller.abort();
   }, [isValidating, session]);
 
+  const timeline = getProcessTimeline(progress.stage, progress.data, idioma);
+
   return (
     <div className="vg-layout">
       <Sidebar currentPage="cronologia" />
@@ -234,11 +239,10 @@ export default function Cronologia() {
       <main id="main-content" tabIndex="-1" className="vg-main cron-main">
         <header className="cron-header">
           <h1 className={`cron-titulo${senior ? " cron-titulo--senior" : ""}`}>
-            Cronología de solicitud
+            {t("timeline.title")}
           </h1>
           <p className={`cron-subtitulo${senior ? " cron-subtitulo--senior" : ""}`}>
-            Sigue el avance detallado de tu proceso. Cada etapa requiere completarse
-            para habilitar la siguiente.
+            {t("timeline.subtitle")}
           </p>
         </header>
 
@@ -246,14 +250,14 @@ export default function Cronologia() {
 
         {loadError && (
           <p className="cron-message cron-message--warning" role="alert">
-            {loadError}
+            {t(loadError)}
           </p>
         )}
 
         {isValidating || loading ? (
           <SkeletonList variant="timeline" count={1} />
         ) : (
-          <ol className="cron-timeline" aria-label="Etapas del proceso">
+          <ol className="cron-timeline" aria-label={t("timeline.stagesLabel")}>
             {timeline.map((etapa, idx) => (
               <EtapaItem
                 key={etapa.number}
