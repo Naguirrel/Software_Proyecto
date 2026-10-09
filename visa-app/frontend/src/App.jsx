@@ -9,6 +9,7 @@ import RequireStaff from "./components/RequireStaff";
 import RequireAdvisor from "./components/advisor/RequireAdvisor";
 import RequireWorkflowStep from "./components/RequireWorkflowStep";
 import AppErrorBoundary from "./components/AppErrorBoundary";
+import SkipLink from "./components/SkipLink";
 import "./components/auth/auth.css";
 
 const Upload = lazy(() => import("./Upload"));
@@ -114,6 +115,7 @@ function App() {
   return (
     <AppErrorBoundary>
       <BrowserRouter>
+        <SkipLink />
         <Suspense fallback={<RouteLoadingState />}>
         <Routes>
         <Route path="/"                               element={<Navigate to="/login" replace />} />

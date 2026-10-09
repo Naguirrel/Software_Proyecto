@@ -46,6 +46,7 @@ export default function Sidebar({ currentPage }) {
   const [modoSenior, setModoSenior] = useState(
     () => localStorage.getItem("modoSenior") === "true"
   );
+  const [seniorAnnouncement, setSeniorAnnouncement] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [autoExpandDisabled, setAutoExpandDisabled] = useState(false);
@@ -139,6 +140,7 @@ export default function Sidebar({ currentPage }) {
     const next = !modoSenior;
     setModoSenior(next);
     applyModoSenior(next);
+    setSeniorAnnouncement(t(next ? "sidebar.seniorOn" : "sidebar.seniorOff"));
   };
 
   const getPerfilLabel = (perfil) => {
@@ -304,6 +306,9 @@ export default function Sidebar({ currentPage }) {
             <Accessibility size={20} strokeWidth={2} aria-hidden="true" />
             <span className="vg-sidebar-label">{t("sidebar.seniorMode")}</span>
           </button>
+          <span className="visually-hidden" role="status" aria-live="polite">
+            {seniorAnnouncement}
+          </span>
 
           {/* User */}
           <Link
