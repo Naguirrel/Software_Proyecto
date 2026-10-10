@@ -1282,9 +1282,9 @@ html.modo-senior :where(button, [role="button"]) {
   min-height: 48px;
 }
 
-/* Botones con texto: más altos y con más relleno (los de solo icono llevan aria-label) */
-html.modo-senior main button:not([aria-label]):not([role="tab"]),
-html.modo-senior .btn {
+/* Botones con texto: más altos y con más relleno (los de solo icono llevan aria-label).
+   Especificidad baja (0,1,1) para que cada pantalla pueda ajustar los suyos con html.modo-senior .clase */
+html.modo-senior :where(main button:not([aria-label], [role="tab"]), .btn) {
   min-height: var(--vg-button-min-height);
   padding: 16px 24px;
   font-size: 18px;
