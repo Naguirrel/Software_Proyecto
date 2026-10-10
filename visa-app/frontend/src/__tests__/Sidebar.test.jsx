@@ -176,11 +176,11 @@ describe("Sidebar", () => {
     await user.click(senior);
     expect(senior).toHaveAttribute("aria-pressed", "true");
     expect(localStorage.getItem("modoSenior")).toBe("true");
-    expect(document.documentElement).toHaveAttribute("data-modo-senior");
+    expect(document.documentElement).toHaveClass("modo-senior");
     expect(screen.getByText("Modo Senior activado")).toBeInTheDocument();
 
     await user.click(senior);
     expect(screen.getByText("Modo Senior desactivado")).toBeInTheDocument();
-    expect(document.documentElement).not.toHaveAttribute("data-modo-senior");
+    expect(document.documentElement).not.toHaveClass("modo-senior");
   });
 });

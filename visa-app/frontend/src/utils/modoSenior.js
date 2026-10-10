@@ -1,12 +1,13 @@
 const STORAGE_KEY = "modoSenior";
 const EVENT_NAME = "modoSeniorChange";
+const ROOT_CLASS = "modo-senior";
 
 export function isModoSeniorEnabled() {
   return localStorage.getItem(STORAGE_KEY) === "true";
 }
 
 export function reflectModoSenior(enabled) {
-  document.documentElement.toggleAttribute("data-modo-senior", enabled);
+  document.documentElement.classList.toggle(ROOT_CLASS, enabled);
 }
 
 export function setModoSenior(enabled) {
