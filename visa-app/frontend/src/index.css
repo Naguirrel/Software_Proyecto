@@ -1171,3 +1171,271 @@ body.vg-has-top-actions main#main-content {
 .skip-link:focus {
   top: 16px;
 }
+
+/* ══════════════════════════════
+   MODO SENIOR (global)
+   Se activa con la clase .modo-senior en <html> y aplica a todas las
+   pantallas, tengan o no soporte propio.
+   ══════════════════════════════ */
+html.modo-senior {
+  /* Tipografía */
+  --vg-body-size: 18px;
+  --vg-small-size: 16px;
+  --vg-control-size: 18px;
+  --vg-page-title: clamp(48px, 4.5vw, 52px);
+  --vg-section-title: clamp(32px, 3vw, 36px);
+  --vg-card-title: 24px;
+  --vg-line-body: 1.7;
+  --vg-line-heading: 1.25;
+
+  /* Controles, iconos y foco */
+  --vg-spacing-base: 24px;
+  --vg-button-min-height: 52px;
+  --vg-icon-size: 28px;
+  --vg-focus-width: 4px;
+  --vg-focus-color: #000000;
+  --vg-focus-halo: #ffffff;
+
+  /* Espaciado +50% */
+  --vg-space-1: 12px;
+  --vg-space-2: 18px;
+  --vg-space-3: 24px;
+  --vg-space-4: 36px;
+  --vg-space-5: 48px;
+  --vg-space-6: 60px;
+  --vg-space-7: 72px;
+  --vg-space-8: 96px;
+  --vg-card-padding: 36px;
+  --vg-page-pad-top: 48px;
+  --vg-page-pad-bottom: 96px;
+
+  /* Sidebar más ancho para iconos y textos grandes */
+  --vg-sidebar-w: 92px;
+  --vg-sidebar-expanded-w: 300px;
+
+  /* Contraste AAA (7:1 mínimo sobre fondos claros) */
+  --vg-text-muted: #334155;
+  --vg-red: #9f1239;
+  --vg-red-dark: #881337;
+  --vg-success: #065f46;
+  --vg-warning: #78350f;
+  --vg-warning-solid: #78350f;
+  --vg-amber-text: #78350f;
+  --vg-info-text: #1e3a8a;
+  --vg-danger-text: #881337;
+  --vg-border-mid: #64748b;
+}
+
+/* Contraste AAA en modo oscuro (7:1 mínimo sobre fondos oscuros) */
+html.modo-senior[data-theme="dark"] {
+  --vg-text-muted: #cbd5e1;
+  --vg-success: #6ee7b7;
+  --vg-warning: #fcd34d;
+  --vg-amber-text: #fde68a;
+  --vg-info-text: #bfdbfe;
+  --vg-danger-text: #fda4af;
+  --vg-border-mid: #94a3b8;
+  --vg-focus-color: #ffdd00;
+  --vg-focus-halo: #000000;
+}
+
+@media (max-width: 768px) {
+  html.modo-senior {
+    --vg-sidebar-w: 0px;
+    --vg-page-title: 36px;
+    --vg-section-title: 28px;
+    --vg-page-pad-x: 18px;
+    --vg-page-pad-top: 28px;
+    --vg-card-padding: 24px;
+  }
+}
+
+html.modo-senior body {
+  font-size: var(--vg-body-size);
+  line-height: var(--vg-line-body);
+  letter-spacing: 0.01em;
+}
+
+html.modo-senior :where(p, li, dd, dt, label, td, th, blockquote) {
+  line-height: var(--vg-line-body);
+}
+
+/* Títulos: h1 48-56px y h2 32-36px, incluso si la pantalla usa estilos inline */
+html.modo-senior main h1 {
+  font-size: var(--vg-page-title) !important;
+  line-height: var(--vg-line-heading) !important;
+}
+
+html.modo-senior main h2 {
+  font-size: var(--vg-section-title) !important;
+  line-height: var(--vg-line-heading) !important;
+}
+
+/* Objetivos táctiles */
+html.modo-senior :where(a, input:not([type="checkbox"], [type="radio"]), select, textarea, summary, [role="checkbox"], [role="radio"], [role="switch"]) {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+html.modo-senior :where(button, [role="button"]) {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* Botones con texto: más altos y con más relleno (los de solo icono llevan aria-label).
+   Especificidad baja (0,1,1) para que cada pantalla pueda ajustar los suyos con html.modo-senior .clase */
+html.modo-senior :where(main button:not([aria-label], [role="tab"]), .btn) {
+  min-height: var(--vg-button-min-height);
+  padding: 16px 24px;
+  font-size: 18px;
+}
+
+/* Campos: el padding lateral se respeta para no tapar iconos dentro del campo */
+html.modo-senior :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]), select, textarea) {
+  min-height: 52px;
+  padding-block: 14px;
+  font-size: 18px;
+}
+
+html.modo-senior :where(input[type="checkbox"], input[type="radio"]) {
+  width: 24px;
+  height: 24px;
+}
+
+/* Iconos lucide de 16-24px que no tienen un tamaño propio en CSS (especificidad 0) */
+:where(html.modo-senior svg.lucide[width="16"], html.modo-senior svg.lucide[width="18"]) {
+  width: 22px;
+  height: 22px;
+}
+
+:where(html.modo-senior svg.lucide[width="20"], html.modo-senior svg.lucide[width="22"]) {
+  width: var(--vg-icon-size);
+  height: var(--vg-icon-size);
+}
+
+:where(html.modo-senior svg.lucide[width="24"]) {
+  width: 32px;
+  height: 32px;
+}
+
+html.modo-senior main a:not([class]) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Foco: 4px de alto contraste con halo; se impone a los outline: none inline */
+html.modo-senior :focus-visible {
+  outline: var(--vg-focus-width) solid var(--vg-focus-color) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 2px var(--vg-focus-halo) !important;
+}
+
+/* Sidebar y acciones superiores más grandes (Sidebar.jsx ajusta filas e iconos) */
+html.modo-senior .vg-sidebar-logo {
+  min-height: 100px;
+}
+
+html.modo-senior .vg-sidebar-logo .visaguide-logo__mark {
+  width: 52px;
+  height: 52px;
+  flex-basis: 52px;
+}
+
+html.modo-senior .vg-sidebar-logo .visaguide-logo__mark svg {
+  width: 26px;
+  height: 26px;
+}
+
+html.modo-senior .vg-sidebar-logo .visaguide-logo__name {
+  font-size: 22px;
+}
+
+html.modo-senior .vg-sidebar-expand-button {
+  top: 80px;
+  right: -20px;
+  width: 40px;
+  height: 40px;
+}
+
+html.modo-senior .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) :is(.vg-sidebar-action, .vg-sidebar-user-link) {
+  width: 56px !important;
+  min-height: 56px;
+}
+
+html.modo-senior .vg-sidebar-workflow-note,
+html.modo-senior .vg-email-verify-notice__text,
+html.modo-senior .vg-email-verify-notice__resend {
+  font-size: 15px;
+}
+
+html.modo-senior :is(.vg-notification-trigger, .vg-top-action-button) {
+  width: 52px;
+  height: 52px;
+}
+
+html.modo-senior .vg-notification-count {
+  min-width: 26px;
+  height: 26px;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+@media (min-width: 769px) {
+  html.modo-senior .vg-notification-panel {
+    width: 400px;
+  }
+}
+
+html.modo-senior .vg-notification-list p {
+  font-size: 16px;
+}
+
+html.modo-senior body.vg-has-top-actions main#main-content {
+  padding-top: 96px !important;
+}
+
+html.modo-senior :is(
+  [style*="font-size: 9px"], [style*="font-size: 10px"], [style*="font-size: 11px"],
+  [style*="font-size: 12px"], [style*="font-size: 13px"]
+) {
+  font-size: 16px !important;
+}
+
+html.modo-senior [style*="font-size: 14px"] {
+  font-size: 17px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.modo-senior *,
+  html.modo-senior *::before,
+  html.modo-senior *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- Enlace "Saltar al contenido" (teclado y lectores de pantalla) ---- */
+.vg-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 3000;
+  padding: 12px 18px;
+  border-radius: var(--vg-radius-sm);
+  background: var(--vg-navy);
+  color: var(--vg-white);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.vg-skip-link:focus {
+  transform: translateY(0);
+}
+
+html.modo-senior .vg-skip-link {
+  font-size: 20px;
+  padding: 16px 24px;
+}

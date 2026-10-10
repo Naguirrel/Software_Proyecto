@@ -1073,24 +1073,289 @@
   font-weight: 700;
 }
 
-.interview-main--senior .interview-header h1,
-.interview-main--senior .interview-hero h2 {
-  font-size: 46px;
+/* ══════════════════════════════
+   MODO SENIOR (preparación, simulador y retroalimentación)
+   ══════════════════════════════ */
+/* El h2 del hero funciona como título de la página */
+html.modo-senior .interview-hero h2 {
+  font-size: var(--vg-page-title) !important;
 }
 
-.interview-main--senior .interview-header p,
-.interview-main--senior .interview-hero p,
-.interview-main--senior .emotional-section > p {
+html.modo-senior .interview-header p,
+html.modo-senior .interview-hero p,
+html.modo-senior .emotional-section > p,
+html.modo-senior .sim-hero p {
+  font-size: 20px;
+  line-height: var(--vg-line-body);
+}
+
+html.modo-senior .interview-start-button {
+  min-height: 60px;
+  gap: var(--vg-space-2);
+  padding: 16px 32px;
   font-size: 20px;
 }
 
-.interview-main--senior .prep-card h3 {
+html.modo-senior .interview-start-button svg {
+  width: var(--vg-icon-size);
+  height: var(--vg-icon-size);
+}
+
+html.modo-senior .emotional-heading {
+  gap: 24px;
+}
+
+html.modo-senior .emotional-heading svg {
+  width: 48px;
+  height: 48px;
+}
+
+html.modo-senior .prep-card {
+  min-height: 260px;
+}
+
+html.modo-senior .prep-card__icon {
+  width: 76px;
+  height: 76px;
+}
+
+html.modo-senior .prep-card__icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+html.modo-senior .prep-card h3 {
+  margin-bottom: 21px;
+  font-size: var(--vg-card-title);
+}
+
+html.modo-senior .prep-card p,
+html.modo-senior .analysis-card li,
+html.modo-senior .feedback-entry-section p,
+html.modo-senior .feedback-status-card p,
+html.modo-senior .feedback-empty p {
+  font-size: 18px;
+  line-height: var(--vg-line-body);
+}
+
+html.modo-senior .feedback-entry-section {
+  gap: 42px;
+  padding: 42px;
+}
+
+html.modo-senior .feedback-entry-section__label,
+html.modo-senior .feedback-entry-card__status {
+  min-height: 40px;
+  padding: 0 18px;
+  font-size: 16px;
+}
+
+html.modo-senior .feedback-entry-card {
+  gap: 18px;
+  padding: 30px;
+}
+
+html.modo-senior .feedback-entry-card p {
+  font-size: 17px;
+}
+
+html.modo-senior .feedback-entry-card button,
+html.modo-senior .feedback-actions button,
+html.modo-senior .feedback-empty button,
+html.modo-senior .session-summary button {
+  min-height: var(--vg-button-min-height);
+  padding: 16px 24px;
+  font-size: 18px;
+}
+
+/* Simulador: los botones principales ya son grandes, se mantienen así */
+html.modo-senior .question-card {
+  padding-top: 80px;
+}
+
+html.modo-senior .question-card__speaker {
+  min-height: 60px;
+  padding: 0 28px;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+html.modo-senior .question-card__speaker svg {
+  width: var(--vg-icon-size);
+  height: var(--vg-icon-size);
+}
+
+html.modo-senior .listen-button {
+  min-height: 64px;
+  font-size: 20px;
+}
+
+html.modo-senior .listen-button svg {
+  width: 64px;
+  height: 64px;
+}
+
+html.modo-senior .recording-preview {
+  gap: 30px;
+  padding: 27px;
+}
+
+html.modo-senior .recording-preview strong {
+  font-size: 19px;
+}
+
+html.modo-senior .recording-preview span {
+  font-size: 17px;
+}
+
+html.modo-senior .question-actions {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 30px;
+  margin-top: 54px;
+  padding-top: 42px;
+}
+
+html.modo-senior .record-button,
+html.modo-senior .next-button {
+  min-height: 72px;
+  gap: 18px;
+  padding: 0 32px;
+  font-size: 22px;
+}
+
+html.modo-senior .secondary-sim-button {
+  min-height: 72px;
+  padding: 0 28px;
+  font-size: 19px;
+}
+
+html.modo-senior .record-button svg {
+  width: 32px;
+  height: 32px;
+}
+
+html.modo-senior .sim-progress__bar {
+  height: 12px;
+}
+
+html.modo-senior .session-summary {
+  gap: 27px;
+  padding: 33px 39px;
+}
+
+html.modo-senior .session-summary strong {
+  font-size: 18px;
+}
+
+html.modo-senior .session-summary__hint,
+html.modo-senior .feedback-status-card span,
+html.modo-senior .feedback-summary-grid span,
+html.modo-senior .feedback-question-row strong {
+  font-size: 16px;
+}
+
+html.modo-senior .session-summary__actions,
+html.modo-senior .feedback-actions {
+  gap: 18px;
+}
+
+/* Retroalimentación */
+html.modo-senior .analysis-grid {
+  gap: 48px;
+}
+
+html.modo-senior .analysis-card blockquote {
+  font-size: 22px;
+  line-height: var(--vg-line-body);
+}
+
+html.modo-senior .analysis-card ul {
+  gap: 24px;
+}
+
+html.modo-senior .feedback-summary-grid {
+  gap: 27px;
+}
+
+html.modo-senior .feedback-summary-grid article {
+  padding: 30px;
+}
+
+html.modo-senior .feedback-summary-grid strong {
   font-size: 24px;
 }
 
-.interview-main--senior .prep-card p,
-.interview-main--senior .analysis-card li {
+html.modo-senior .feedback-question-list {
+  gap: 21px;
+}
+
+html.modo-senior .feedback-question-row {
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 24px;
+  padding: 27px;
+}
+
+html.modo-senior .feedback-question-row > span {
+  width: 56px;
+  height: 56px;
   font-size: 18px;
+}
+
+html.modo-senior .feedback-question-row h3 {
+  font-size: 20px;
+}
+
+html.modo-senior .feedback-question-row p {
+  font-size: 17px;
+}
+
+html.modo-senior .feedback-question-row strong {
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+/* Colores de acento con contraste AAA (los rosas y verdes originales quedaban por debajo de 4.5:1) */
+html.modo-senior .record-button {
+  background: var(--vg-red);
+}
+
+html.modo-senior .session-summary span,
+html.modo-senior .session-summary__hint,
+html.modo-senior .analysis-card strong,
+html.modo-senior .feedback-status-card span,
+html.modo-senior .feedback-entry-section__label,
+html.modo-senior .feedback-entry-card__status,
+html.modo-senior .recording-error {
+  color: var(--vg-danger-text);
+}
+
+html.modo-senior .analysis-card--strong strong,
+html.modo-senior .feedback-entry-card__status--ready,
+html.modo-senior .feedback-question-row__done {
+  color: var(--vg-success);
+}
+
+html.modo-senior .feedback-entry-card__status--empty {
+  color: var(--vg-text-muted);
+}
+
+html.modo-senior .feedback-question-row__missing {
+  color: var(--vg-warning);
+}
+
+html.modo-senior .feedback-question-row > span {
+  color: var(--vg-info-text);
+}
+
+@media (max-width: 768px) {
+  html.modo-senior .feedback-entry-section,
+  html.modo-senior .session-summary {
+    padding: 24px 20px;
+  }
+
+  html.modo-senior .feedback-question-row {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 1100px) {
