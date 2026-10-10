@@ -3,7 +3,6 @@ const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 const express = require("express");
-const bcrypt = require("bcrypt");
 const { Pool } = require("pg");
 const cors = require("cors");
 const { createCorsOptions } = require("./config/cors");
@@ -28,6 +27,8 @@ const { createQuestionBankService } = require("./services/questionBankService");
 const createNotificacionService = require("./services/notificacionService");
 const createActivityLogService = require("./services/activityLogService");
 const createEmailReminderService = require("./services/emailReminderService");
+const { seedDevelopmentUsers } = require("./services/developmentUserSeed");
+const developmentUsers = require("./config/developmentUsers");
 const createConsularPaymentService = require("./services/consularPaymentService");
 const createConsularAppointmentService = require("./services/consularAppointmentService");
 const { streamDs160Pdf } = require("./services/ds160PdfService");
@@ -48,7 +49,6 @@ if (process.env.NODE_ENV !== "production") {
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
-const SALT_ROUNDS = 10;
 
 // Conexión a PostgreSQL
 const pool = new Pool({
@@ -228,50 +228,9 @@ const adminSchemaReady = tramiteSchemaReady.then(ensureAdminSchema).catch((error
   console.error("ERROR ADMIN SCHEMA:", error);
 });
 
-const testUsers = [
-  ["Cliente Desarrollo", "cliente.dev@visaguide.test", "VisaGuide-Dev-2026!", "cliente"],
-  ["Asesor Desarrollo", "asesor.dev@visaguide.test", "VisaGuide-Dev-2026!", "asesor"],
-  ["Admin Desarrollo", "admin.dev@visaguide.test", "VisaGuide-Dev-2026!", "admin"],
-  ["Norman", "norman@prueba.cliente", "123456", "cliente"],
-  ["Juanfri", "juanfri@prueba.cliente", "123456", "cliente"],
-  ["Yaya", "yaya@prueba.cliente", "123456", "cliente"],
-  ["Quan", "quan@prueba.cliente", "123456", "cliente"],
-  ["Usuario Prueba", "usuario@prueba.com", "123456", "cliente"],
-  ["Admin Norman", "admin.norman@prueba.com", "123456", "admin"],
-  ["Admin Juanfri", "admin.juanfri@prueba.com", "123456", "admin"],
-  ["Admin Yaya", "admin.yaya@prueba.com", "123456", "admin"],
-  ["Admin Quan", "admin.quan@prueba.com", "123456", "admin"],
-  ["Admin General", "admin@prueba.com", "123456", "admin"],
-];
-
 async function seedTestUsers() {
   await userSchemaReady;
-
-  const hashedTestUsers = await Promise.all(
-    testUsers.map(async ([nombre, correo, contrasena, rol]) => [
-      nombre,
-      correo,
-      await bcrypt.hash(contrasena, SALT_ROUNDS),
-      rol,
-    ])
-  );
-
-  await pool.query(
-    `
-      INSERT INTO usuario(nombre, correo, contrasena, rol)
-      SELECT seed.nombre, seed.correo, seed.contrasena, seed.rol
-      FROM (VALUES
-        ${hashedTestUsers.map((_, index) => {
-          const base = index * 4;
-          return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`;
-        }).join(",\n        ")}
-      ) AS seed(nombre, correo, contrasena, rol)
-      WHERE NOT EXISTS (
-        SELECT 1 FROM usuario u WHERE u.correo = seed.correo
-      )
-    `,
-    hashedTestUsers.flat()
-  );
+  await seedDevelopmentUsers(pool, developmentUsers);
 }
 
 async function seedTestProcesses() {
