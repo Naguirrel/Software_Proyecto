@@ -183,4 +183,17 @@ describe("Sidebar", () => {
     expect(screen.getByText("Modo Senior desactivado")).toBeInTheDocument();
     expect(document.documentElement).not.toHaveClass("modo-senior");
   });
+
+  it("agranda iconos y filas en modo Senior y se sincroniza si cambia en otra pestaña", async () => {
+    renderSidebar();
+    const inicio = screen.getByRole("link", { name: "Inicio" });
+    expect(inicio.querySelector("svg")).toHaveAttribute("width", "20");
+
+    localStorage.setItem("modoSenior", "true");
+    window.dispatchEvent(new StorageEvent("storage", { key: "modoSenior" }));
+
+    await waitFor(() => expect(inicio.querySelector("svg")).toHaveAttribute("width", "28"));
+    expect(inicio).toHaveStyle({ minHeight: "56px" });
+    expect(screen.getByRole("button", { name: "Alternar modo Senior" })).toHaveAttribute("aria-pressed", "true");
+  });
 });

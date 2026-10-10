@@ -21,6 +21,7 @@ import {
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
 import { setModoSenior as applyModoSenior } from "../utils/modoSenior";
+import useModoSenior from "../hooks/useModoSenior";
 import useTheme from "../hooks/useTheme";
 import useIdioma from "../hooks/useIdioma";
 import TopActions from "./TopActions";
@@ -30,22 +31,22 @@ import { preloadRoute } from "../routes/lazyRoutes";
 import useClientWorkflow from "../hooks/useClientWorkflow";
 
 const menuItems = [
-  { id: "inicio", labelKey: "sidebar.inicio", icon: <LayoutGrid size={20} strokeWidth={2} aria-hidden="true" />, path: "/dashboard" },
-  { id: "ds160", labelKey: "sidebar.ds160", gate: "ds160", icon: <FileText size={20} strokeWidth={2} aria-hidden="true" />, path: "/ds160" },
-  { id: "cronologia", labelKey: "sidebar.cronologia", icon: <Clock3 size={20} strokeWidth={2} aria-hidden="true" />, path: "/cronologia" },
-  { id: "documentos", labelKey: "sidebar.documentos", icon: <Folder size={20} strokeWidth={2} aria-hidden="true" />, path: "/documents" },
-  { id: "pagos", labelKey: "sidebar.pagos", gate: "payment", icon: <CreditCard size={20} strokeWidth={2} aria-hidden="true" />, path: "/pagos" },
-  { id: "citas", labelKey: "sidebar.citas", gate: "appointment", icon: <CalendarDays size={20} strokeWidth={2} aria-hidden="true" />, path: "/citas" },
-  { id: "entrevista", labelKey: "sidebar.entrevista", gate: "interview", icon: <Users size={20} strokeWidth={2} aria-hidden="true" />, path: "/entrevista" },
-  { id: "chat", labelKey: "sidebar.chat", gate: "chat", icon: <MessageSquare size={20} strokeWidth={2} aria-hidden="true" />, path: "/chat" },
+  { id: "inicio", labelKey: "sidebar.inicio", Icon: LayoutGrid, path: "/dashboard" },
+  { id: "ds160", labelKey: "sidebar.ds160", gate: "ds160", Icon: FileText, path: "/ds160" },
+  { id: "cronologia", labelKey: "sidebar.cronologia", Icon: Clock3, path: "/cronologia" },
+  { id: "documentos", labelKey: "sidebar.documentos", Icon: Folder, path: "/documents" },
+  { id: "pagos", labelKey: "sidebar.pagos", gate: "payment", Icon: CreditCard, path: "/pagos" },
+  { id: "citas", labelKey: "sidebar.citas", gate: "appointment", Icon: CalendarDays, path: "/citas" },
+  { id: "entrevista", labelKey: "sidebar.entrevista", gate: "interview", Icon: Users, path: "/entrevista" },
+  { id: "chat", labelKey: "sidebar.chat", gate: "chat", Icon: MessageSquare, path: "/chat" },
 ];
 
-const staffMenuItem = { id: "gestion-consular", labelKey: "sidebar.gestionConsular", icon: <CreditCard size={20} strokeWidth={2} aria-hidden="true" />, path: "/gestion-consular" };
+const staffMenuItem = { id: "gestion-consular", labelKey: "sidebar.gestionConsular", Icon: CreditCard, path: "/gestion-consular" };
 
 export default function Sidebar({ currentPage }) {
-  const [modoSenior, setModoSenior] = useState(
-    () => localStorage.getItem("modoSenior") === "true"
-  );
+  const modoSenior = useModoSenior();
+  const iconSize = modoSenior ? 28 : 20;
+  const rowSenior = modoSenior ? s.rowSenior : null;
   const [seniorAnnouncement, setSeniorAnnouncement] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopExpanded, setDesktopExpanded] = useState(false);
@@ -138,7 +139,6 @@ export default function Sidebar({ currentPage }) {
 
   const toggleModoSenior = () => {
     const next = !modoSenior;
-    setModoSenior(next);
     applyModoSenior(next);
     setSeniorAnnouncement(t(next ? "sidebar.seniorOn" : "sidebar.seniorOff"));
   };
@@ -225,11 +225,11 @@ export default function Sidebar({ currentPage }) {
         {/* Nav */}
         <div id="vg-sidebar-content" className="vg-sidebar-content">
         <nav style={s.nav}>
-          <p className="vg-sidebar-label" style={s.menuLabel}>{t("sidebar.menu")}</p>
+          <p className="vg-sidebar-label" style={{ ...s.menuLabel, ...(modoSenior ? s.menuLabelSenior : null) }}>{t("sidebar.menu")}</p>
           {isClient && workflow && !workflow.assigned && (
             <p className="vg-sidebar-label vg-sidebar-workflow-note">Asesor pendiente · documentos habilitados</p>
           )}
-          <ul style={s.menuList}>
+          <ul style={{ ...s.menuList, gap: modoSenior ? "6px" : "3px" }}>
             {(usuario?.rol === "asesor" ? [menuItems[0], staffMenuItem, ...menuItems.slice(1)] : menuItems).map((item) => {
               const isActive = currentPage === item.id;
               const label = t(item.labelKey);
@@ -240,14 +240,14 @@ export default function Sidebar({ currentPage }) {
                   <li key={item.id}>
                     <span
                       className="vg-sidebar-locked-link"
-                      style={s.menuItem}
+                      style={{ ...s.menuItem, ...rowSenior }}
                       aria-disabled="true"
                       data-tooltip={itemGate?.reason || "Validando etapa…"}
                       title={itemGate?.reason || "Validando etapa…"}
                     >
-                      <span style={s.menuIcon}>{item.icon}</span>
-                      <span className="vg-sidebar-label" style={{ ...s.menuText, fontSize: modoSenior ? "17px" : "14px" }}>{label}</span>
-                      <LockKeyhole className="vg-sidebar-label" size={15} aria-hidden="true" />
+                      <span style={{ ...s.menuIcon, width: iconSize, height: iconSize }}><item.Icon size={iconSize} strokeWidth={2} aria-hidden="true" /></span>
+                      <span className="vg-sidebar-label" style={{ ...s.menuText, fontSize: modoSenior ? "18px" : "14px" }}>{label}</span>
+                      <LockKeyhole className="vg-sidebar-label" size={modoSenior ? 20 : 15} aria-hidden="true" />
                     </span>
                   </li>
                 );
@@ -256,15 +256,15 @@ export default function Sidebar({ currentPage }) {
                 <li key={item.id}>
                   <Link
                     to={item.path}
-                    style={{ ...s.menuItem, ...(isActive ? s.menuItemActive : {}) }}
+                    style={{ ...s.menuItem, ...rowSenior, ...(isActive ? s.menuItemActive : {}) }}
                     data-tooltip={label}
                     title={!desktopExpanded ? label : undefined}
                     onClick={collapseSidebar}
                     onMouseEnter={() => preloadRoute(item.path)}
                     onFocus={() => preloadRoute(item.path)}
                   >
-                    <span style={s.menuIcon}>{item.icon}</span>
-                    <span className="vg-sidebar-label" style={{ ...s.menuText, fontSize: modoSenior ? "17px" : "14px" }}>
+                    <span style={{ ...s.menuIcon, width: iconSize, height: iconSize }}><item.Icon size={iconSize} strokeWidth={2} aria-hidden="true" /></span>
+                    <span className="vg-sidebar-label" style={{ ...s.menuText, fontSize: modoSenior ? "18px" : "14px" }}>
                       {label}
                     </span>
                     {item.badge && (
@@ -282,28 +282,28 @@ export default function Sidebar({ currentPage }) {
           <button
             type="button"
             className="vg-sidebar-action vg-sidebar-theme-row"
-            style={s.sidebarAction}
+            style={{ ...s.sidebarAction, ...rowSenior }}
             onClick={toggleTheme}
             aria-label={isDark ? t("sidebar.enableLightMode") : t("sidebar.enableDarkMode")}
             aria-pressed={isDark}
             data-tooltip={isDark ? t("sidebar.lightMode") : t("sidebar.darkMode")}
           >
             {isDark
-              ? <Sun size={20} strokeWidth={2} aria-hidden="true" />
-              : <Moon size={20} strokeWidth={2} aria-hidden="true" />}
+              ? <Sun size={iconSize} strokeWidth={2} aria-hidden="true" />
+              : <Moon size={iconSize} strokeWidth={2} aria-hidden="true" />}
             <span className="vg-sidebar-label">{isDark ? t("sidebar.lightMode") : t("sidebar.darkMode")}</span>
           </button>
 
           <button
             type="button"
             className="vg-sidebar-action vg-sidebar-senior-row"
-            style={s.sidebarAction}
+            style={{ ...s.sidebarAction, ...rowSenior }}
             onClick={toggleModoSenior}
             aria-label={t("sidebar.toggleSenior")}
             aria-pressed={modoSenior}
             data-tooltip={t("sidebar.seniorMode")}
           >
-            <Accessibility size={20} strokeWidth={2} aria-hidden="true" />
+            <Accessibility size={iconSize} strokeWidth={2} aria-hidden="true" />
             <span className="vg-sidebar-label">{t("sidebar.seniorMode")}</span>
           </button>
           <span className="visually-hidden" role="status" aria-live="polite">
@@ -313,7 +313,7 @@ export default function Sidebar({ currentPage }) {
           {/* User */}
           <Link
             to="/perfil"
-            style={s.userSection}
+            style={{ ...s.userSection, ...rowSenior }}
             className="vg-sidebar-user-link"
             data-tooltip={t("sidebar.myProfile")}
             aria-label={t("sidebar.openProfile", { nombre: usuario?.nombre || t("sidebar.user"), perfil: getPerfilLabel(usuario?.perfil) })}
@@ -321,12 +321,12 @@ export default function Sidebar({ currentPage }) {
             onMouseEnter={() => preloadRoute("/perfil")}
             onFocus={() => preloadRoute("/perfil")}
           >
-            <UserCircle size={20} strokeWidth={2} aria-hidden="true" />
+            <UserCircle size={iconSize} strokeWidth={2} aria-hidden="true" />
             <div className="vg-sidebar-label" style={s.userInfo}>
-              <p style={{ ...s.userName, fontSize: modoSenior ? "17px" : "14px" }}>
+              <p style={{ ...s.userName, fontSize: modoSenior ? "18px" : "14px" }}>
                 {usuario?.nombre || t("sidebar.user")}
               </p>
-              <p style={{ ...s.userRole, fontSize: modoSenior ? "15px" : "12px" }}>
+              <p style={{ ...s.userRole, fontSize: modoSenior ? "16px" : "12px" }}>
                 {getPerfilLabel(usuario?.perfil)}
               </p>
             </div>
@@ -339,7 +339,7 @@ export default function Sidebar({ currentPage }) {
           <button
             type="button"
             className="vg-sidebar-action vg-sidebar-logout"
-            style={s.logoutBtn}
+            style={{ ...s.logoutBtn, ...rowSenior }}
             aria-label={t("sidebar.logout")}
             data-tooltip={t("sidebar.logout")}
             onClick={() => {
@@ -349,7 +349,7 @@ export default function Sidebar({ currentPage }) {
               window.location.href = "/";
             }}
           >
-            <LogOut size={20} strokeWidth={2} aria-hidden="true" />
+            <LogOut size={iconSize} strokeWidth={2} aria-hidden="true" />
             <span className="vg-sidebar-label">{t("sidebar.logout")}</span>
           </button>
         </div>
@@ -378,6 +378,8 @@ const s = {
   menuList: { listStyle:"none", padding:0, margin:0, display:"flex", flexDirection:"column", gap:"3px" },
   menuItem: { display:"flex", minHeight:"44px", alignItems:"center", gap:"11px", padding:"0 12px", borderRadius:"10px", color:"var(--vg-text-muted)", textDecoration:"none", fontSize:"14px", fontWeight:"700", transition:"all 0.15s ease" },
   menuItemActive: { backgroundColor:"var(--vg-navy)", color:"white", boxShadow:"0 8px 18px rgba(15,23,42,.18)" },
+  menuLabelSenior: { fontSize:"14px", marginBottom:"12px" },
+  rowSenior: { minHeight:"56px", gap:"16px", padding:"0 20px", fontSize:"18px" },
   menuIcon: { display:"flex", alignItems:"center", justifyContent:"center", width:"20px", height:"20px", flexShrink:0 },
   menuText: { flex:1 },
   badge: { backgroundColor:"#dc2649", color:"white", fontSize:"11px", fontWeight:"600", padding:"2px 8px", borderRadius:"10px", minWidth:"20px", textAlign:"center" },
