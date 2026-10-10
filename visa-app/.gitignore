@@ -6,6 +6,7 @@ frontend/node_modules/
 # Environment variables
 .env
 .env.*
+/Claves.txt
 backend/.env
 backend/.env.*
 frontend/.env

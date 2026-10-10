@@ -62,6 +62,13 @@ Authorization: Bearer <token>
 
 Roles disponibles: `cliente`, `asesor` y `admin`.
 
+En desarrollo, el backend crea cuentas de prueba con contraseñas distintas y
+almacenadas como hashes bcrypt. Las credenciales locales están en `Claves.txt`
+en la raíz de `visa-app`; ese archivo está excluido de Git y debe mantenerse
+privado. Al iniciar, las cuentas de prueba existentes que aún tengan una de las
+contraseñas predeterminadas anteriores se actualizan. Las contraseñas cambiadas
+manualmente se respetan. No existe el rol `superadmin` en el esquema actual.
+
 ## API
 
 La documentación interactiva está en `/api-docs` y el contrato OpenAPI en `/api-docs.json`.
