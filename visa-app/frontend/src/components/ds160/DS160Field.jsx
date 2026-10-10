@@ -4,16 +4,17 @@ export default function DS160Field({ campo, value, error, onChange, modoSenior, 
   // Radio buttons
   if (campo.type === "radio") {
     return (
-      <div style={styles.campoContainer}>
-        <div id={`${inputId}-label`} style={{ ...styles.label, fontSize: modoSenior ? "13px" : "11px" }}>
+      <div className="ds160-field" style={styles.campoContainer}>
+        <div id={`${inputId}-label`} className="ds160-label" style={{ ...styles.label, fontSize: modoSenior ? "13px" : "11px" }}>
           {campo.label}
           {campo.required && <span style={styles.required}>*</span>}
         </div>
-        <div style={styles.radioGroup} role="group" aria-labelledby={`${inputId}-label`}>
+        <div className="ds160-radio-group" style={styles.radioGroup} role="group" aria-labelledby={`${inputId}-label`}>
           {campo.opciones.map(op => (
             <button
               key={op}
               type="button"
+              className="ds160-radio"
               style={{
                 ...styles.radioBtn,
                 ...(value === op ? styles.radioBtnSel : {}),
@@ -35,13 +36,14 @@ export default function DS160Field({ campo, value, error, onChange, modoSenior, 
   // Select dropdown
   if (campo.type === "select") {
     return (
-      <div style={styles.campoContainer}>
-        <label htmlFor={inputId} style={{ ...styles.label, fontSize: modoSenior ? "13px" : "11px" }}>
+      <div className="ds160-field" style={styles.campoContainer}>
+        <label htmlFor={inputId} className="ds160-label" style={{ ...styles.label, fontSize: modoSenior ? "13px" : "11px" }}>
           {campo.label}
           {campo.required && <span style={styles.required}>*</span>}
         </label>
         <select
           id={inputId}
+          className="ds160-input"
           style={{
             ...styles.input,
             fontSize: modoSenior ? "17px" : "15px",
@@ -64,13 +66,14 @@ export default function DS160Field({ campo, value, error, onChange, modoSenior, 
 
   // Input (text, date, email, tel, number)
   return (
-    <div style={styles.campoContainer}>
-      <label htmlFor={inputId} style={{ ...styles.label, fontSize: modoSenior ? "13px" : "11px" }}>
+    <div className="ds160-field" style={styles.campoContainer}>
+      <label htmlFor={inputId} className="ds160-label" style={{ ...styles.label, fontSize: modoSenior ? "13px" : "11px" }}>
         {campo.label}
         {campo.required && <span style={styles.required}>*</span>}
       </label>
       <input
         id={inputId}
+        className="ds160-input"
         type={campo.type}
         style={{
           ...styles.input,
