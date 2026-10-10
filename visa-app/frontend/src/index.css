@@ -1188,7 +1188,7 @@ html[data-modo-senior] body {
   letter-spacing: 0.01em;
 }
 
-html[data-modo-senior] :where(a, button, input, select, textarea, summary, [role="button"], [role="checkbox"], [role="radio"], [role="switch"]) {
+html[data-modo-senior] :where(a, button, input:not([type="checkbox"], [type="radio"]), select, textarea, summary, [role="button"], [role="checkbox"], [role="radio"], [role="switch"]) {
   min-width: 44px;
   min-height: 44px;
 }
