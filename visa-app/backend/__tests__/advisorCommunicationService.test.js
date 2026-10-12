@@ -102,7 +102,8 @@ describe("advisorCommunicationService", () => {
   });
 
   test("valida fechas y conserva el solicitante al actualizar una tarea", async () => {
-    const service = createAdvisorCommunicationService(createPool());
+    const notificacionService = { resolverPorDedupe: jest.fn(async () => 1) };
+    const service = createAdvisorCommunicationService(createPool(), { notificacionService });
 
     await expect(service.createTask(9, { title: "Tarea", dueAt: "fecha-inválida" }))
       .rejects.toMatchObject({ statusCode: 400, message: "Fecha límite inválida" });
@@ -111,5 +112,6 @@ describe("advisorCommunicationService", () => {
 
     const updated = await service.updateTask(9, 8, { status: "completed" });
     expect(updated).toMatchObject({ id: 8, status: "completed", applicantName: "Ana" });
+    expect(notificacionService.resolverPorDedupe).toHaveBeenCalledWith(9, "advisor:9:task:8:deadline");
   });
 });

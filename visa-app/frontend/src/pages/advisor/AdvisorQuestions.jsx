@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Edit3, Plus, Power } from "lucide-react";
-import AdvisorLayout from "../../components/advisor/AdvisorLayout";
 import { AdvisorModal, AdvisorPageHeader, AdvisorSearch, AdvisorState } from "../../components/advisor/AdvisorShared";
 import { advisorRequest } from "../../utils/advisorApi";
 
@@ -44,12 +43,12 @@ export default function AdvisorQuestions() {
     } catch (requestError) { setError(requestError.message); }
   };
 
-  return <AdvisorLayout>
+  return <>
     <AdvisorPageHeader title="Banco de preguntas" description="Gestiona las preguntas del simulador de entrevistas." action={<button className="advisor-button" type="button" onClick={openCreate}><Plus size={19} aria-hidden="true" /> Nueva pregunta</button>} />
     {error && !selected && <p className="advisor-inline-error" role="alert">{error}</p>}
     <section className="advisor-panel"><div className="advisor-panel-toolbar"><AdvisorSearch value={query} onChange={setQuery} placeholder="Buscar preguntas…" /><label className="advisor-filter"><span className="visually-hidden">Categoría</span><select value={category} onChange={(event) => setCategory(event.target.value)}><option>Todas</option>{categories.map((item) => <option key={item}>{item}</option>)}</select></label></div><AdvisorState loading={loading} error={loading ? error : ""} empty={!loading && !filtered.length} /><div className="advisor-question-grid">{filtered.map((question) => <article key={question.id} className={!question.activo ? "is-inactive" : ""}><header><span>{question.category}</span><div><em>{question.difficulty}</em>{question.is_required && <b>Obligatoria</b>}</div></header><h2>{question.question}</h2><footer><button type="button" onClick={() => openEdit(question)}><Edit3 size={17} aria-hidden="true" /> Editar</button><button type="button" onClick={() => toggle(question)}><Power size={17} aria-hidden="true" /> {question.activo ? "Desactivar" : "Activar"}</button></footer></article>)}</div></section>
     {selected && <AdvisorModal title={selected.id ? "Editar pregunta" : "Nueva pregunta"} onClose={() => setSelected(null)} footer={<><button className="advisor-button advisor-button--secondary" type="button" onClick={() => setSelected(null)}>Cancelar</button><button className="advisor-button" type="button" onClick={save} disabled={saving || !draft.question.trim()}>{saving ? "Guardando…" : "Guardar pregunta"}</button></>}>
       {error && <p className="advisor-inline-error" role="alert">{error}</p>}<div className="advisor-form-grid"><label className="advisor-form-grid__wide">Pregunta<textarea rows="4" value={draft.question} onChange={(event) => setDraft({ ...draft, question: event.target.value })} /></label><label>Categoría<select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label><label>Dificultad<select value={draft.difficulty} onChange={(event) => setDraft({ ...draft, difficulty: event.target.value })}>{difficulties.map((item) => <option key={item}>{item}</option>)}</select></label><label className="advisor-checkbox"><input type="checkbox" checked={draft.is_required} onChange={(event) => setDraft({ ...draft, is_required: event.target.checked })} /> Pregunta obligatoria</label></div>
     </AdvisorModal>}
-  </AdvisorLayout>;
+  </>;
 }

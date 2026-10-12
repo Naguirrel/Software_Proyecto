@@ -26,19 +26,38 @@ describe("documentación de la API", () => {
       .filter(([path]) => path.startsWith("/advisor/"))
       .flatMap(([path, operations]) => Object.entries(operations).map(([method, operation]) => ({ path, method, operation })));
 
-    expect(advisorOperations).toHaveLength(23);
+    expect(advisorOperations).toHaveLength(31);
     for (const { path, method, operation } of advisorOperations) {
       expect(operation.security).toEqual([{ bearerAuth: [] }]);
       expect(operation.description).toContain("Requiere rol asesor");
       const successResponse = Object.entries(operation.responses).find(([status]) => status.startsWith("2"));
       expect(successResponse).toBeDefined();
-      expect(successResponse[1].content["application/json"].schema.$ref).toMatch(
-        /^#\/components\/schemas\/(?:Advisor.+|SuccessMessage)$/
-      );
+      if (path === "/advisor/notifications/stream") {
+        expect(successResponse[1].content["text/event-stream"].schema).toEqual({ type: "string" });
+      } else {
+        expect(successResponse[1].content["application/json"].schema.$ref).toMatch(
+          /^#\/components\/schemas\/(?:Advisor.+|SuccessMessage)$/
+        );
+      }
       expect(operation.responses[401]).toEqual({ $ref: "#/components/responses/Unauthorized" });
       expect(operation.responses[403]).toEqual({ $ref: "#/components/responses/Forbidden" });
       expect(operation.operationId).toBe(`${method}_${path}`.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_|_$/g, ""));
     }
+  });
+
+  test("documenta filtros, SSE y preferencias de las notificaciones del asesor", async () => {
+    const { body: contract } = await request(app).get("/api-docs.json").expect(200);
+    const notificationPath = contract.paths["/advisor/notifications"].get;
+    const parameters = Object.fromEntries(notificationPath.parameters.map((parameter) => [parameter.name, parameter]));
+
+    expect(parameters.status.schema.enum).toContain("unread");
+    expect(parameters.type.schema.enum).toContain("chat");
+    expect(parameters.limit.schema).toMatchObject({ minimum: 1, maximum: 100, default: 50 });
+    expect(contract.paths["/advisor/notifications/stream"].get.responses[200].content["text/event-stream"]).toBeDefined();
+    expect(contract.paths["/advisor/notifications/preferences/current"].put.requestBody.content["application/json"].example).toEqual({
+      soundEnabled: true,
+      mutedTypes: ["info"],
+    });
   });
 
   test("describe paginación, parámetros, ejemplos y errores de alcance del chat del asesor", async () => {

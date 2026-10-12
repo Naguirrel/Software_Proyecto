@@ -489,6 +489,17 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
             tipo: "info",
             etapaRelacionada: `tramite-${tramiteId}-asesor`,
           });
+          await notificacionService.crearNotificacion({
+            userId: assignment.advisor.id_usuario,
+            titulo: "Nueva solicitud asignada",
+            mensaje: "Tienes una nueva solicitud asignada para revisar.",
+            tipo: "assignment",
+            etapaRelacionada: `tramite-${tramiteId}-assignment`,
+            actionUrl: `/advisor/solicitudes?process=${tramiteId}`,
+            entityType: "tramite",
+            entityId: tramiteId,
+            dedupeKey: `advisor:${assignment.advisor.id_usuario}:assignment:${tramiteId}`,
+          });
         } catch (notificationError) {
           console.error("ERROR ADMIN ASSIGNMENT NOTIFICATION:", notificationError);
         }

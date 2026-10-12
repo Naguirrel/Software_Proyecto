@@ -77,7 +77,7 @@ module.exports = function createAdvisorRoutes(pool, {
   const documentService = createAdminDocumentService(pool, { schemaReady: documentSchemaReady });
   const interviewService = createInterviewSessionService(pool);
   const questionService = createQuestionBankService(pool);
-  const communicationService = createAdvisorCommunicationService(pool);
+  const communicationService = createAdvisorCommunicationService(pool, { notificacionService });
   const historyService = createProcessChangeHistoryService(pool);
   const advisorSchemaReady = Promise.all([
     schemaReady,
@@ -109,7 +109,7 @@ module.exports = function createAdvisorRoutes(pool, {
   router.get("/dashboard", async (req, res) => {
     const advisorId = req.auth.id_usuario;
     try {
-      const [statsResult, attentionResult, activityResult] = await Promise.all([
+      const [statsResult, attentionResult, activityResult, communicationStatsResult, workQueueResult] = await Promise.all([
         pool.query(`
           SELECT
             COUNT(DISTINCT t.id_tramite) FILTER (WHERE t.estado NOT IN ('Inactivo', 'Completado'))::int AS active_processes,
@@ -139,6 +139,74 @@ module.exports = function createAdvisorRoutes(pool, {
           ORDER BY created_at DESC, id DESC
           LIMIT 6
         `, [advisorId]),
+        pool.query(`
+          SELECT
+            (SELECT COUNT(*)::int FROM advisor_tasks
+             WHERE advisor_id = $1 AND status = 'pending') AS pending_tasks,
+            (SELECT COUNT(*)::int FROM advisor_chat_messages
+             WHERE advisor_id = $1 AND sender_role = 'client' AND read_at IS NULL) AS unread_messages
+        `, [advisorId]),
+        pool.query(`
+          WITH queue AS (
+            SELECT 'task'::text AS type, task.id, task.user_id,
+              task.title::text AS title,
+              COALESCE(applicant.nombre, 'Tarea general')::text AS description,
+              task.created_at, task.due_at,
+              CASE WHEN task.due_at < CURRENT_TIMESTAMP THEN 0
+                   WHEN task.priority = 'high' THEN 1 ELSE 4 END AS priority_rank,
+              ('/advisor/tareas?task=' || task.id)::text AS action_url
+            FROM advisor_tasks task
+            LEFT JOIN usuario applicant ON applicant.id_usuario = task.user_id
+            WHERE task.advisor_id = $1 AND task.status = 'pending'
+
+            UNION ALL
+
+            SELECT 'ds160', form.id_formulario, form.id_usuario,
+              'Revisar formulario DS-160', applicant.nombre,
+              form.updated_at, NULL, 1,
+              '/advisor/ds160?form=' || form.id_formulario
+            FROM formulario_ds160 form
+            JOIN tramite process ON process.id_usuario = form.id_usuario
+            JOIN usuario applicant ON applicant.id_usuario = form.id_usuario
+            WHERE process.id_asesor = $1 AND form.estado_revision = 'por_revisar'
+
+            UNION ALL
+
+            SELECT 'documento', document.id, document.usuario_id,
+              'Revisar ' || document.nombre, applicant.nombre,
+              COALESCE(document.actualizado_en, document.creado_en), NULL, 2,
+              '/advisor/documentos?document=' || document.id
+            FROM documentos document
+            JOIN tramite process ON process.id_usuario = document.usuario_id
+            JOIN usuario applicant ON applicant.id_usuario = document.usuario_id
+            WHERE process.id_asesor = $1 AND COALESCE(document.estado, 'review') IN ('pending', 'review')
+
+            UNION ALL
+
+            SELECT 'entrevista', session.id, session.user_id,
+              'Evaluar entrevista', session.user_name,
+              session.created_at, NULL, 2,
+              '/advisor/entrevistas?session=' || session.id
+            FROM interview_sessions session
+            JOIN tramite process ON process.id_usuario = session.user_id
+            WHERE process.id_asesor = $1 AND session.status <> 'reviewed'
+
+            UNION ALL
+
+            SELECT 'chat', MAX(message.id), message.user_id,
+              'Responder mensaje', applicant.nombre,
+              MAX(message.created_at), NULL, 1,
+              '/advisor/chat?user=' || message.user_id
+            FROM advisor_chat_messages message
+            JOIN usuario applicant ON applicant.id_usuario = message.user_id
+            WHERE message.advisor_id = $1 AND message.sender_role = 'client' AND message.read_at IS NULL
+            GROUP BY message.user_id, applicant.nombre
+          )
+          SELECT type, id, user_id, title, description, created_at, due_at, priority_rank, action_url
+          FROM queue
+          ORDER BY priority_rank, COALESCE(due_at, created_at) ASC NULLS LAST, id DESC
+          LIMIT 12
+        `, [advisorId]),
       ]);
       return res.json({
         stats: {
@@ -146,10 +214,24 @@ module.exports = function createAdvisorRoutes(pool, {
           pendingDocuments: statsResult.rows[0]?.pending_documents || 0,
           pendingDs160: statsResult.rows[0]?.pending_ds160 || 0,
           pendingInterviews: statsResult.rows[0]?.pending_interviews || 0,
+          pendingTasks: communicationStatsResult.rows[0]?.pending_tasks || 0,
+          unreadMessages: communicationStatsResult.rows[0]?.unread_messages || 0,
         },
         attention: attentionResult.rows.map(presentProcess),
         activity: activityResult.rows.map((row) => ({
           id: row.id, action: row.action, description: row.description || "", createdAt: row.created_at,
+        })),
+        workQueue: workQueueResult.rows.map((row) => ({
+          type: row.type,
+          id: row.id,
+          userId: row.user_id,
+          title: row.title,
+          description: row.description,
+          createdAt: row.created_at,
+          dueAt: row.due_at,
+          priority: Number(row.priority_rank) <= 1 ? "high" : "normal",
+          overdue: Boolean(row.due_at && new Date(row.due_at).getTime() < Date.now()),
+          actionUrl: row.action_url,
         })),
       });
     } catch (error) { return handleError(res, error, "No fue posible cargar el inicio del asesor"); }
