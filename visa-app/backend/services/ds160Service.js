@@ -51,6 +51,23 @@ function createDs160Service(pool, { activityLogService, notificacionService }) {
       },
     });
 
+    if (formulario.completado) {
+      try {
+        await notificacionService?.notificarAsesorDeCliente(userId, {
+          titulo: "DS-160 listo para revisión",
+          mensaje: "{clientName} completó su formulario DS-160.",
+          tipo: "ds160",
+          etapaRelacionada: `ds160-${formulario.id_formulario}`,
+          actionUrl: `/advisor/ds160?form=${formulario.id_formulario}`,
+          entityType: "formulario_ds160",
+          entityId: formulario.id_formulario,
+          dedupeKey: `ds160:${formulario.id_formulario}:completed`,
+        });
+      } catch (notificationError) {
+        console.error("ADVISOR DS160 NOTIFICATION ERROR:", notificationError);
+      }
+    }
+
     return formulario;
   }
 

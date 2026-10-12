@@ -88,7 +88,7 @@ function presentTask(row) {
   };
 }
 
-module.exports = function createAdvisorCommunicationService(pool) {
+module.exports = function createAdvisorCommunicationService(pool, { notificacionService } = {}) {
   let schemaPromise;
 
   function ensureSchema() {
@@ -316,7 +316,22 @@ module.exports = function createAdvisorCommunicationService(pool) {
       error.statusCode = 409;
       throw error;
     }
-    return presentMessage(result.rows[0]);
+    const createdMessage = presentMessage(result.rows[0]);
+    try {
+      await notificacionService?.notificarAsesorDeCliente(normalizedUserId, {
+        titulo: "Nuevo mensaje de un solicitante",
+        mensaje: "{clientName} te envió un mensaje.",
+        tipo: "chat",
+        etapaRelacionada: `chat-${normalizedUserId}`,
+        actionUrl: `/advisor/chat?user=${normalizedUserId}`,
+        entityType: "advisor_chat_message",
+        entityId: createdMessage.id,
+        dedupeKey: `chat:${createdMessage.id}`,
+      });
+    } catch (notificationError) {
+      console.error("ADVISOR CHAT NOTIFICATION ERROR:", notificationError);
+    }
+    return createdMessage;
   }
 
   async function listTasks(advisorId) {
@@ -414,7 +429,19 @@ module.exports = function createAdvisorCommunicationService(pool) {
     if (!result.rows.length) {
       const error = new Error("Tarea no encontrada"); error.statusCode = 404; throw error;
     }
-    return presentTask(result.rows[0]);
+    const task = presentTask(result.rows[0]);
+    if (task.status === "completed" || payload.dueAt !== undefined) {
+      try {
+        const normalizedAdvisorId = toPositiveInteger(advisorId, "Asesor");
+        await notificacionService?.resolverPorDedupe(
+          normalizedAdvisorId,
+          `advisor:${normalizedAdvisorId}:task:${task.id}:deadline`
+        );
+      } catch (notificationError) {
+        console.error("ADVISOR TASK NOTIFICATION CLEANUP ERROR:", notificationError);
+      }
+    }
+    return task;
   }
 
   async function deleteTask(advisorId, taskId) {
@@ -425,6 +452,15 @@ module.exports = function createAdvisorCommunicationService(pool) {
     );
     if (!result.rows.length) {
       const error = new Error("Tarea no encontrada"); error.statusCode = 404; throw error;
+    }
+    try {
+      const normalizedAdvisorId = toPositiveInteger(advisorId, "Asesor");
+      await notificacionService?.resolverPorDedupe(
+        normalizedAdvisorId,
+        `advisor:${normalizedAdvisorId}:task:${result.rows[0].id}:deadline`
+      );
+    } catch (notificationError) {
+      console.error("ADVISOR TASK NOTIFICATION CLEANUP ERROR:", notificationError);
     }
   }
 

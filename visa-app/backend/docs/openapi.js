@@ -203,6 +203,18 @@ const schemas = {
     required: ["nombre"],
     properties: { nombre: { type: "string" }, telefono: { type: "string" }, ciudad: { type: "string" }, pais: { type: "string" } },
   },
+  AdvisorNotificationPreferencesRequest: {
+    type: "object",
+    required: ["soundEnabled", "mutedTypes"],
+    properties: {
+      soundEnabled: { type: "boolean" },
+      mutedTypes: {
+        type: "array",
+        uniqueItems: true,
+        items: { type: "string", enum: ["info", "etapa", "documento", "entrevista", "alerta", "chat", "assignment", "ds160", "task"] },
+      },
+    },
+  },
   GenericRequest: objectSchema,
 };
 
@@ -266,19 +278,38 @@ Object.assign(schemas, {
   },
   AdvisorDashboardResponse: {
     type: "object",
-    required: ["stats", "attention", "activity"],
+    required: ["stats", "attention", "workQueue", "activity"],
     properties: {
       stats: {
         type: "object",
-        required: ["activeProcesses", "pendingDocuments", "pendingDs160", "pendingInterviews"],
+        required: ["activeProcesses", "pendingDocuments", "pendingDs160", "pendingInterviews", "pendingTasks", "unreadMessages"],
         properties: {
           activeProcesses: { type: "integer", minimum: 0, example: 12 },
           pendingDocuments: { type: "integer", minimum: 0, example: 4 },
           pendingDs160: { type: "integer", minimum: 0, example: 2 },
           pendingInterviews: { type: "integer", minimum: 0, example: 3 },
+          pendingTasks: { type: "integer", minimum: 0, example: 5 },
+          unreadMessages: { type: "integer", minimum: 0, example: 2 },
         },
       },
       attention: { type: "array", items: { $ref: "#/components/schemas/AdvisorProcess" } },
+      workQueue: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["id", "type", "title", "actionUrl", "priority", "overdue"],
+          properties: {
+            id: { type: "integer" },
+            type: { type: "string", enum: ["task", "ds160", "documento", "entrevista", "chat"] },
+            title: { type: "string" },
+            subtitle: { type: "string", nullable: true },
+            actionUrl: { type: "string", pattern: "^/advisor/" },
+            priority: { type: "string", enum: ["normal", "high"] },
+            overdue: { type: "boolean" },
+            dueAt: { type: "string", format: "date-time", nullable: true },
+          },
+        },
+      },
       activity: {
         type: "array",
         items: {
@@ -544,6 +575,60 @@ Object.assign(schemas, {
     required: ["user"],
     properties: { user: { allOf: [{ $ref: "#/components/schemas/AdvisorProfile" }], nullable: true } },
   },
+  AdvisorNotification: {
+    type: "object",
+    required: ["id", "id_usuario", "titulo", "mensaje", "tipo", "leido", "archivado", "created_at"],
+    properties: {
+      id: { type: "integer" },
+      id_usuario: { type: "integer" },
+      titulo: { type: "string" },
+      mensaje: { type: "string" },
+      tipo: { type: "string", enum: ["info", "etapa", "documento", "entrevista", "alerta", "chat", "assignment", "ds160", "task"] },
+      leido: { type: "boolean" },
+      archivado: { type: "boolean" },
+      etapa_relacionada: { type: "string", nullable: true },
+      action_url: { type: "string", nullable: true, pattern: "^/" },
+      entity_type: { type: "string", nullable: true },
+      entity_id: { type: "integer", nullable: true },
+      dedupe_key: { type: "string", nullable: true },
+      created_at: { type: "string", format: "date-time" },
+      updated_at: { type: "string", format: "date-time" },
+    },
+  },
+  AdvisorNotificationListResponse: {
+    type: "object",
+    required: ["notifications", "hasMore", "unreadCount"],
+    properties: {
+      notifications: { type: "array", items: { $ref: "#/components/schemas/AdvisorNotification" } },
+      hasMore: { type: "boolean" },
+      unreadCount: { type: "integer", minimum: 0 },
+    },
+  },
+  AdvisorNotificationResponse: {
+    type: "object",
+    required: ["notification"],
+    properties: { notification: { $ref: "#/components/schemas/AdvisorNotification" } },
+  },
+  AdvisorNotificationPreferences: {
+    type: "object",
+    required: ["advisor_id", "sound_enabled", "muted_types"],
+    properties: {
+      advisor_id: { type: "integer" },
+      sound_enabled: { type: "boolean" },
+      muted_types: { type: "array", items: { type: "string" } },
+      updated_at: { type: "string", format: "date-time", nullable: true },
+    },
+  },
+  AdvisorNotificationPreferencesResponse: {
+    type: "object",
+    required: ["preferences"],
+    properties: { preferences: { $ref: "#/components/schemas/AdvisorNotificationPreferences" } },
+  },
+  AdvisorNotificationReadAllResponse: {
+    type: "object",
+    required: ["message", "updated"],
+    properties: { message: { type: "string" }, updated: { type: "integer", minimum: 0 } },
+  },
   SuccessMessage: {
     type: "object",
     required: ["message"],
@@ -661,6 +746,14 @@ const endpoints = [
   ["patch", "/advisor/questions/{id}/status", "Asesor", "Activar o desactivar pregunta", "advisor", "AdvisorQuestionStatusRequest"],
   ["get", "/advisor/profile", "Asesor", "Consultar perfil", "advisor"],
   ["put", "/advisor/profile", "Asesor", "Actualizar perfil", "advisor", "AdvisorProfileRequest"],
+  ["get", "/advisor/notifications", "Asesor", "Listar notificaciones en tiempo real", "advisor"],
+  ["get", "/advisor/notifications/stream", "Asesor", "Abrir flujo de notificaciones", "advisor"],
+  ["put", "/advisor/notifications/read-all", "Asesor", "Marcar todas las notificaciones como leídas", "advisor"],
+  ["put", "/advisor/notifications/{id}/read", "Asesor", "Marcar una notificación como leída", "advisor"],
+  ["put", "/advisor/notifications/{id}/archive", "Asesor", "Archivar una notificación", "advisor"],
+  ["delete", "/advisor/notifications/{id}", "Asesor", "Eliminar una notificación", "advisor"],
+  ["get", "/advisor/notifications/preferences/current", "Asesor", "Consultar preferencias de notificación", "advisor"],
+  ["put", "/advisor/notifications/preferences/current", "Asesor", "Actualizar preferencias de notificación", "advisor", "AdvisorNotificationPreferencesRequest"],
 ];
 
 function buildOperation(method, path, tag, summary, auth, body, successStatus = 200, responseType, contentType = "application/json") {
@@ -894,7 +987,64 @@ const advisorDocumentation = {
       requestExample: { nombre: "María Asesora", telefono: "+502 5555 0102", ciudad: "Guatemala", pais: "Guatemala" },
     },
   },
+  "/advisor/notifications": {
+    get: {
+      description: "Lista el buzón del asesor autenticado con filtros y paginación por cursor. También genera, una sola vez, recordatorios para tareas próximas a vencer o vencidas.",
+      response: [200, "Buzón de notificaciones", "AdvisorNotificationListResponse"],
+    },
+  },
+  "/advisor/notifications/stream": {
+    get: {
+      description: "Mantiene una conexión SSE autenticada. Envía un evento snapshot inicial, eventos notification posteriores y latidos periódicos para mantener viva la conexión.",
+      response: [200, "Flujo de eventos SSE", "AdvisorNotificationListResponse"],
+    },
+  },
+  "/advisor/notifications/read-all": {
+    put: {
+      description: "Marca como leídas todas las notificaciones del asesor autenticado.",
+      response: [200, "Notificaciones actualizadas", "AdvisorNotificationReadAllResponse"],
+    },
+  },
+  "/advisor/notifications/{id}/read": {
+    put: {
+      description: "Marca como leída una notificación que pertenece al asesor autenticado.",
+      response: [200, "Notificación actualizada", "AdvisorNotificationResponse"],
+      notFound: true,
+    },
+  },
+  "/advisor/notifications/{id}/archive": {
+    put: {
+      description: "Archiva una notificación propia y la excluye del buzón activo.",
+      response: [200, "Notificación archivada", "AdvisorNotificationResponse"],
+      notFound: true,
+    },
+  },
+  "/advisor/notifications/{id}": {
+    delete: {
+      description: "Elimina definitivamente una notificación propia.",
+      response: [200, "Notificación eliminada", "SuccessMessage"],
+      notFound: true,
+    },
+  },
+  "/advisor/notifications/preferences/current": {
+    get: {
+      description: "Consulta las preferencias de sonido y categorías silenciadas del asesor autenticado.",
+      response: [200, "Preferencias de notificación", "AdvisorNotificationPreferencesResponse"],
+    },
+    put: {
+      description: "Actualiza las preferencias de sonido y categorías silenciadas del asesor autenticado.",
+      response: [200, "Preferencias actualizadas", "AdvisorNotificationPreferencesResponse"],
+      requestExample: { soundEnabled: true, mutedTypes: ["info"] },
+    },
+  },
 };
+
+paths["/advisor/notifications"].get.parameters = [
+  { name: "status", in: "query", schema: { type: "string", enum: ["all", "read", "unread", "archived"], default: "all" } },
+  { name: "type", in: "query", schema: { type: "string", enum: ["all", "info", "etapa", "documento", "entrevista", "alerta", "chat", "assignment", "ds160", "task"], default: "all" } },
+  { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },
+  { name: "beforeId", in: "query", schema: { type: "integer", minimum: 1 } },
+];
 
 for (const [path, methods] of Object.entries(advisorDocumentation)) {
   for (const [method, documentation] of Object.entries(methods)) {
@@ -914,6 +1064,11 @@ for (const [path, methods] of Object.entries(advisorDocumentation)) {
     }
   }
 }
+
+paths["/advisor/notifications/stream"].get.responses[200] = {
+  description: "Flujo de eventos del servidor. Cada bloque contiene event, id opcional y data serializada como JSON.",
+  content: { "text/event-stream": { schema: { type: "string" } } },
+};
 
 module.exports = {
   openapi: "3.0.3",

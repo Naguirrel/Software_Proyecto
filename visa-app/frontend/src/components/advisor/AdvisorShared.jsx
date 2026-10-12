@@ -1,4 +1,5 @@
 import { Search, X } from "lucide-react";
+import { useEffect, useId, useRef } from "react";
 
 export function AdvisorPageHeader({ title, description, action }) {
   return <header className="advisor-page-header"><div><h1>{title}</h1><p>{description}</p></div>{action}</header>;
@@ -13,12 +14,45 @@ export function AdvisorSearch({ value, onChange, placeholder }) {
 }
 
 export function AdvisorState({ loading, error, empty, onRetry }) {
-  if (loading) return <p className="advisor-state" role="status">Cargando…</p>;
+  if (loading) return <div className="advisor-state advisor-skeleton-state" role="status" aria-label="Cargando contenido"><span /><span /><span /></div>;
   if (error) return <div className="advisor-state advisor-state--error" role="alert"><p>{error}</p>{onRetry && <button type="button" onClick={onRetry}>Reintentar</button>}</div>;
   if (empty) return <p className="advisor-state">No hay resultados.</p>;
   return null;
 }
 
 export function AdvisorModal({ title, subtitle, onClose, children, footer }) {
-  return <div className="advisor-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="advisor-modal" role="dialog" aria-modal="true" aria-labelledby="advisor-modal-title"><header><div><h2 id="advisor-modal-title">{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button type="button" onClick={onClose} aria-label="Cerrar"><X aria-hidden="true" /></button></header><div className="advisor-modal__body">{children}</div>{footer && <footer>{footer}</footer>}</section></div>;
+  const titleId = useId();
+  const descriptionId = useId();
+  const dialogRef = useRef(null);
+  const previousFocusRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement;
+    const dialog = dialogRef.current;
+    const focusable = dialog?.querySelector("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]");
+    focusable?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const elements = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]")];
+      if (!elements.length) return;
+      const first = elements[0];
+      const last = elements.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previousFocusRef.current?.focus?.();
+    };
+  }, []);
+
+  return <div className="advisor-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section ref={dialogRef} className="advisor-modal" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={subtitle ? descriptionId : undefined}><header><div><h2 id={titleId}>{title}</h2>{subtitle && <p id={descriptionId}>{subtitle}</p>}</div><button type="button" onClick={onClose} aria-label="Cerrar"><X aria-hidden="true" /></button></header><div className="advisor-modal__body">{children}</div>{footer && <footer>{footer}</footer>}</section></div>;
 }

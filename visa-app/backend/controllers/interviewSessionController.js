@@ -57,6 +57,21 @@ function createInterviewSessionController(interviewSessionService, { notificacio
         },
       });
 
+      try {
+        await notificacionService?.notificarAsesorDeCliente(session.user_id, {
+          titulo: "Entrevista lista para evaluación",
+          mensaje: "{clientName} completó una simulación de entrevista.",
+          tipo: "entrevista",
+          etapaRelacionada: `entrevista-${session.id}`,
+          actionUrl: `/advisor/entrevistas?session=${session.id}`,
+          entityType: "interview_session",
+          entityId: session.id,
+          dedupeKey: `interview:${session.id}:completed`,
+        });
+      } catch (notificationError) {
+        console.error("ADVISOR INTERVIEW NOTIFICATION ERROR:", notificationError);
+      }
+
       return res.status(201).json({
         message: "Sesión de entrevista guardada correctamente",
         session,

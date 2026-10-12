@@ -1,9 +1,9 @@
 const express = require("express");
 const createAdvisorCommunicationService = require("../services/advisorCommunicationService");
 
-module.exports = function createChatRoutes(pool, { requireSession }) {
+module.exports = function createChatRoutes(pool, { requireSession, notificacionService }) {
   const router = express.Router();
-  const service = createAdvisorCommunicationService(pool);
+  const service = createAdvisorCommunicationService(pool, { notificacionService });
   router.use(requireSession);
 
   router.get("/", async (req, res) => {

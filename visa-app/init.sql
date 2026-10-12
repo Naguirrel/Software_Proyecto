@@ -292,8 +292,27 @@ CREATE TABLE IF NOT EXISTS notificaciones (
   mensaje TEXT NOT NULL,
   tipo VARCHAR(50) NOT NULL DEFAULT 'info',
   leido BOOLEAN NOT NULL DEFAULT FALSE,
+  archivado BOOLEAN NOT NULL DEFAULT FALSE,
   etapa_relacionada VARCHAR(200),
+  action_url VARCHAR(500),
+  entity_type VARCHAR(80),
+  entity_id BIGINT,
+  dedupe_key VARCHAR(240),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS notificaciones_usuario_feed_idx
+ON notificaciones(id_usuario, archivado, created_at DESC, id DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS notificaciones_usuario_dedupe_idx
+ON notificaciones(id_usuario, dedupe_key)
+WHERE dedupe_key IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS advisor_notification_preferences (
+  advisor_id INT PRIMARY KEY REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+  sound_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  muted_types TEXT[] NOT NULL DEFAULT '{}',
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

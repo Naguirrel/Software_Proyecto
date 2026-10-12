@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Send } from "lucide-react";
-import AdvisorLayout from "../../components/advisor/AdvisorLayout";
+import { useSearchParams } from "react-router-dom";
 import { AdvisorSearch, AdvisorState } from "../../components/advisor/AdvisorShared";
 import { advisorRequest } from "../../utils/advisorApi";
 import { formatAdvisorDate as formatDate } from "../../utils/advisorFormat";
@@ -20,6 +20,7 @@ function mergeMessages(current, incoming) {
 }
 
 export default function AdvisorChat() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -50,9 +51,11 @@ export default function AdvisorChat() {
         if (!active) return;
         const items = data.conversations || [];
         setConversations(items);
-        setSelected((current) => current
-          ? items.find((item) => item.userId === current.userId) || null
-          : items[0] || null);
+        const requestedUserId = Number(searchParams.get("user"));
+        setSelected((current) => items.find((item) => item.userId === requestedUserId)
+          || (current ? items.find((item) => item.userId === current.userId) : null)
+          || items[0]
+          || null);
         setError("");
       } catch (requestError) {
         if (active && requestError.name !== "AbortError") setError(requestError.message);
@@ -71,7 +74,7 @@ export default function AdvisorChat() {
       window.clearInterval(intervalId);
       controllers.forEach((controller) => controller.abort());
     };
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     latestMessageIdRef.current = latestMessageId;
@@ -167,12 +170,12 @@ export default function AdvisorChat() {
     }
   };
 
-  return <AdvisorLayout><section className="advisor-chat">
+  return <section className="advisor-chat">
     <aside className="advisor-chat__conversations">
       <h1>Mensajes</h1>
       <AdvisorSearch value={query} onChange={setQuery} placeholder="Buscar…" />
       <AdvisorState loading={loading} error={loading ? error : ""} empty={!loading && !visible.length} />
-      {visible.map((item) => <button type="button" key={item.userId} className={selectedUserId === item.userId ? "is-active" : ""} onClick={() => setSelected(item)}>
+      {visible.map((item) => <button type="button" key={item.userId} className={selectedUserId === item.userId ? "is-active" : ""} onClick={() => { setSelected(item); setSearchParams({ user: String(item.userId) }); }}>
         <span className="advisor-avatar">{initials(item.name)}</span>
         <span><strong>{item.name}</strong><small>{item.lastMessage}</small><em>{item.stage}</em></span>
         {item.unreadCount > 0 && <b>{item.unreadCount}</b>}
@@ -191,5 +194,5 @@ export default function AdvisorChat() {
         <button type="submit" disabled={sending || !input.trim()} aria-label="Enviar mensaje"><Send aria-hidden="true" /></button>
       </form>
     </> : <p className="advisor-chat__placeholder">Selecciona una conversación.</p>}</section>
-  </section></AdvisorLayout>;
+  </section>;
 }

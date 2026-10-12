@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import AdvisorLayout from "../../components/advisor/AdvisorLayout";
+import { useSearchParams } from "react-router-dom";
 import { AdvisorModal, AdvisorPageHeader, AdvisorState, AdvisorTabs } from "../../components/advisor/AdvisorShared";
 import { advisorRequest } from "../../utils/advisorApi";
 import { formatAdvisorDate as formatDate } from "../../utils/advisorFormat";
+import useSessionStorageState from "../../hooks/useSessionStorageState";
 
 const tabs = [
   { value: "today", label: "Hoy" },
@@ -37,9 +38,10 @@ function toApiDueAt(value) {
 }
 
 export default function AdvisorTasks() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState([]);
   const [processes, setProcesses] = useState([]);
-  const [tab, setTab] = useState("today");
+  const [tab, setTab] = useSessionStorageState("advisor-task-tab", "today");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -69,6 +71,17 @@ export default function AdvisorTasks() {
       });
     return () => controller.abort();
   }, [revision]);
+
+  useEffect(() => {
+    const taskId = Number(searchParams.get("task"));
+    const requested = tasks.find((task) => task.id === taskId);
+    if (requested && editingTask?.id !== requested.id) {
+      openEdit(requested);
+      const due = requested.dueAt ? new Date(requested.dueAt) : null;
+      const { start, end } = dayRange();
+      setTab(requested.status === "completed" ? "completed" : due && due < start ? "overdue" : due && due < end ? "today" : "upcoming");
+    }
+  }, [editingTask?.id, searchParams, setTab, tasks]);
 
   const filtered = useMemo(() => {
     const { start, end } = dayRange();
@@ -107,6 +120,7 @@ export default function AdvisorTasks() {
     setEditingTask(null);
     setDraft(emptyDraft);
     setError("");
+    setSearchParams({});
   };
 
   const save = async () => {
@@ -128,6 +142,8 @@ export default function AdvisorTasks() {
       setModalOpen(false);
       setEditingTask(null);
       setDraft(emptyDraft);
+      setSearchParams({});
+      window.dispatchEvent(new CustomEvent("advisor:notifications-refresh"));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -146,6 +162,7 @@ export default function AdvisorTasks() {
         body: JSON.stringify({ status }),
       });
       setTasks((current) => current.map((item) => item.id === task.id ? data.task : item));
+      window.dispatchEvent(new CustomEvent("advisor:notifications-refresh"));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -160,6 +177,7 @@ export default function AdvisorTasks() {
       setError("");
       await advisorRequest(`/tasks/${task.id}`, { method: "DELETE" });
       setTasks((current) => current.filter((item) => item.id !== task.id));
+      window.dispatchEvent(new CustomEvent("advisor:notifications-refresh"));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -167,7 +185,7 @@ export default function AdvisorTasks() {
     }
   };
 
-  return <AdvisorLayout>
+  return <>
     <AdvisorPageHeader
       title="Mis tareas"
       description="Organiza tu trabajo diario y seguimiento de solicitantes."
@@ -210,5 +228,5 @@ export default function AdvisorTasks() {
         <label className="advisor-form-grid__wide">Solicitante<select value={draft.userId} onChange={(event) => setDraft({ ...draft, userId: event.target.value })}><option value="">Tarea general</option>{processes.map((process) => <option key={process.solicitante.id} value={process.solicitante.id}>{process.solicitante.nombre}</option>)}</select></label>
       </div>
     </AdvisorModal>}
-  </AdvisorLayout>;
+  </>;
 }
