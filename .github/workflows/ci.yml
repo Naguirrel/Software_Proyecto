@@ -8,13 +8,19 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     services:
       postgres:
         image: postgres:15
@@ -78,6 +84,9 @@ jobs:
   frontend:
     name: Frontend tests, lint and build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     env:
       VITE_API_URL: ""
       VITE_API_PORT: 3000
@@ -120,17 +129,183 @@ jobs:
           path: visa-app/test-artifacts/frontend.xml
           if-no-files-found: warn
 
+  security:
+    name: Security audit (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: frontend
+            artifact: npm-audit-frontend
+            working-directory: visa-app/frontend
+            lockfile: visa-app/frontend/package-lock.json
+          - project: backend
+            artifact: npm-audit-backend
+            working-directory: visa-app/backend
+            lockfile: visa-app/backend/package-lock.json
+          - project: root
+            artifact: npm-audit-root
+            working-directory: visa-app
+            lockfile: visa-app/package-lock.json
+          - project: e2e
+            artifact: npm-audit-e2e
+            working-directory: visa-app/e2e
+            lockfile: visa-app/e2e/package-lock.json
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.lockfile }}
+
+      - name: Audit locked dependencies
+        working-directory: ${{ matrix.working-directory }}
+        env:
+          AUDIT_RAW: ${{ runner.temp }}/npm-audit-raw-${{ matrix.artifact }}.json
+          AUDIT_REPORT: ${{ runner.temp }}/npm-audit-${{ matrix.artifact }}.json
+          AUDIT_PROJECT: ${{ matrix.project }}
+        run: |
+          set +e
+          npm audit --json --audit-level=high > "$AUDIT_RAW"
+          audit_status=$?
+
+          AUDIT_EXIT_CODE="$audit_status" node - <<'NODE'
+          const fs = require('node:fs');
+          let audit = {};
+          try {
+            audit = JSON.parse(fs.readFileSync(process.env.AUDIT_RAW, 'utf8'));
+          } catch {
+            // Record an incomplete audit without copying raw output.
+          }
+          const counts = audit.metadata?.vulnerabilities;
+          const complete = Number.isInteger(counts?.total);
+          const vulnerabilities = complete
+            ? Object.entries(audit.vulnerabilities ?? {}).map(([name, item]) => ({
+                name,
+                severity: item.severity,
+                isDirect: item.isDirect,
+                fixAvailable: item.fixAvailable,
+              }))
+            : [];
+          const report = {
+            project: process.env.AUDIT_PROJECT,
+            completed: complete,
+            auditExitCode: Number(process.env.AUDIT_EXIT_CODE),
+            counts: complete ? {
+              total: counts.total,
+              critical: counts.critical,
+              high: counts.high,
+              moderate: counts.moderate,
+              low: counts.low,
+            } : null,
+            vulnerabilities,
+          };
+          fs.writeFileSync(process.env.AUDIT_REPORT, JSON.stringify(report, null, 2) + '\n');
+          if (!complete) process.exitCode = 2;
+          NODE
+          report_status=$?
+          rm -f -- "$AUDIT_RAW"
+          if [ "$audit_status" -ne 0 ]; then
+            exit "$audit_status"
+          fi
+          exit "$report_status"
+
+      - name: Save audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/npm-audit-${{ matrix.artifact }}.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Reject sensitive tracked filenames
+        if: ${{ always() && matrix.project == 'root' }}
+        run: |
+          node - <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const allowed = new Set([
+            'visa-app/.env.example',
+            'visa-app/backend/.env.example',
+            'visa-app/frontend/.env.example',
+          ]);
+          const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
+            .split('\0').filter(Boolean);
+          const forbidden = tracked.filter((path) => {
+            if (allowed.has(path)) return false;
+            const name = path.split('/').at(-1).toLowerCase();
+            return /^\.env(?:$|\.)/.test(name)
+              || /^(?:id_rsa|id_dsa|id_ecdsa|id_ed25519)$/.test(name)
+              || /\.(?:pem|key|p12|pfx|ppk|jks|keystore)$/.test(name)
+              || /(?:^|[._-])(?:credentials?|secrets?)(?:[._-]|$)/.test(name);
+          });
+          forbidden.forEach((path) => console.error(path));
+          if (forbidden.length) process.exitCode = 1;
+          NODE
+
+  notify-failure:
+    name: CI failure notification
+    needs: [backend, frontend, security]
+    if: ${{ always() && (needs.backend.result != 'success' || needs.frontend.result != 'success' || needs.security.result != 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    steps:
+      - name: Publish failure summary and annotation
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+        run: |
+          {
+            echo "## CI failure"
+            echo
+            echo "| Job | Result |"
+            echo "| --- | --- |"
+            echo "| Backend | $BACKEND_RESULT |"
+            echo "| Frontend | $FRONTEND_RESULT |"
+            echo "| Security | $SECURITY_RESULT |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::CI validation failed: backend=$BACKEND_RESULT, frontend=$FRONTEND_RESULT, security=$SECURITY_RESULT"
+
+      - name: Mark failure notification
+        run: exit 1
+
   summary:
     name: CI result
-    needs: [backend, frontend]
+    needs: [backend, frontend, security]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
     steps:
       - name: Require every job to succeed
         env:
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
         run: |
-          echo "Backend: $BACKEND_RESULT; frontend: $FRONTEND_RESULT"
-          test "$BACKEND_RESULT" = "success"
-          test "$FRONTEND_RESULT" = "success"
+          {
+            echo "## CI result"
+            echo
+            echo "| Job | Result |"
+            echo "| --- | --- |"
+            echo "| Backend | $BACKEND_RESULT |"
+            echo "| Frontend | $FRONTEND_RESULT |"
+            echo "| Security | $SECURITY_RESULT |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$BACKEND_RESULT" = "success" ] &&
+             [ "$FRONTEND_RESULT" = "success" ] &&
+             [ "$SECURITY_RESULT" = "success" ]; then
+            exit 0
+          fi
+          echo "::error::One or more required CI validations did not succeed"
+          exit 1
