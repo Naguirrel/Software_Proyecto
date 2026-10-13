@@ -1,0 +1,13 @@
+-- Script de pgbench: una "visita" típica de un solicitante, con las mismas consultas que ejecuta el backend
+-- (login, bloqueo RNF-13, validar sesión, estado del trámite, flujo del cliente, DS-160, documentos y notificaciones).
+-- Uso: pgbench -n -r -f consultas-app.sql -c <clientes> -j <hilos> -T <segundos> visa_volumen
+\set id random(1, 100000)
+SELECT id_usuario, nombre, correo, perfil, COALESCE(rol, 'cliente') AS rol, activo, contrasena, email_verificado, idioma, bloqueado_hasta, intentos_reset_en FROM usuario WHERE correo = 'volumen' || :id || '@visaguide.test';
+SELECT COUNT(*)::int AS total FROM login_attempts WHERE id_usuario = :id AND created_at > NOW() - INTERVAL '15 minutes';
+SELECT id_usuario, nombre, correo, perfil, COALESCE(rol, 'cliente') AS rol, activo, email_verificado, idioma FROM usuario WHERE id_usuario = :id;
+SELECT * FROM tramite WHERE id_usuario = :id;
+SELECT u.id_usuario, u.perfil, t.id_tramite, t.id_asesor, t.estado, t.etapa_actual, t.progreso, EXISTS (SELECT 1 FROM formulario_ds160 f WHERE f.id_usuario = u.id_usuario AND f.completado = TRUE) AS ds160_complete, COUNT(DISTINCT d.documento_key) FILTER (WHERE d.documento_key = ANY(ARRAY['passport','photo','intake-form']::varchar[]))::int AS required_documents_uploaded, COUNT(DISTINCT d.documento_key) FILTER (WHERE d.documento_key = ANY(ARRAY['passport','photo','intake-form']::varchar[]) AND d.estado = 'approved')::int AS required_documents_approved, EXISTS (SELECT 1 FROM consular_payments p WHERE p.user_id = u.id_usuario AND p.status IN ('transfer_pending','client_paid','consular_processing','consular_paid')) AS payment_started, EXISTS (SELECT 1 FROM consular_payments p WHERE p.user_id = u.id_usuario AND p.status = 'consular_paid') AS consular_paid, EXISTS (SELECT 1 FROM consular_appointments a WHERE a.user_id = u.id_usuario AND a.status = 'scheduled') AS appointment_scheduled, EXISTS (SELECT 1 FROM interview_sessions i WHERE i.user_id = u.id_usuario) AS interview_started FROM usuario u LEFT JOIN tramite t ON t.id_usuario = u.id_usuario LEFT JOIN documentos d ON d.usuario_id = u.id_usuario WHERE u.id_usuario = :id GROUP BY u.id_usuario, u.perfil, t.id_tramite, t.id_asesor, t.estado, t.etapa_actual, t.progreso;
+SELECT * FROM formulario_ds160 WHERE id_usuario = :id;
+SELECT id, nombre, tipo, archivo_url, usuario_id, documento_key, estado, feedback, creado_en, actualizado_en, storage_key FROM documentos WHERE usuario_id = :id ORDER BY actualizado_en DESC, creado_en DESC;
+SELECT id, id_usuario, titulo, mensaje, tipo, leido, etapa_relacionada, created_at FROM notificaciones WHERE id_usuario = :id ORDER BY created_at DESC, id DESC;
+SELECT COUNT(*) AS total FROM notificaciones WHERE id_usuario = :id AND leido = FALSE;

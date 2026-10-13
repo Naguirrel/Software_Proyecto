@@ -1,34 +1,83 @@
 // Funciones puras para k6 y pruebas de configuración con Node.
+export const TEST_PROFILES = ['smoke', 'full', 'stress', 'spike'];
+
+// stress y spike buscan el límite del sistema: no abortan al primer fallo.
+export const EXPLORATORY_PROFILES = ['stress', 'spike'];
+
 export function parseTestProfile(value) {
-  if (value !== 'smoke' && value !== 'full') {
-    throw new Error('TEST_PROFILE es obligatorio y debe ser smoke o full.');
+  if (!TEST_PROFILES.includes(value)) {
+    throw new Error('TEST_PROFILE es obligatorio y debe ser smoke o full (o stress/spike para buscar límites).');
   }
   return value;
 }
 
-export function buildLoadOptions(profile) {
+export function maxVusForProfile(profile) {
   const selected = parseTestProfile(profile);
-  const scenario = selected === 'smoke'
-    ? {
+  return { smoke: 1, full: 200, stress: 1000, spike: 500 }[selected];
+}
+
+function buildScenario(profile) {
+  if (profile === 'smoke') {
+    return {
       executor: 'constant-vus',
       vus: 1,
       duration: '30s',
       gracefulStop: '10s',
-    }
-    : {
+    };
+  }
+  if (profile === 'stress') {
+    // Escalones de 2 min por encima de RNF-9 (200) hasta 1000 VUs.
+    return {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '1m', target: 25 },
-        { duration: '1m', target: 50 },
-        { duration: '1m', target: 100 },
-        { duration: '1m', target: 150 },
         { duration: '1m', target: 200 },
-        { duration: '5m', target: 200 },
-        { duration: '2m', target: 0 },
+        { duration: '2m', target: 200 },
+        { duration: '1m', target: 400 },
+        { duration: '2m', target: 400 },
+        { duration: '1m', target: 600 },
+        { duration: '2m', target: 600 },
+        { duration: '1m', target: 800 },
+        { duration: '2m', target: 800 },
+        { duration: '1m', target: 1000 },
+        { duration: '2m', target: 1000 },
+        { duration: '1m', target: 0 },
       ],
       gracefulRampDown: '30s',
     };
+  }
+  if (profile === 'spike') {
+    // Inundación: de 0 a 500 VUs en 10 s, se sostiene y cae de golpe.
+    return {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '10s', target: 500 },
+        { duration: '2m', target: 500 },
+        { duration: '10s', target: 0 },
+      ],
+      gracefulRampDown: '30s',
+    };
+  }
+  return {
+    executor: 'ramping-vus',
+    startVUs: 0,
+    stages: [
+      { duration: '1m', target: 25 },
+      { duration: '1m', target: 50 },
+      { duration: '1m', target: 100 },
+      { duration: '1m', target: 150 },
+      { duration: '1m', target: 200 },
+      { duration: '5m', target: 200 },
+      { duration: '2m', target: 0 },
+    ],
+    gracefulRampDown: '30s',
+  };
+}
+
+export function buildLoadOptions(profile) {
+  const selected = parseTestProfile(profile);
+  const scenario = buildScenario(selected);
 
   return {
     scenarios: { authenticated_users: scenario },

@@ -4,12 +4,18 @@ import { SharedArray } from 'k6/data';
 import exec from 'k6/execution';
 import { Counter, Rate, Trend } from 'k6/metrics';
 import {
-  buildLoadOptions, buildLoginFailureDiagnostic, extractAuth, normalizeBaseUrl,
-  parseTestProfile, parseUsers, selectUser,
+  buildLoadOptions, buildLoginFailureDiagnostic, EXPLORATORY_PROFILES, extractAuth,
+  maxVusForProfile, normalizeBaseUrl, parseTestProfile, parseUsers, selectUser,
 } from './load-test-utils.js';
 
 const TEST_PROFILE = parseTestProfile(__ENV.TEST_PROFILE);
-const MAX_VUS = TEST_PROFILE === 'smoke' ? 1 : 200;
+const MAX_VUS = maxVusForProfile(TEST_PROFILE);
+// En stress/spike un fallo es un dato (el límite), no un motivo para detener la prueba.
+const EXPLORATORY = EXPLORATORY_PROFILES.includes(TEST_PROFILE);
+
+function abortUnlessExploratory(message) {
+  if (!EXPLORATORY) exec.test.abort(message);
+}
 const BASE_URL = normalizeBaseUrl(
   __ENV.BASE_URL || 'http://localhost:8080/api',
   __ENV.ALLOW_REMOTE_LOAD_TEST === 'true'
@@ -104,12 +110,15 @@ export default function () {
       }
     }
     if (!record('login', login, Boolean(auth))) {
-      console.error('Login fallido: ' + JSON.stringify(buildLoginFailureDiagnostic(
-        BASE_URL + '/login',
-        login,
-        [user.correo, user.contrasena]
-      )));
-      exec.test.abort('El login de un VU falló; la carga autenticada no sería válida.');
+      if (!EXPLORATORY) {
+        console.error('Login fallido: ' + JSON.stringify(buildLoginFailureDiagnostic(
+          BASE_URL + '/login',
+          login,
+          [user.correo, user.contrasena]
+        )));
+      }
+      abortUnlessExploratory('El login de un VU falló; la carga autenticada no sería válida.');
+      think();
       return;
     }
     session = auth;
@@ -121,7 +130,7 @@ export default function () {
     Number(validatedBody?.user?.id_usuario) === session.id;
   record('session', validated, validSession);
   if (validated.status === 401 || validated.status === 403) {
-    exec.test.abort('La sesión autenticada fue rechazada; se interrumpe la prueba.');
+    abortUnlessExploratory('La sesión autenticada fue rechazada; se interrumpe la prueba.');
     return;
   }
   think();
@@ -131,7 +140,7 @@ export default function () {
   record('ds160', ds160, ds160.status === 200 && ds160Body !== null &&
     Object.prototype.hasOwnProperty.call(ds160Body, 'datos'));
   if (ds160.status === 401 || ds160.status === 403) {
-    exec.test.abort('El acceso autenticado al DS-160 fue rechazado; se interrumpe la prueba.');
+    abortUnlessExploratory('El acceso autenticado al DS-160 fue rechazado; se interrumpe la prueba.');
     return;
   }
   think();
@@ -144,7 +153,7 @@ export default function () {
   const documentsBody = documents.status === 200 ? jsonBody(documents) : null;
   record('documents', documents, documents.status === 200 && Array.isArray(documentsBody));
   if (documents.status === 401 || documents.status === 403) {
-    exec.test.abort('El acceso autenticado a documentos fue rechazado; se interrumpe la prueba.');
+    abortUnlessExploratory('El acceso autenticado a documentos fue rechazado; se interrumpe la prueba.');
     return;
   }
   think();
@@ -167,7 +176,7 @@ export function handleSummary(data) {
     generatedAt: new Date().toISOString(),
     destination: BASE_URL,
     configuredVUs: MAX_VUS,
-    configuredHold: TEST_PROFILE === 'smoke' ? '30s' : '5m',
+    configuredHold: { smoke: '30s', full: '5m', stress: '2m por escalón', spike: '2m' }[TEST_PROFILE],
     observedMaxVUs: data.metrics?.vus?.values?.max ?? null,
     accountsAvailable: users.length,
     accountsReused: users.length < MAX_VUS,
