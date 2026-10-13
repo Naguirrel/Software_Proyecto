@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildLoadOptions, buildLoginFailureDiagnostic, extractAuth, normalizeBaseUrl,
+  buildLoadOptions, buildLoginFailureDiagnostic, extractAuth, maxVusForProfile, normalizeBaseUrl,
   parseTestProfile, parseUsers, selectUser,
 } from './load-test-utils.js';
 
@@ -10,10 +10,24 @@ test('rechaza un perfil ausente antes de configurar la carga', () => {
   assert.throws(() => buildLoadOptions(undefined), /TEST_PROFILE es obligatorio/);
 });
 
-test('rechaza perfiles distintos de smoke y full', () => {
-  for (const invalid of ['', 'SMOKE', 'full ', '200']) {
+test('rechaza perfiles desconocidos', () => {
+  for (const invalid of ['', 'SMOKE', 'full ', '200', 'Stress']) {
     assert.throws(() => parseTestProfile(invalid), /smoke o full/);
   }
+});
+
+test('stress escala por encima de RNF-9 hasta 1000 VUs y spike salta a 500 VUs en 10 s', () => {
+  const stress = buildLoadOptions('stress').scenarios.authenticated_users;
+  const targets = stress.stages.map((stage) => stage.target);
+  assert.equal(Math.max(...targets), 1000);
+  assert.deepEqual([...new Set(targets)], [200, 400, 600, 800, 1000, 0]);
+  assert.equal(maxVusForProfile('stress'), 1000);
+
+  const spike = buildLoadOptions('spike').scenarios.authenticated_users;
+  assert.deepEqual(spike.stages[0], { duration: '10s', target: 500 });
+  assert.equal(maxVusForProfile('spike'), 500);
+  assert.equal(maxVusForProfile('full'), 200);
+  assert.equal(maxVusForProfile('smoke'), 1);
 });
 
 test('configura smoke con un VU durante aproximadamente 30 segundos', () => {
