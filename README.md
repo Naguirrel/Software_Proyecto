@@ -19,7 +19,10 @@ Carpeta que se usará para las siguientes entregas.
 
 # Integrantes del grupo
 
-- Diego Quan  
-- Norman Aguirre  
-- Diego Guevara  
-- Juan Francisco Orozco Mijangos (24647)
+- Diego Quan (24336) 
+
+- Diego Guevara (24128) 
+
+- Juan Francisco Orozco Mijangos (24647) 
+
+- Norman Aguirre (24479) 

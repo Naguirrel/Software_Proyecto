@@ -5,6 +5,7 @@ import useDS160Form from "../hooks/useDS160Form";
 import { secciones } from "../data/ds160Sections";
 import DS160Field from "../components/ds160/DS160Field";
 import { SaveIcon, DownloadIcon, CheckCircleIcon, InfoCircleIcon } from "../components/ds160/DS160Icons";
+import "../styles/ds160.css";
 
 function getSt() {
   const bg = "var(--vg-bg)";
@@ -272,8 +273,8 @@ export default function DS160Form() {
     return (
       <div style={st.layout}>
         <Sidebar currentPage="ds160" />
-        <main id="main-content" tabIndex="-1" className="vg-authenticated-page" style={st.page}>
-          <div style={st.headerCard}>
+        <main id="main-content" tabIndex="-1" className="vg-authenticated-page ds160-page" style={st.page}>
+          <div className="ds160-header" style={st.headerCard}>
             <p style={{ textAlign: "center", color: "var(--vg-text-muted)", margin: 0 }}>Cargando formulario...</p>
           </div>
         </main>
@@ -284,10 +285,10 @@ export default function DS160Form() {
   return (
     <div style={st.layout}>
       <Sidebar currentPage="ds160" />
-      <main id="main-content" tabIndex="-1" className="vg-authenticated-page" style={st.page}>
+      <main id="main-content" tabIndex="-1" className="vg-authenticated-page ds160-page" style={st.page}>
 
         {/* HEADER */}
-        <div style={st.headerCard}>
+        <div className="ds160-header" style={st.headerCard}>
           <div style={st.headerRow}>
             <div>
               <h1 style={{ ...st.titulo, fontSize: modoSenior ? "40px" : "var(--vg-page-title)" }}>Formulario DS-160</h1>
@@ -296,17 +297,17 @@ export default function DS160Form() {
               </p>
             </div>
             <div style={st.headerActions}>
-              <button style={st.guardarBtn} onClick={descargarPdf} disabled={descargandoPdf} aria-label="Descargar PDF">
+              <button className="ds160-header-btn" style={st.guardarBtn} onClick={descargarPdf} disabled={descargandoPdf} aria-label="Descargar PDF">
                 <DownloadIcon />
                 {descargandoPdf ? "Descargando..." : "Descargar PDF"}
               </button>
-              <button style={st.guardarBtn} onClick={() => guardarProgreso()} disabled={guardando} aria-label="Guardar progreso">
+              <button className="ds160-header-btn" style={st.guardarBtn} onClick={() => guardarProgreso()} disabled={guardando} aria-label="Guardar progreso">
                 <SaveIcon />
                 {guardando ? "Guardando..." : "Guardar progreso"}
               </button>
             </div>
           </div>
-          <div style={st.barTrack} role="progressbar" aria-valuenow={Math.round(progreso)} aria-valuemin={0} aria-valuemax={100}>
+          <div className="ds160-progress" style={st.barTrack} role="progressbar" aria-valuenow={Math.round(progreso)} aria-valuemin={0} aria-valuemax={100}>
             <div style={{ ...st.barFill, width: `${progreso}%` }} />
           </div>
         </div>
@@ -323,10 +324,10 @@ export default function DS160Form() {
         )}
 
         {/* MAIN */}
-        <div style={st.mainContent}>
+        <div className="ds160-content" style={st.mainContent}>
 
           {/* Formulario */}
-          <div style={st.formCard}>
+          <div className="ds160-form-card" style={st.formCard}>
             {seccion?.campos.map(campo => (
               debeMostrar(campo) && (
                 <DS160Field
@@ -340,8 +341,9 @@ export default function DS160Form() {
                 />
               )
             ))}
-            <div style={st.navegacion}>
+            <div className="ds160-nav" style={st.navegacion}>
               <button
+                className="ds160-nav-btn"
                 style={{ ...st.navBtn, ...st.navBack, fontSize: modoSenior ? "15px" : "13px", opacity: seccionActual === 1 ? 0.4 : 1 }}
                 onClick={anteriorSeccion}
                 disabled={seccionActual === 1}
@@ -349,11 +351,12 @@ export default function DS160Form() {
                 ← Anterior
               </button>
               {seccionActual < totalSecciones ? (
-                <button style={{ ...st.navBtn, ...st.navNext, fontSize: modoSenior ? "16px" : "14px" }} onClick={siguienteSeccion}>
+                <button className="ds160-nav-btn ds160-nav-btn--next" style={{ ...st.navBtn, ...st.navNext, fontSize: modoSenior ? "16px" : "14px" }} onClick={siguienteSeccion}>
                   Siguiente →
                 </button>
               ) : (
                 <button
+                  className="ds160-nav-btn ds160-nav-btn--next"
                   style={{ ...st.navBtn, ...st.navNext, fontSize: modoSenior ? "16px" : "14px", opacity: guardando ? 0.7 : 1 }}
                   onClick={finalizarFormulario}
                   disabled={guardando}
@@ -365,10 +368,10 @@ export default function DS160Form() {
           </div>
 
           {/* Sidebar de ayuda */}
-          <div style={st.helpSidebar}>
+          <div className="ds160-help" style={st.helpSidebar}>
 
             {campoConAyuda?.porque && (
-              <div style={st.helpBox}>
+              <div className="ds160-help-box" style={st.helpBox}>
                 <div style={st.helpTitleRow}>
                   <InfoCircleIcon />
                   <h4 style={{ ...st.helpTitle, fontSize: modoSenior ? "15px" : "13px" }}>
@@ -382,12 +385,12 @@ export default function DS160Form() {
             )}
 
             {campoConAyuda?.tip && (
-              <div style={st.tipBox}>
+              <div className="ds160-help-box" style={st.tipBox}>
                 <div style={st.tipTitleRow}>
                   <h4 style={{ ...st.tipTitle, fontSize: modoSenior ? "15px" : "13px" }}>Tip del Asesor</h4>
                 </div>
                 {campoConAyuda.tip.split(". ").filter(t => t.trim()).map((linea, i) => (
-                  <div key={i} style={st.tipItem}>
+                  <div key={i} className="ds160-tip-item" style={st.tipItem}>
                     <CheckCircleIcon />
                     <span style={{ ...st.tipText, fontSize: modoSenior ? "14px" : "13px" }}>
                       {linea.trim().replace(/\.$/, "")}.
@@ -397,14 +400,15 @@ export default function DS160Form() {
               </div>
             )}
 
-            <div style={st.seccionesBox}>
-              <h4 style={st.seccionesTitle}>
+            <div className="ds160-help-box" style={st.seccionesBox}>
+              <h4 className="ds160-sections-title" style={st.seccionesTitle}>
                 SECCIONES DEL FORMULARIO
               </h4>
               <ul style={st.seccionesList}>
                 {secciones.map(sc => (
                   <li
                     key={sc.id}
+                    className="ds160-section-item"
                     style={{
                       ...st.seccionItem,
                       ...(sc.id === seccionActual ? st.seccionActual : {}),

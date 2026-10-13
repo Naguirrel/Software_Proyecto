@@ -578,22 +578,188 @@
   color: #dc2626;
 }
 
-.documents-main--senior .documents-title {
-  font-size: 46px;
+/* ══════════════════════════════
+   MODO SENIOR
+   ══════════════════════════════ */
+html.modo-senior .documents-subtitle {
+  font-size: 20px;
 }
 
-.documents-main--senior .documents-subtitle {
-  font-size: 19px;
+html.modo-senior .documents-header__button,
+html.modo-senior .document-action-button,
+html.modo-senior .document-delete-button,
+html.modo-senior .saved-document-card__button {
+  min-height: var(--vg-button-min-height);
+  gap: 12px;
+  padding: 16px 24px;
+  font-size: 18px;
 }
 
-.documents-main--senior .document-card__title {
-  font-size: 24px;
+html.modo-senior .documents-header__button svg,
+html.modo-senior .document-action-button svg,
+html.modo-senior .document-delete-button svg,
+html.modo-senior .saved-document-card__button svg {
+  width: var(--vg-icon-size);
+  height: var(--vg-icon-size);
 }
 
-.documents-main--senior .document-card__meta,
-.documents-main--senior .document-status-badge,
-.documents-main--senior .document-feedback p {
+html.modo-senior .status-card {
+  min-height: 136px;
+}
+
+html.modo-senior .status-card div {
+  gap: 14px;
+}
+
+html.modo-senior .status-card strong {
+  font-size: 40px;
+}
+
+html.modo-senior .status-card span {
   font-size: 17px;
+}
+
+/* Colores de estado con contraste AAA (los originales quedaban entre 2.5:1 y 5.5:1) */
+html.modo-senior .status-card--approved strong,
+html.modo-senior .status-card--approved .status-card__icon,
+html.modo-senior .document-status-badge--approved {
+  color: var(--vg-success);
+}
+
+html.modo-senior .status-card--review strong,
+html.modo-senior .status-card--review span,
+html.modo-senior .status-card--review .status-card__icon,
+html.modo-senior .document-status-badge--review {
+  color: var(--vg-warning);
+}
+
+html.modo-senior .status-card--correction strong,
+html.modo-senior .status-card--correction span,
+html.modo-senior .status-card--correction .status-card__icon,
+html.modo-senior .document-status-badge--correction,
+html.modo-senior .document-feedback,
+html.modo-senior .document-feedback__heading,
+html.modo-senior .document-upload-error,
+html.modo-senior .documents-message--error {
+  color: var(--vg-danger-text);
+}
+
+html.modo-senior .status-card--pending strong,
+html.modo-senior .status-card--pending .status-card__icon,
+html.modo-senior .document-icon-button {
+  color: var(--vg-text-muted);
+}
+
+html.modo-senior .document-card__main {
+  gap: var(--vg-space-4);
+}
+
+html.modo-senior .document-card__title-row {
+  gap: 18px 24px;
+  margin-bottom: 15px;
+}
+
+html.modo-senior .document-card__title {
+  color: var(--vg-text);
+  font-size: var(--vg-card-title);
+}
+
+html.modo-senior .document-card__meta {
+  font-size: 17px;
+  line-height: var(--vg-line-body);
+}
+
+html.modo-senior .document-required-badge {
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 15px;
+}
+
+html.modo-senior .document-card__aside {
+  gap: 27px;
+}
+
+html.modo-senior .document-status-badge {
+  min-height: 52px;
+  gap: 12px;
+  padding: 0 24px;
+  font-size: 18px;
+}
+
+html.modo-senior .document-status-badge svg {
+  width: var(--vg-icon-size);
+  height: var(--vg-icon-size);
+}
+
+html.modo-senior .document-card__actions {
+  gap: 21px;
+}
+
+html.modo-senior .document-icon-button {
+  width: 52px;
+  height: 52px;
+}
+
+html.modo-senior .document-icon-button svg {
+  width: 30px;
+  height: 30px;
+}
+
+html.modo-senior .document-feedback {
+  margin-top: 33px;
+  padding: 28px 30px;
+}
+
+html.modo-senior .document-feedback__heading {
+  gap: 18px;
+  margin-bottom: 12px;
+  font-size: 20px;
+}
+
+html.modo-senior .document-feedback__heading svg {
+  width: var(--vg-icon-size);
+  height: var(--vg-icon-size);
+}
+
+html.modo-senior .document-feedback p {
+  padding-left: 46px;
+  font-size: 18px;
+  line-height: var(--vg-line-body);
+}
+
+html.modo-senior .document-card__selected-file,
+html.modo-senior .document-upload-error,
+html.modo-senior .documents-message,
+html.modo-senior .document-file-preview__pdf span,
+html.modo-senior .document-file-preview__generic {
+  font-size: 17px;
+}
+
+html.modo-senior .document-file-preview__header span,
+html.modo-senior .document-file-preview__header button {
+  font-size: 16px;
+}
+
+html.modo-senior .document-file-preview__header button {
+  min-height: 48px;
+  padding: 0 12px;
+  color: var(--vg-danger-text);
+}
+
+@media (max-width: 1280px) {
+  html.modo-senior .document-card__main {
+    grid-template-columns: 1fr;
+  }
+
+  html.modo-senior .document-card__aside {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  html.modo-senior .document-feedback p {
+    padding-left: 0;
+  }
 }
 
 @media (max-width: 1180px) {

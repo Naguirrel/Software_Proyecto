@@ -1,0 +1,140 @@
+/* ══════════════════════════════
+   DS-160 — Modo Senior
+   La pantalla usa estilos inline, por eso estas reglas usan !important.
+   ══════════════════════════════ */
+html.modo-senior .ds160-header {
+  padding: 30px 36px 24px !important;
+  margin-bottom: 30px !important;
+}
+
+html.modo-senior .ds160-header-btn {
+  min-height: var(--vg-button-min-height);
+  gap: 10px !important;
+  padding: 12px 22px !important;
+  border-width: 2px !important;
+  color: var(--vg-text) !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+}
+
+html.modo-senior .ds160-header-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+html.modo-senior .ds160-progress {
+  height: 10px !important;
+}
+
+html.modo-senior .ds160-content {
+  gap: 30px !important;
+}
+
+html.modo-senior .ds160-form-card {
+  padding: 42px 42px 36px !important;
+}
+
+html.modo-senior .ds160-field {
+  margin-bottom: 30px !important;
+}
+
+/* Etiquetas en mayúsculas y 11px son difíciles de leer: tamaño normal y sin mayúsculas */
+html.modo-senior .ds160-label {
+  margin-bottom: 10px !important;
+  color: var(--vg-text) !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+html.modo-senior .ds160-input {
+  min-height: 52px;
+  padding: 14px 16px !important;
+  border: 2px solid var(--vg-border-mid) !important;
+  font-size: 18px !important;
+}
+
+html.modo-senior .ds160-radio-group {
+  flex-wrap: wrap;
+  gap: 15px !important;
+}
+
+html.modo-senior .ds160-radio {
+  min-height: 52px;
+  min-width: 120px;
+  padding: 14px 24px !important;
+  border-width: 2px !important;
+  font-size: 18px !important;
+}
+
+html.modo-senior .ds160-nav {
+  gap: 18px;
+  margin-top: 42px !important;
+  padding-top: 27px !important;
+}
+
+html.modo-senior .ds160-nav-btn {
+  min-height: var(--vg-button-min-height);
+  padding: 16px 32px !important;
+  font-size: 18px !important;
+}
+
+/* El degradado rosa no llega a 7:1 con texto blanco */
+html.modo-senior .ds160-nav-btn--next {
+  background: var(--vg-red) !important;
+}
+
+html.modo-senior .ds160-help {
+  width: 340px !important;
+  gap: 21px !important;
+}
+
+html.modo-senior .ds160-help-box {
+  padding: 24px 26px !important;
+}
+
+html.modo-senior .ds160-help-box :is(h4, p, span) {
+  font-size: 17px !important;
+  line-height: var(--vg-line-body) !important;
+}
+
+html.modo-senior .ds160-tip-item {
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+}
+
+html.modo-senior .ds160-sections-title {
+  margin-bottom: 15px !important;
+  font-size: 15px !important;
+}
+
+html.modo-senior .ds160-section-item {
+  min-height: 44px;
+  padding: 10px 14px !important;
+  font-size: 16px !important;
+}
+
+/* Con letra grande, la ayuda pasa debajo del formulario antes que en el modo normal */
+@media (max-width: 1200px) {
+  html.modo-senior .ds160-content {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  html.modo-senior .ds160-help {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  html.modo-senior .ds160-header,
+  html.modo-senior .ds160-form-card {
+    padding: 24px 20px !important;
+  }
+
+  html.modo-senior .ds160-nav {
+    flex-direction: column-reverse;
+    align-items: stretch !important;
+  }
+}
