@@ -1,0 +1,23 @@
+name: visa-e2e
+
+# Base de datos aislada y desechable solo para las pruebas E2E: no usa volumen,
+# usa otro puerto (5434) y no toca la base de desarrollo de docker-compose.yml.
+services:
+  db:
+    image: postgres:15
+    container_name: visa-e2e-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: e2e
+      POSTGRES_DB: visa_e2e
+    ports:
+      - "127.0.0.1:5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ../init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d visa_e2e"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
