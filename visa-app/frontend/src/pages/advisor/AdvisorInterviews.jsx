@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Clock3 } from "lucide-react";
-import AdvisorLayout from "../../components/advisor/AdvisorLayout";
+import { useSearchParams } from "react-router-dom";
 import { AdvisorModal, AdvisorPageHeader, AdvisorSearch, AdvisorState, AdvisorTabs } from "../../components/advisor/AdvisorShared";
 import { advisorRequest } from "../../utils/advisorApi";
 import { formatAdvisorDate as formatDate } from "../../utils/advisorFormat";
 import AuthenticatedAudio from "../../components/AuthenticatedAudio";
+import useSessionStorageState from "../../hooks/useSessionStorageState";
 
 const tabs = [{ value: "pending", label: "Pendientes" }, { value: "reviewed", label: "Realizadas" }, { value: "all", label: "Todas" }];
 
 export default function AdvisorInterviews() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sessions, setSessions] = useState([]);
-  const [tab, setTab] = useState("pending");
-  const [query, setQuery] = useState("");
+  const [tab, setTab] = useSessionStorageState("advisor-interview-tab", "pending");
+  const [query, setQuery] = useSessionStorageState("advisor-interview-query", "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
@@ -28,30 +30,37 @@ export default function AdvisorInterviews() {
     return () => controller.abort();
   }, [revision]);
 
+  useEffect(() => {
+    const sessionId = Number(searchParams.get("session"));
+    const requested = sessions.find((session) => session.id === sessionId);
+    if (requested && selected?.id !== requested.id) open(requested);
+  }, [searchParams, selected?.id, sessions]);
+
   const filtered = useMemo(() => sessions.filter((session) => {
     const matchesTab = tab === "all" || (tab === "reviewed" ? session.status === "reviewed" : session.status !== "reviewed");
     return matchesTab && `${session.user_name} ${session.user_email}`.toLowerCase().includes(query.trim().toLowerCase());
   }), [query, sessions, tab]);
 
   const open = (session) => { setSelected(session); setFeedback(session.feedback || ""); setRating(session.rating ? String(session.rating) : ""); setError(""); };
+  const close = () => { setSelected(null); setSearchParams({}); setError(""); };
   const save = async () => {
     if (!feedback.trim()) { setError("La retroalimentación es obligatoria."); return; }
     try {
       setSaving(true); setError("");
       const data = await advisorRequest(`/interviews/${selected.id}/feedback`, { method: "PUT", body: JSON.stringify({ feedback, rating: rating || null }) });
-      setSessions((current) => current.map((item) => item.id === data.session.id ? data.session : item)); setSelected(null);
+      setSessions((current) => current.map((item) => item.id === data.session.id ? data.session : item)); close();
     } catch (requestError) { setError(requestError.message); }
     finally { setSaving(false); }
   };
 
-  return <AdvisorLayout>
+  return <>
     <AdvisorPageHeader title="Entrevistas" description="Revisa la preparación de tus solicitantes." />
     <AdvisorTabs items={tabs} value={tab} onChange={setTab} label="Filtrar entrevistas" />
-    <section className="advisor-panel"><div className="advisor-panel-toolbar"><AdvisorSearch value={query} onChange={setQuery} placeholder="Buscar por solicitante…" /></div><AdvisorState loading={loading} error={!selected ? error : ""} empty={!loading && !filtered.length} onRetry={() => setRevision((value) => value + 1)} />{!loading && filtered.length > 0 && <div className="advisor-table-wrap"><table className="advisor-table"><thead><tr><th>Solicitante</th><th>Sesión</th><th>Respuestas</th><th>Preparación</th><th>Acción</th></tr></thead><tbody>{filtered.map((session) => { const recorded = (session.responses || []).filter((item) => item.recorded).length; return <tr key={session.id}><td><strong>{session.user_name}</strong><small>{session.user_email}</small></td><td><span className="advisor-date"><CalendarDays size={17} aria-hidden="true" />{formatDate(session.created_at)}<small><Clock3 size={14} aria-hidden="true" />{formatDate(session.created_at, true).split(", ").at(-1)}</small></span></td><td>{recorded} de {(session.responses || []).length}</td><td><span className={`advisor-badge advisor-badge--${session.status === "reviewed" ? "approved" : "review"}`}>{session.status === "reviewed" ? "Completada" : "Pendiente revisión"}</span></td><td><button className="advisor-action" type="button" onClick={() => open(session)}>Ver detalles</button></td></tr>; })}</tbody></table></div>}</section>
-    {selected && <AdvisorModal title={`Entrevista · ${selected.user_name}`} subtitle={formatDate(selected.created_at, true)} onClose={() => setSelected(null)} footer={<><button className="advisor-button advisor-button--secondary" type="button" onClick={() => setSelected(null)}>Cancelar</button><button className="advisor-button" type="button" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar retroalimentación"}</button></>}>
+    <section className="advisor-panel"><div className="advisor-panel-toolbar"><AdvisorSearch value={query} onChange={setQuery} placeholder="Buscar por solicitante…" /></div><AdvisorState loading={loading} error={!selected ? error : ""} empty={!loading && !filtered.length} onRetry={() => setRevision((value) => value + 1)} />{!loading && filtered.length > 0 && <div className="advisor-table-wrap"><table className="advisor-table advisor-table--responsive"><thead><tr><th>Solicitante</th><th>Sesión</th><th>Respuestas</th><th>Preparación</th><th>Acción</th></tr></thead><tbody>{filtered.map((session) => { const recorded = (session.responses || []).filter((item) => item.recorded).length; return <tr key={session.id}><td data-label="Solicitante"><strong>{session.user_name}</strong><small>{session.user_email}</small></td><td data-label="Sesión"><span className="advisor-date"><CalendarDays size={17} aria-hidden="true" />{formatDate(session.created_at)}<small><Clock3 size={14} aria-hidden="true" />{formatDate(session.created_at, true).split(", ").at(-1)}</small></span></td><td data-label="Respuestas">{recorded} de {(session.responses || []).length}</td><td data-label="Preparación"><span className={`advisor-badge advisor-badge--${session.status === "reviewed" ? "approved" : "review"}`}>{session.status === "reviewed" ? "Completada" : "Pendiente revisión"}</span></td><td data-label="Acción"><button className="advisor-action" type="button" onClick={() => open(session)}>Ver detalles</button></td></tr>; })}</tbody></table></div>}</section>
+    {selected && <AdvisorModal title={`Entrevista · ${selected.user_name}`} subtitle={formatDate(selected.created_at, true)} onClose={close} footer={<><button className="advisor-button advisor-button--secondary" type="button" onClick={close}>Cancelar</button><button className="advisor-button" type="button" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar retroalimentación"}</button></>}>
       {error && <p className="advisor-inline-error" role="alert">{error}</p>}
       <div className="advisor-interview-responses">{(selected.responses || []).map((response, index) => <article key={response.id || index}><strong>Pregunta {index + 1}</strong><p>{response.text}</p>{response.audio?.url ? <AuthenticatedAudio src={response.audio.url} /> : <small>Sin audio grabado</small>}</article>)}</div>
       <div className="advisor-form-grid"><label className="advisor-form-grid__wide">Retroalimentación<textarea rows="5" value={feedback} onChange={(event) => setFeedback(event.target.value)} /></label><label>Calificación<select value={rating} onChange={(event) => setRating(event.target.value)}><option value="">Sin calificación</option>{[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}</option>)}</select></label></div>
     </AdvisorModal>}
-  </AdvisorLayout>;
+  </>;
 }

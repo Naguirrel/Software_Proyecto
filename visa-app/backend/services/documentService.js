@@ -73,7 +73,7 @@ function presentDocumento(row) {
   };
 }
 
-function createDocumentService(pool, { documentSchemaReady, activityLogService }) {
+function createDocumentService(pool, { documentSchemaReady, activityLogService, notificacionService }) {
 
   async function insertDocumento({ nombre, tipo, archivoUrl, usuarioId, documentoKey, storageKey }) {
     await documentSchemaReady;
@@ -158,6 +158,21 @@ function createDocumentService(pool, { documentSchemaReady, activityLogService }
           documentoKey: documento.documento_key,
         },
       });
+
+      try {
+        await notificacionService?.notificarAsesorDeCliente(documento.usuario_id, {
+          titulo: "Documento listo para revisión",
+          mensaje: "{clientName} cargó el documento: " + documento.nombre,
+          tipo: "documento",
+          etapaRelacionada: documento.documento_key || `documento-${documento.id}`,
+          actionUrl: `/advisor/documentos?document=${documento.id}`,
+          entityType: "documento",
+          entityId: documento.id,
+          dedupeKey: `document:${documento.id}:uploaded`,
+        });
+      } catch (notificationError) {
+        console.error("ADVISOR DOCUMENT NOTIFICATION ERROR:", notificationError);
+      }
 
       return { documento: presentDocumento(documento), uploadedFile };
     } catch (error) {

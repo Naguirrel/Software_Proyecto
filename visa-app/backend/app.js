@@ -20,6 +20,7 @@ const createAdminProcessRoutes = require("./routes/adminProcessRoutes");
 const createAdminManagementRoutes = require("./routes/adminManagementRoutes");
 const createConsularRoutes = require("./routes/consularRoutes");
 const createAdvisorRoutes = require("./routes/advisorRoutes");
+const createAdvisorNotificationRoutes = require("./routes/advisorNotificationRoutes");
 const createChatRoutes = require("./routes/chatRoutes");
 const { createWorkflowRoutes, createWorkflowStepMiddleware } = require("./routes/workflowRoutes");
 const { createRoleMiddleware, createSessionMiddleware, issueSessionToken } = require("./auth");
@@ -28,6 +29,7 @@ const { createQuestionBankService } = require("./services/questionBankService");
 const createNotificacionService = require("./services/notificacionService");
 const createActivityLogService = require("./services/activityLogService");
 const createEmailReminderService = require("./services/emailReminderService");
+const { startNotificationBridge } = require("./services/notificationRealtime");
 const { seedDevelopmentUsers } = require("./services/developmentUserSeed");
 const developmentUsers = require("./config/developmentUsers");
 const createConsularPaymentService = require("./services/consularPaymentService");
@@ -66,7 +68,10 @@ const requireSession = createSessionMiddleware(pool);
 
 pool
   .connect()
-  .then(() => console.log("Conectado a PostgreSQL"))
+  .then((client) => {
+    client?.release?.();
+    console.log("Conectado a PostgreSQL");
+  })
   .catch((err) => console.error("Error conexión:", err));
 
 async function ensureDocumentSchema() {
@@ -309,6 +314,7 @@ const notificacionService = createNotificacionService(pool);
 notificacionService.ensureSchema().catch((error) => {
   console.error("ERROR NOTIFICACIONES SCHEMA:", error);
 });
+startNotificationBridge(pool);
 
 const consularPaymentService = createConsularPaymentService(pool, { notificacionService });
 const consularAppointmentService = createConsularAppointmentService(pool, {
@@ -416,9 +422,9 @@ app.use("/questions", createQuestionBankRoutes(pool, { requireAdmin, requireSess
 app.use("/", createPerfilRoutes(pool, { userSchemaReady, tramiteSchemaReady, activityLogService, notificacionService }));
 app.use("/", createAuthRoutes(pool, { userSchemaReady, tramiteSchemaReady, passwordResetSchemaReady, emailVerificationSchemaReady, loginSecuritySchemaReady, testUsersReady, requireSession, activityLogService }));
 app.use("/notificaciones", createNotificacionRoutes(pool, { requireSession, requireAdmin }));
-app.use("/chat", createChatRoutes(pool, { requireSession }));
+app.use("/chat", createChatRoutes(pool, { requireSession, notificacionService }));
 app.use("/workflow", createWorkflowRoutes(pool, { requireSession, schemaReady: workflowSchemaReady }));
-app.use("/", createDocumentRoutes(pool, { documentSchemaReady, activityLogService, requireSession }));
+app.use("/", createDocumentRoutes(pool, { documentSchemaReady, activityLogService, notificacionService, requireSession }));
 app.use("/", createDs160Routes(pool, { activityLogService, notificacionService, requireSession, requireWorkflowStep }));
 app.use("/", createConsularRoutes({
   requireSession,
@@ -435,6 +441,7 @@ app.use("/admin/metrics", createAdminMetricsRoutes(pool, { requireAdmin }));
 app.use("/admin/documents", createAdminDocumentRoutes(pool, { requireAdmin, schemaReady: documentSchemaReady, notificacionService, activityLogService }));
 app.use("/admin/processes", createAdminProcessRoutes(pool, { requireAdmin, schemaReady: tramiteSchemaReady, notificacionService, activityLogService }));
 app.use("/admin", createAdminManagementRoutes(pool, { requireAdmin, schemaReady: adminSchemaReady, notificacionService, activityLogService, emailReminderService }));
+app.use("/advisor/notifications", createAdvisorNotificationRoutes(pool, { requireAdvisor, notificationService: notificacionService }));
 app.use("/advisor", createAdvisorRoutes(pool, {
   requireAdvisor,
   schemaReady: adminSchemaReady,
