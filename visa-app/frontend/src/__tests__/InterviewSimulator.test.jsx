@@ -55,6 +55,17 @@ describe("InterviewSimulator", () => {
     expect(screen.getByLabelText("Progreso del simulador").querySelectorAll(".sim-progress__bar")).toHaveLength(5);
   });
 
+  it("envía el token de sesión al pedir las preguntas: el backend exige sesión en /questions/random", async () => {
+    localStorage.setItem("visaguide_session", JSON.stringify(session));
+    const fetchMock = vi.fn().mockImplementation(() => response({ questions: firstSet }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderSimulator();
+
+    await screen.findByRole("heading", { name: /Pregunta 1 de 5/ });
+    const [, options] = fetchMock.mock.calls.find(([url]) => String(url).includes("/questions/random"));
+    expect(options.headers).toMatchObject({ Authorization: "Bearer token" });
+  });
+
   it("muestra el error de preguntas insuficientes y permite reintentar", async () => {
     const fetchMock = vi.fn()
       .mockImplementationOnce(() => response({ error: "No hay suficientes preguntas activas elegibles: se necesitan 4 y hay 3." }, 409))
