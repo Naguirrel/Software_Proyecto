@@ -248,6 +248,7 @@ export default function InterviewSimulator() {
     try {
       const path = `/questions/random?count=4&exclude=intro&excludeText=${encodeURIComponent(INTRO_QUESTION.text)}`;
       const data = await apiRequest(path, {
+        headers: buildSessionHeaders(),
         signal: controller.signal,
         fallbackMessage: "No se pudieron cargar las preguntas de la entrevista.",
       });
