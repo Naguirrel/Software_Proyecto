@@ -50,6 +50,8 @@ Configura las variables de `.env.example`. Las obligatorias son la conexión Pos
 ```bash
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
   < backend/migrations/001_advisor_communication.sql
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/migrations/002_user_lookup_indexes.sql
 ```
 
 ## Autenticación

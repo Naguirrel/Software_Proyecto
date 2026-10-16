@@ -89,6 +89,11 @@ async function ensureDocumentSchema() {
     ON documentos(usuario_id, documento_key)
     WHERE usuario_id IS NOT NULL AND documento_key IS NOT NULL
   `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS documentos_usuario_actualizado_idx
+    ON documentos(usuario_id, actualizado_en DESC, creado_en DESC)
+  `);
 }
 
 const documentSchemaReady = ensureDocumentSchema().catch((error) => {
@@ -226,6 +231,7 @@ async function ensureAdminSchema() {
     ADD COLUMN IF NOT EXISTS estado_revision VARCHAR(30) DEFAULT 'en_progreso',
     ADD COLUMN IF NOT EXISTS feedback_revision TEXT,
     ADD COLUMN IF NOT EXISTS id_asesor INT REFERENCES usuario(id_usuario)`);
+  await pool.query("CREATE INDEX IF NOT EXISTS formulario_ds160_usuario_idx ON formulario_ds160(id_usuario)");
   await pool.query(`ALTER TABLE question_bank
     ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE,
     ADD COLUMN IF NOT EXISTS uso_count INT DEFAULT 0`);

@@ -145,6 +145,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS documentos_usuario_documento_key_idx
 ON documentos(usuario_id, documento_key)
 WHERE usuario_id IS NOT NULL AND documento_key IS NOT NULL;
 
+-- Busquedas por usuario (dashboard, flujo del cliente, DS-160 y listado de documentos)
+CREATE INDEX IF NOT EXISTS formulario_ds160_usuario_idx ON formulario_ds160(id_usuario);
+
+CREATE INDEX IF NOT EXISTS documentos_usuario_actualizado_idx
+ON documentos(usuario_id, actualizado_en DESC, creado_en DESC);
+
 CREATE TABLE IF NOT EXISTS question_bank (
   id SERIAL PRIMARY KEY,
   question TEXT NOT NULL,
