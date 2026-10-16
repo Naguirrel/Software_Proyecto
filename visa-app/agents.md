@@ -627,7 +627,7 @@ Convenciones visibles:
 - `Chat.jsx`: chat del cliente con su asesor (`/chat`).
 - `ConsularPayment.jsx` (`/pagos`), `ConsularAppointments.jsx` (`/citas`) y `ConsularManagement.jsx` (`/gestion-consular`, staff).
 - `Cronologia.jsx`, `Informacion.jsx`: pantallas informativas/de apoyo.
-- `Upload.jsx` (`/upload`): pantalla legacy de subida.
+- `/documents`: pantalla vigente de documentos; `DocumentCard` envia archivos a `POST /upload` del backend.
 - `pages/admin/*`: dashboard, usuarios, asesores, asignaciones, tramites y detalle, documentos, DS-160, entrevistas, preguntas, reportes, logs de actividad, recordatorios por email, ajustes y perfil.
 - `pages/advisor/*`: dashboard, solicitudes, documentos, DS-160, entrevistas, chat, tareas, preguntas y perfil.
 

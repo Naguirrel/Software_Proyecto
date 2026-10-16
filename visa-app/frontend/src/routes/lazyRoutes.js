@@ -1,5 +1,4 @@
 const routeLoaders = Object.freeze({
-  upload: () => import("../Upload"),
   profileSelection: () => import("../pages/ProfileSelection/ProfileSelection"),
   profile: () => import("../pages/Perfil/Perfil"),
   documents: () => import("../pages/Documents"),
@@ -44,7 +43,7 @@ const routeLoaders = Object.freeze({
 });
 
 const routeKeysByPath = new Map([
-  ["/upload", "upload"], ["/seleccion-perfil", "profileSelection"],
+  ["/seleccion-perfil", "profileSelection"],
   ["/perfil", "profile"], ["/documents", "documents"], ["/ds160", "ds160"],
   ["/informacion", "information"], ["/cronologia", "timeline"],
   ["/entrevista", "interview"], ["/entrevista/retroalimentacion", "interviewFeedback"],

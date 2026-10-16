@@ -16,6 +16,7 @@ describe("lazy route resolution", () => {
 
   it("does not preload public auth or unknown routes", () => {
     expect(resolveRouteKey("/login")).toBeNull();
+    expect(resolveRouteKey("/upload")).toBeNull();
     expect(resolveRouteKey("/not-found")).toBeNull();
   });
 });
