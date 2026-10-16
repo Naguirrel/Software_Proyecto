@@ -82,7 +82,7 @@ const SessionManager = {
       token: token || userData.token || null,
       loginTime: new Date().toISOString(),
     }));
-    if (userData.idioma) setIdiomaPreferido(userData.idioma);
+    setIdiomaPreferido();
   },
   getSession: () => {
     const session = localStorage.getItem("visaguide_session");

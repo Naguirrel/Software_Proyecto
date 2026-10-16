@@ -53,41 +53,43 @@ describe("traducciones", () => {
     expect(Object.keys(TRANSLATIONS.en).sort()).toEqual(Object.keys(TRANSLATIONS.es).sort());
   });
 
-  it("reemplaza variables, elige plural y usa español como respaldo", () => {
-    expect(translate("en", "dashboard.greeting", { nombre: "Ana" })).toBe("Hi, Ana!");
+  it("reemplaza variables, elige plural y usa español aunque se solicite inglés", () => {
+    expect(translate("en", "dashboard.greeting", { nombre: "Ana" })).toBe("¡Hola, Ana!");
     expect(translate("es", "stats.documentsHint", { count: 1 })).toBe("documento asociado");
-    expect(translate("en", "stats.documentsHint", { count: 3 })).toBe("linked documents");
+    expect(translate("en", "stats.documentsHint", { count: 3 })).toBe("documentos asociados");
     expect(translate("fr", "sidebar.inicio")).toBe("Inicio");
     expect(translate("en", "llave.inexistente")).toBe("llave.inexistente");
-    expect(translateValue("en", "serverStage", "Pago de visa")).toBe("Visa payment");
+    expect(translateValue("en", "serverStage", "Pago de visa")).toBe("Pago de visa");
     expect(translateValue("en", "serverStage", "Etapa desconocida")).toBe("Etapa desconocida");
   });
 
   it("las utilidades del dashboard respetan el idioma", () => {
     expect(getProcessStageLabel(2)).toBe("Completar DS-160");
-    expect(getProcessStageLabel(2, "en")).toBe("Complete DS-160");
+    expect(getProcessStageLabel(2, "en")).toBe("Completar DS-160");
     expect(getDashboardNextAction({ stageNumber: 1, idioma: "en" })).toMatchObject({
-      priority: "HIGH PRIORITY",
-      title: "Complete profile",
+      priority: "PRIORIDAD ALTA",
+      title: "Completar perfil",
     });
   });
 
-  it("los componentes montados cambian de idioma sin recargar", async () => {
+  it("migra una preferencia antigua y mantiene la interfaz en español", () => {
+    localStorage.setItem("idioma", "en");
+    document.documentElement.lang = "en";
     render(<DashboardStats loading={false} error="" stats={{ ds160Percentage: 40, documentCount: 2 }} />);
     expect(screen.getByText("DS-160 completado")).toBeInTheDocument();
-
+    expect(localStorage.getItem("idioma")).toBe("es");
+    expect(document.documentElement.lang).toBe("es");
     setIdiomaPreferido("en");
-
-    expect(await screen.findByText("DS-160 completed")).toBeInTheDocument();
-    expect(screen.getByText("Application not started")).toBeInTheDocument();
-    expect(document.documentElement.lang).toBe("en");
-    setIdiomaPreferido("es");
+    expect(screen.getByText("DS-160 completado")).toBeInTheDocument();
+    expect(screen.queryByText("DS-160 completed")).not.toBeInTheDocument();
+    expect(localStorage.getItem("idioma")).toBe("es");
+    expect(document.documentElement.lang).toBe("es");
   });
 });
 
 describe("Perfil - idioma de la interfaz", () => {
   it("oculta el selector de idioma y conserva las preferencias disponibles", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: async () => perfilResponse() });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: async () => perfilResponse("en") });
 
     render(<Perfil />);
 
@@ -95,6 +97,8 @@ describe("Perfil - idioma de la interfaz", () => {
     expect(screen.queryByRole("combobox", { name: "Idioma de la interfaz" })).not.toBeInTheDocument();
     expect(screen.queryByText("English")).not.toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Notificaciones por Email" })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("es");
+    expect(localStorage.getItem("idioma")).toBe("es");
   });
 
   it("el interruptor de notificaciones mueve la perilla dentro del riel", async () => {

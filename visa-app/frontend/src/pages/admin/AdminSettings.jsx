@@ -26,7 +26,7 @@ export default function AdminSettingsPage() {
   const [draft, setDraft] = useState(null);
   const [notice, setNotice] = useState("");
   const [section, setSection] = useState("general");
-  const form = draft || resource.data?.configuracion || empty;
+  const form = { ...(draft || resource.data?.configuracion || empty), idioma: "es" };
 
   const save = async (event) => {
     event.preventDefault();

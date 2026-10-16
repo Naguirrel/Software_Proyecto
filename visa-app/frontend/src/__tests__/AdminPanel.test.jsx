@@ -41,7 +41,7 @@ function mockAdminSession() {
       changedBy: { id: 1, nombre: "Admin General", correo: "admin@prueba.com" },
     },
   ];
-  let adminSettings = { nombre_comercial: "VisaGuide", razon_social: "", sitio_web: "", idioma: "es", zona_horaria: "America/Guatemala", notificaciones_automaticas: true };
+  let adminSettings = { nombre_comercial: "VisaGuide", razon_social: "", sitio_web: "", idioma: "en", zona_horaria: "America/Guatemala", notificaciones_automaticas: true };
   let adminUsers = [
     { id: 1, nombre: "Admin General", correo: "admin@prueba.com", rol: "admin", perfil: null, activo: true, telefono: "", ciudad: "", pais: "", asignados: 0, pendientes: 0, asesor: null, actividad: "2026-08-10T10:00:00.000Z" },
     { id: 4, nombre: "Cliente Prueba", correo: "cliente@example.com", rol: "cliente", perfil: "Turismo B1/B2", activo: true, bloqueado: true, bloqueadoHasta: "2026-08-10T10:15:00.000Z", telefono: "", ciudad: "", pais: "", asignados: 0, pendientes: 0, asesor: null, actividad: "2026-08-05T10:00:00.000Z" },
@@ -658,6 +658,10 @@ describe("panel de administracion", () => {
 
     expect(await screen.findByText("Configuración guardada.")).toBeInTheDocument();
     expect(toggle).not.toBeChecked();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/admin/settings"),
+      expect.objectContaining({ method: "PUT", body: expect.stringContaining('"idioma":"es"') })
+    );
   });
 
   it.each([

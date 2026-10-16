@@ -150,7 +150,7 @@ export default function Perfil() {
         const data = await res.json();
         setUsuario(data.usuario);
         setTramite(data.tramite);
-        if (data.usuario?.preferencias?.idioma) setIdiomaPreferido(data.usuario.preferencias.idioma);
+        setIdiomaPreferido();
         setForm({
           nombre:   data.usuario.nombre   || "",
           telefono: data.usuario.telefono || "",
@@ -893,19 +893,6 @@ function getS() {
     backgroundColor: "var(--vg-card)",
     boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
     transition: "transform 0.2s",
-  },
-
-  select: {
-    border: `1px solid ${border}`,
-    borderRadius: "10px",
-    padding: "8px 14px",
-    fontSize: "14px",
-    fontWeight: 600,
-    color: text,
-    backgroundColor: card,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    minWidth: "110px",
   },
 
   notice: {
