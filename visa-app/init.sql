@@ -153,7 +153,11 @@ CREATE TABLE IF NOT EXISTS question_bank (
   is_required BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   activo BOOLEAN DEFAULT TRUE,
-  uso_count INT DEFAULT 0
+  uso_count INT DEFAULT 0,
+  ejemplo_fuerte TEXT,
+  explicacion_fuerte TEXT,
+  ejemplo_debil TEXT,
+  explicacion_debil TEXT
 );
 
 ALTER TABLE formulario_ds160

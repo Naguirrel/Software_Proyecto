@@ -1,6 +1,7 @@
 const {
   CATEGORIES,
   DIFFICULTIES,
+  EXAMPLE_FIELDS,
   SEED_QUESTIONS,
   createQuestionBankService,
 } = require("../services/questionBankService");
@@ -136,5 +137,90 @@ describe("random interview questions", () => {
     const pool = { query: jest.fn().mockResolvedValue({ rows: rows.slice(0, 3) }) };
     await expect(createQuestionBankService(pool).listRandomQuestions({ count: "4", exclude: "intro" }))
       .rejects.toMatchObject({ statusCode: 409, message: expect.stringContaining("se necesitan 4 y hay 3") });
+  });
+});
+
+describe("question answer examples", () => {
+  const basePayload = { question: "¿Quién financiará su viaje?", category: "Finanzas", difficulty: "Media", is_required: true };
+  const createPool = () => ({
+    query: jest.fn(async (sql) => (/^\s*(INSERT|UPDATE)/.test(String(sql)) ? { rows: [{ id: 7 }] } : { rows: [] })),
+  });
+  const writeCall = (pool, verb) => pool.query.mock.calls.find(([sql]) => String(sql).trim().startsWith(verb));
+
+  test("adds the example columns to existing databases", async () => {
+    const pool = createPool();
+    await createQuestionBankService(pool).ensureSchema();
+
+    const alter = pool.query.mock.calls.map(([sql]) => String(sql)).join("\n");
+    for (const field of EXAMPLE_FIELDS) {
+      expect(alter).toContain(`ADD COLUMN IF NOT EXISTS ${field} TEXT`);
+    }
+  });
+
+  test("stores trimmed examples on create and null for the missing ones", async () => {
+    const pool = createPool();
+    await createQuestionBankService(pool).createQuestion({
+      ...basePayload,
+      ejemplo_fuerte: "  Mi empresa paga el viaje y regreso a trabajar el lunes.  ",
+      explicacion_fuerte: "Es concreta y muestra arraigo.",
+      ejemplo_debil: "",
+    });
+
+    const [sql, values] = writeCall(pool, "INSERT");
+    expect(sql).toContain("ejemplo_fuerte, explicacion_fuerte, ejemplo_debil, explicacion_debil");
+    expect(sql).toContain("RETURNING id, question");
+    expect(values.slice(4)).toEqual([
+      "Mi empresa paga el viaje y regreso a trabajar el lunes.",
+      "Es concreta y muestra arraigo.",
+      null,
+      null,
+    ]);
+  });
+
+  test("keeps existing examples when an update does not send them", async () => {
+    const pool = createPool();
+    await createQuestionBankService(pool).updateQuestion("7", basePayload);
+
+    const [sql, values] = writeCall(pool, "UPDATE");
+    for (const field of EXAMPLE_FIELDS) {
+      expect(sql).not.toContain(`${field} =`);
+    }
+    expect(sql).toContain("WHERE id = $5");
+    expect(values).toEqual([basePayload.question, "Finanzas", "Media", true, 7]);
+  });
+
+  test("updates only the examples that are sent and clears them with null", async () => {
+    const pool = createPool();
+    await createQuestionBankService(pool).updateQuestion("7", {
+      ...basePayload,
+      ejemplo_debil: "No sé, tal vez alguien me ayude.",
+      explicacion_debil: null,
+    });
+
+    const [sql, values] = writeCall(pool, "UPDATE");
+    expect(sql).toContain("ejemplo_debil = $5");
+    expect(sql).toContain("explicacion_debil = $6");
+    expect(sql).not.toContain("ejemplo_fuerte =");
+    expect(sql).toContain("WHERE id = $7");
+    expect(values.slice(4)).toEqual(["No sé, tal vez alguien me ayude.", null, 7]);
+  });
+
+  test("rejects non-text or too long examples with 400", async () => {
+    const service = createQuestionBankService(createPool());
+
+    await expect(service.createQuestion({ ...basePayload, ejemplo_fuerte: 42 }))
+      .rejects.toMatchObject({ statusCode: 400, message: "ejemplo_fuerte debe ser texto" });
+    await expect(service.updateQuestion("7", { ...basePayload, explicacion_debil: "a".repeat(2001) }))
+      .rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test("returns the examples when listing questions", async () => {
+    const pool = createPool();
+    await createQuestionBankService(pool).listQuestions();
+
+    const [sql] = pool.query.mock.calls.find(([query]) => String(query).includes("ORDER BY created_at DESC"));
+    for (const field of EXAMPLE_FIELDS) {
+      expect(sql).toContain(field);
+    }
   });
 });
