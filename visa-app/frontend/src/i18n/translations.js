@@ -219,8 +219,6 @@ const es = {
   "profile.preferences": "Preferencias de cuenta",
   "profile.emailNotifications": "Notificaciones por Email",
   "profile.emailNotificationsDesc": "Recibir alertas de actualizaciones y mensajes del asesor.",
-  "profile.language": "Idioma de la interfaz",
-  "profile.languageDesc": "Idioma preferido para la plataforma VisaGuide.",
   "profile.notice": "Si necesitas cambiar el tipo de trámite o el país de solicitud, por favor comunícate con tu asesor a través del chat.",
   "profile.quickHelp": "Ayuda rápida",
   "visaType.turismo_negocios": "B1/B2 (Turismo / Negocios)",
@@ -446,8 +444,6 @@ const en = {
   "profile.preferences": "Account preferences",
   "profile.emailNotifications": "Email notifications",
   "profile.emailNotificationsDesc": "Receive alerts about updates and messages from your advisor.",
-  "profile.language": "Interface language",
-  "profile.languageDesc": "Preferred language for the VisaGuide platform.",
   "profile.notice": "If you need to change the application type or the application country, please contact your advisor through the chat.",
   "profile.quickHelp": "Quick help",
   "visaType.turismo_negocios": "B1/B2 (Tourism / Business)",
@@ -466,33 +462,31 @@ const en = {
 
 export const TRANSLATIONS = { es, en };
 
-export const IDIOMAS = ["es", "en"];
 export const IDIOMA_STORAGE_KEY = "idioma";
-export const IDIOMA_CHANGE_EVENT = "idiomaChange";
 
-export function normalizarIdioma(idioma) {
-  return idioma === "en" ? "en" : "es";
+export function normalizarIdioma() {
+  return "es";
 }
 
 export function getIdiomaGuardado() {
   try {
-    return normalizarIdioma(localStorage.getItem(IDIOMA_STORAGE_KEY));
+    if (localStorage.getItem(IDIOMA_STORAGE_KEY) !== "es") {
+      localStorage.setItem(IDIOMA_STORAGE_KEY, "es");
+    }
   } catch {
-    return "es";
+    // La interfaz permanece en español aunque el storage no esté disponible.
   }
+  return "es";
 }
 
-// Guarda el idioma elegido y avisa a los componentes montados.
-export function setIdiomaPreferido(idioma) {
-  const valor = normalizarIdioma(idioma);
-  if (valor === getIdiomaGuardado() && document.documentElement.lang === valor) return;
+// Normaliza preferencias antiguas y conserva español como idioma efectivo.
+export function setIdiomaPreferido() {
   try {
-    localStorage.setItem(IDIOMA_STORAGE_KEY, valor);
+    localStorage.setItem(IDIOMA_STORAGE_KEY, "es");
   } catch {
-    // sin storage el cambio solo dura mientras la página siga abierta
+    // La interfaz sigue en español sin storage.
   }
-  document.documentElement.lang = valor;
-  window.dispatchEvent(new CustomEvent(IDIOMA_CHANGE_EVENT, { detail: valor }));
+  document.documentElement.lang = "es";
 }
 
 export function translate(idioma, key, vars = {}) {

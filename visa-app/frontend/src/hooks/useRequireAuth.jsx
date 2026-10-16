@@ -38,7 +38,7 @@ export default function useRequireAuth() {
 
         const currentSession = data.user ? { ...sessionData, ...data.user } : sessionData;
         localStorage.setItem("visaguide_session", JSON.stringify(currentSession));
-        if (data.user?.idioma) setIdiomaPreferido(data.user.idioma);
+        setIdiomaPreferido();
         setSession(currentSession);
       } catch (err) {
         if (err.name === "AbortError") return;

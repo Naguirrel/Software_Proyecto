@@ -27,9 +27,6 @@ function createEmailTransporter(env = process.env) {
         user: "resend",
         pass: env.RESEND_API_KEY,
       },
-      tls: {
-        rejectUnauthorized: false,
-      },
     });
   }
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import DocumentCard from "../components/DocumentCard";
@@ -17,6 +17,38 @@ const passportDoc = {
 };
 
 describe("DocumentCard", () => {
+  it("mantiene la carga vigente conectada a POST /upload", async () => {
+    localStorage.setItem("visaguide_session", JSON.stringify({ token: "test-token" }));
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:pasaporte") });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+    const documento = { id: 21, estado: "review" };
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ documento }),
+    });
+    const onUploadSuccess = vi.fn();
+
+    const { container } = render(
+      <DocumentCard
+        doc={passportDoc}
+        usuarioId={3}
+        onStatusChange={vi.fn()}
+        onUploadSuccess={onUploadSuccess}
+        onDeleteSuccess={vi.fn()}
+      />
+    );
+    const file = new File(["%PDF-1.4"], "pasaporte.pdf", { type: "application/pdf" });
+    fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [file] } });
+
+    await waitFor(() => expect(onUploadSuccess).toHaveBeenCalledWith("passport", documento));
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toContain("/upload");
+    expect(options.method).toBe("POST");
+    expect(options.headers.Authorization).toBe("Bearer test-token");
+    expect(options.body.get("file")).toBe(file);
+    expect(options.body.get("usuario_id")).toBe("3");
+  });
+
   it("rechaza archivos que no cumplen el tipo requerido", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 

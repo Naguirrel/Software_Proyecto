@@ -13,7 +13,6 @@ import AppErrorBoundary from "./components/AppErrorBoundary";
 import SkipLink from "./components/SkipLink";
 import "./components/auth/auth.css";
 
-const Upload = lazy(() => import("./Upload"));
 const ProfileSelection = lazy(() => import("./pages/ProfileSelection/ProfileSelection"));
 const Perfil = lazy(() => import("./pages/Perfil/Perfil"));
 const Documents = lazy(() => import("./pages/Documents"));
@@ -82,7 +81,7 @@ const SessionManager = {
       token: token || userData.token || null,
       loginTime: new Date().toISOString(),
     }));
-    if (userData.idioma) setIdiomaPreferido(userData.idioma);
+    setIdiomaPreferido();
   },
   getSession: () => {
     const session = localStorage.getItem("visaguide_session");
@@ -126,7 +125,6 @@ function App() {
         <Route path="/restablecer-contrasena"         element={<ResetPassword />} />
         <Route path="/verificar-email"                element={<VerifyEmail />} />
         <Route path="/desbloquear-cuenta"             element={<UnlockAccount />} />
-        <Route path="/upload"                         element={<Upload />} />
         <Route path="/perfil"                         element={<Perfil />} />
         <Route path="/seleccion-perfil"               element={<ProfileSelection />} />
         <Route path="/dashboard"                      element={<Dashboard />} />

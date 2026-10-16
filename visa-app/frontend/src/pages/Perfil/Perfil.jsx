@@ -150,7 +150,7 @@ export default function Perfil() {
         const data = await res.json();
         setUsuario(data.usuario);
         setTramite(data.tramite);
-        if (data.usuario?.preferencias?.idioma) setIdiomaPreferido(data.usuario.preferencias.idioma);
+        setIdiomaPreferido();
         setForm({
           nombre:   data.usuario.nombre   || "",
           telefono: data.usuario.telefono || "",
@@ -252,28 +252,6 @@ export default function Perfil() {
         ...u,
         preferencias: { ...u.preferencias, notificacionesEmail: !nuevoValor },
       }));
-      alert(err.message);
-    }
-  };
-
-  // Cambio de idioma (siempre en vivo)
-  const handleCambiarIdioma = async (nuevoIdioma) => {
-    if (!usuario) return;
-    const idiomaAnterior = usuario.preferencias.idioma;
-    setUsuario({
-      ...usuario,
-      preferencias: { ...usuario.preferencias, idioma: nuevoIdioma },
-    });
-    setIdiomaPreferido(nuevoIdioma);
-    try {
-      await actualizarServidor({ idioma: nuevoIdioma });
-    } catch (err) {
-      // Revertir si falla
-      setUsuario((u) => u && ({
-        ...u,
-        preferencias: { ...u.preferencias, idioma: idiomaAnterior },
-      }));
-      setIdiomaPreferido(idiomaAnterior);
       alert(err.message);
     }
   };
@@ -563,26 +541,6 @@ export default function Perfil() {
                 </button>
               </div>
 
-              {/* Idioma de la interfaz */}
-              <div style={s.prefRow}>
-                <div style={s.prefText}>
-                  <div style={{ ...s.prefRowTitle, fontSize: fz("15px", "17px") }}>
-                    {t("profile.language")}
-                  </div>
-                  <div style={{ ...s.prefRowDesc, fontSize: fz("13px", "15px") }}>
-                    {t("profile.languageDesc")}
-                  </div>
-                </div>
-                <select
-                  style={s.select}
-                  aria-label={t("profile.language")}
-                  value={usuario.preferencias.idioma}
-                  onChange={(e) => handleCambiarIdioma(e.target.value)}
-                >
-                  <option value="es">Español</option>
-                  <option value="en">English</option>
-                </select>
-              </div>
             </article>
 
             {/* ----- Aviso amarillo ----- */}
@@ -935,19 +893,6 @@ function getS() {
     backgroundColor: "var(--vg-card)",
     boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
     transition: "transform 0.2s",
-  },
-
-  select: {
-    border: `1px solid ${border}`,
-    borderRadius: "10px",
-    padding: "8px 14px",
-    fontSize: "14px",
-    fontWeight: 600,
-    color: text,
-    backgroundColor: card,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    minWidth: "110px",
   },
 
   notice: {

@@ -12,10 +12,10 @@ Aplicación web para gestionar procesos de visa estadounidense.
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-Este comando carga automaticamente `docker-compose.override.yml` y ejecuta el backend en modo desarrollo. Para produccion, desde `visa-app/` y con la configuracion real protegida, use explicitamente:
+Configure `SESSION_SECRET` con un valor unico y aleatorio en `.env` antes de iniciar. El archivo `docker-compose.dev.yml` activa `NODE_ENV=development` solo cuando se incluye explicitamente. Para produccion, desde `visa-app/` y con la configuracion real protegida, use:
 
 ```bash
 docker compose -f docker-compose.yml up -d --build
@@ -48,9 +48,9 @@ Configura las variables de `.env.example`. Las obligatorias son la conexión Pos
 `init.sql` prepara instalaciones nuevas. Para una base existente, aplica las migraciones pendientes antes de desplegar el backend:
 
 ```bash
-docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
   < backend/migrations/001_advisor_communication.sql
-docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
   < backend/migrations/002_user_lookup_indexes.sql
 ```
 
