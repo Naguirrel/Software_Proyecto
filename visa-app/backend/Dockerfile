@@ -16,6 +16,11 @@ RUN npm ci
 # Copiar todo el código
 COPY . .
 
+# El volumen local toma los permisos de este directorio al crearse.
+RUN mkdir -p /app/local_uploads && chown -R node:node /app
+
+USER node
+
 # Exponer puerto
 EXPOSE 3000
 
