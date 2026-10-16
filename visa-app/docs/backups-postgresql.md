@@ -1,6 +1,6 @@
 # Backups automaticos de PostgreSQL
 
-Esta guia cubre la configuracion de backups de PostgreSQL de VisaGuide. Docker Compose usa PostgreSQL 15 en el servicio `db`; dentro de su red se accede por `db:5432`. La publicacion `5433:5432` de `docker-compose.yml` escucha en **todas las interfaces del host**, no solo en `127.0.0.1`. El script de backup puede conectarse a `127.0.0.1:5433` desde el host, pero eso no limita el acceso desde otras interfaces. Restrinja el puerto con el firewall y el security group de EC2: PostgreSQL no debe exponerse publicamente. El nombre y usuario efectivos de la base provienen de `DB_NAME` y `DB_USER`; los ejemplos de esta guia deben adaptarse al entorno real.
+Esta guia cubre la configuracion de backups de PostgreSQL de VisaGuide. Docker Compose usa PostgreSQL 15 en el servicio `db`; dentro de su red se accede por `db:5432`. La publicacion `127.0.0.1:5433:5432` de `docker-compose.yml` escucha solo en el loopback del host. El script de backup puede conectarse a `127.0.0.1:5433` desde el host. Mantenga tambien cerrado el acceso publico en el security group de EC2 y compruebe la configuracion efectiva tras desplegar. El nombre y usuario efectivos de la base provienen de `DB_NAME` y `DB_USER`; los ejemplos de esta guia deben adaptarse al entorno real.
 
 Para arquitectura, despliegue y recuperacion completa, consulte [Infraestructura](infraestructura.md).
 

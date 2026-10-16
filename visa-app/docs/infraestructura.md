@@ -48,10 +48,10 @@ flowchart LR
 | Nginx del host | 80 en el archivo versionado; 80 y 443 observados en EC2 | 80 y 443 | Público; la configuración TLS efectiva no está en este repositorio |
 | `frontend` | 80 | `127.0.0.1:8080` | Solo loopback del host |
 | `backend` | 3000 | `127.0.0.1:3000` | Solo loopback del host |
-| `db` | 5432 | `5433:5432` | Docker publicó `0.0.0.0:5433` y `[::]:5433` en EC2 |
+| `db` | 5432 | `127.0.0.1:5433:5432` | Solo loopback del host; entre contenedores se usa `db:5432` |
 | Vite sin Docker | 5173 habitual | Servidor local de desarrollo | Fuera de Compose |
 
-El puerto 5433 **no** está restringido a loopback por Compose. En la verificación del 9 de octubre, el Security Group no tenía una regla de entrada para 5433, aunque UFW estaba inactivo. Mantenga esa restricción y vuelva a comprobarla tras cualquier cambio de red; PostgreSQL no debe quedar accesible públicamente.
+Compose restringe el puerto 5433 al loopback del host. En la verificación del 9 de octubre, la versión desplegada aún lo publicaba en todas las interfaces; el Security Group no tenía una regla de entrada para 5433, aunque UFW estaba inactivo. Compruebe la configuración efectiva tras desplegar estos cambios.
 
 ### Red, nombres y persistencia
 
@@ -67,12 +67,12 @@ Compose no declara redes propias: crea su red predeterminada y resuelve los nomb
 
 ## 3. Construcción y modalidades de ejecución
 
-El Dockerfile del backend parte de Node 20, instala dependencias con `npm ci` y ejecuta `node index.js`; fija `NODE_ENV=production` en la imagen, pero Compose puede sobrescribirlo. El Dockerfile del frontend compila Vite con Node 20 Alpine y copia `dist` a una imagen Nginx 1.27 Alpine. `FRONTEND_API_URL`, `VITE_API_PORT` y `VITE_WHATSAPP_PHONE` se pasan como argumentos de build: sus valores quedan en el cliente compilado y **no deben contener secretos**.
+El Dockerfile del backend parte de Node 20, instala dependencias con `npm ci`, prepara `/app/local_uploads` con permisos para `node` y ejecuta `node index.js` como `USER node`, sin root. Fija `NODE_ENV=production` en la imagen y en el Compose base; `docker-compose.dev.yml` lo sobrescribe a `development` solo si se incluye explícitamente. El Dockerfile del frontend compila Vite con Node 20 Alpine y copia `dist` a una imagen Nginx 1.27 Alpine. `FRONTEND_API_URL`, `VITE_API_PORT` y `VITE_WHATSAPP_PHONE` se pasan como argumentos de build: sus valores quedan en el cliente compilado y **no deben contener secretos**.
 
 | Modalidad | Comando desde `visa-app/` | Efecto relevante |
 | --- | --- | --- |
-| Desarrollo con Compose | `docker compose up --build` | Carga automáticamente `docker-compose.override.yml`, fuerza `NODE_ENV=development` y el secreto de sesión de desarrollo del override; puede crear datos de prueba. |
-| Producción con Compose | `docker compose -f docker-compose.yml up -d --build` | Omite el override. Requiere configuración real de BD, un `SESSION_SECRET` único y R2 para operaciones de archivo. |
+| Desarrollo con Compose | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` | Activa `NODE_ENV=development` y puede crear datos de prueba. Requiere `SESSION_SECRET` desde `.env`. |
+| Producción con Compose | `docker compose -f docker-compose.yml up -d --build` | Usa `NODE_ENV=production`. Requiere configuración real de BD, un `SESSION_SECRET` único y R2 para operaciones de archivo. |
 | Desarrollo sin Docker | `npm start` en `backend/` y `npm run dev` en `frontend/` | Requiere PostgreSQL accesible desde el host y variables locales apropiadas. |
 
 El backend carga `backend/.env` mediante `dotenv` cuando se ejecuta localmente. Compose, en cambio, usa `.env` de `visa-app/` para interpolación y `env_file`. Ninguno de esos archivos con valores reales debe versionarse.
@@ -107,7 +107,7 @@ Compose deriva `POSTGRES_USER`, `POSTGRES_PASSWORD` y `POSTGRES_DB` de `DB_USER`
 | `PORT` | Backend | Opcional | Puerto de escucha | Configuración |
 | `FRONTEND_URL` | Backend | Opcional; recomendable en producción | Base de enlaces de recuperación/verificación | Configuración |
 
-En ausencia de `SESSION_SECRET`, el backend solo usa un valor de desarrollo fuera de producción; en producción no puede emitir sesiones. El override contiene un valor fijo para desarrollo que jamás debe aplicarse a EC2.
+Compose exige `SESSION_SECRET` en `.env` para ambas modalidades. Sustituya el marcador de `.env.example` por un valor aleatorio único. Si ejecuta el backend fuera de Compose, `auth.js` usa un valor fijo solo fuera de producción cuando no se configura esta variable; en producción no puede emitir sesiones sin ella. El secreto que estuvo versionado en el antiguo override debe rotarse en cualquier entorno que lo haya usado.
 
 ### Frontend y CORS
 
@@ -148,7 +148,7 @@ El frontend lee `VITE_API_URL` y `VITE_API_PORT` en `frontend/src/config/api.js`
 | `RESEND_API_KEY` | Backend | Condicional para Resend | Acceso al proveedor | Secreto |
 | `EMAIL_REMINDERS_MODE` | Backend | Opcional | `disabled` deshabilita recordatorios | Configuración |
 
-Si falta el transporte, el código de recordatorios devuelve dry-run. **No** se debe suponer que `EMAIL_REMINDERS_MODE=dry_run` impida envíos cuando hay transporte configurado: `backend/services/emailReminderService.js` solo trata explícitamente `disabled` y, con transporte válido, intenta enviar. `backend/config/email.js` desactiva la verificación TLS del transporte Resend; es un riesgo pendiente, no una configuración recomendada.
+Si falta el transporte, el código de recordatorios devuelve dry-run. **No** se debe suponer que `EMAIL_REMINDERS_MODE=dry_run` impida envíos cuando hay transporte configurado: `backend/services/emailReminderService.js` solo trata explícitamente `disabled` y, con transporte válido, intenta enviar. `backend/config/email.js` usa la validación TLS predeterminada de Nodemailer para Resend y SMTP.
 
 ### Pagos
 
@@ -195,7 +195,7 @@ docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.yml ps
 ```
 
-Antes de arrancar, cree y proteja `.env` fuera del control de versiones con los valores del entorno; compruebe `NODE_ENV=production`, `SESSION_SECRET`, `DB_*`, R2 y orígenes/URLs apropiados sin imprimir secretos en logs. Revise el firewall/security group para que 5433 no sea accesible públicamente. Instale la configuración de Nginx del host según el proceso operativo de la instancia y compruébela con `sudo nginx -t` antes de recargar el servicio. No use `docker compose up` sin `-f` en EC2: cargaría el override de desarrollo.
+Antes de arrancar, cree y proteja `.env` fuera del control de versiones con los valores del entorno; compruebe `SESSION_SECRET`, `DB_*`, R2 y orígenes/URLs apropiados sin imprimir secretos en logs. El Compose base fija `NODE_ENV=production`. Confirme que el puerto 5433 esté publicado solo en loopback y que el Security Group siga sin permitir acceso público. Instale la configuración de Nginx del host según el proceso operativo de la instancia y compruébela con `sudo nginx -t` antes de recargar el servicio. Use siempre `-f`; el archivo de desarrollo no debe incluirse en EC2.
 
 La configuración versionada del Nginx del host escucha en 80 y no contiene certificados ni un bloque 443. La verificación de EC2 del 9 de octubre sí comprobó la escucha en 443, una respuesta HTTP 200 mediante HTTPS y un certificado válido. Estos hechos corresponden al host observado, no al archivo Nginx de este repositorio; vuelva a comprobar la terminación TLS después de cambios en el servidor.
 
@@ -347,18 +347,18 @@ Un dump SQL tampoco incluye `.env` o configuración externa, certificados, regla
 ## 11. Seguridad y manejo de secretos
 
 - Mantenga `.env`, `backend/.env`, `/etc/visaguide/backup.env` y configuración del monitor fuera del repositorio, con acceso solo para el usuario o servicio correspondiente. No imprima sus contenidos al validar Compose: use `docker compose ... config --quiet`.
-- Use un `SESSION_SECRET` único en producción. El valor fijo del override es solo para desarrollo; cargar el override en EC2 activaría además el seed de prueba.
-- Mantenga 5433 cerrado a entradas públicas en el Security Group y vuelva a comprobarlo tras cambios; `5433:5432` no crea esa restricción por sí mismo.
+- Use un `SESSION_SECRET` único en cada entorno desde un archivo protegido fuera de Git. Rote cualquier secreto de sesión que haya coincidido con el antiguo valor versionado.
+- Mantenga 5433 cerrado a entradas públicas en el Security Group y vuelva a comprobarlo tras cambios; `127.0.0.1:5433:5432` limita la publicación al host local.
 - No coloque secretos en `VITE_*` ni en argumentos de build: se distribuyen al navegador. Trate datos bancarios y destinatarios de alertas como información sensible.
 - HTTPS y el certificado se verificaron en EC2 el 9 de octubre de 2026, pero la configuración TLS efectiva no está versionada aquí. Compruebe periódicamente su vigencia y la terminación real en el host.
-- `backend/config/email.js` configura Resend con verificación TLS deshabilitada. Es un riesgo pendiente del código, fuera del alcance de esta tarea documental.
+- El correo Resend y SMTP conserva la validación TLS predeterminada. Verifique la conexión con el proveedor configurado en el entorno correspondiente.
 
 ## 12. Solución de problemas
 
 | Síntoma | Comprobación segura | Referencia |
 | --- | --- | --- |
 | Backend no inicia o no conecta a BD | `docker compose -f docker-compose.yml ps`; comprobar estado saludable de `db` y nombres `DB_*` sin imprimir valores | `docker-compose.yml`, `backend/app.js` |
-| Frontend carga pero API falla | Verificar build de `VITE_API_URL`, ambos Nginx y ruta `/api/`; comprobar si se usó el override | `frontend/nginx.conf`, `nginx/visa-app.duckdns.org.conf` |
+| Frontend carga pero API falla | Verificar build de `VITE_API_URL`, ambos Nginx y ruta `/api/`; comprobar los archivos `-f` usados | `frontend/nginx.conf`, `nginx/visa-app.duckdns.org.conf` |
 | Error al subir o leer archivos | Verificar configuración R2 en producción; fuera de producción, volumen `local_uploads`, límite de 5 MB y tipo admitido | `backend/storage.js`, `backend/upload.js` |
 | Backup ausente o vacío | Comprobar cron real, permisos del archivo externo, `pg_dump`, disco, log y `pg_restore --list` | `tools/backups/`, `docs/backups-postgresql.md` |
 | Monitor no alerta | Verificar crontab real, `MONITOR_ENV_FILE`, log y MTA/relay de correo; el script solo no garantiza entrega | `docs/server-monitoring.md` |
@@ -366,9 +366,9 @@ Un dump SQL tampoco incluye `.env` o configuración externa, certificados, regla
 
 ## 13. Limitaciones y riesgos pendientes
 
-- PostgreSQL 5433 está publicado en todas las interfaces por Compose y Docker; el Security Group no permitía entrada por ese puerto el 9 de octubre de 2026. UFW estaba inactivo. Mantenga y vuelva a verificar el control de acceso.
+- El Compose versionado restringe PostgreSQL 5433 a `127.0.0.1`. La instancia observada el 9 de octubre de 2026 usaba una versión anterior que lo publicaba en todas las interfaces; hace falta verificar la configuración efectiva después de un despliegue autorizado.
 - Backend y frontend carecen de health checks en Compose; solo `db` tiene uno.
-- El override de desarrollo contiene un secreto de sesión fijo y fuerza `NODE_ENV=development`.
+- `docker-compose.dev.yml` activa `NODE_ENV=development` solo al incluirlo explícitamente. Un secreto de sesión fijo estuvo versionado antes de este cambio y requiere rotación donde se haya utilizado.
 - HTTPS, certificado, Nginx, servicios y cron de monitoreo se comprobaron en EC2 el 9 de octubre de 2026; su estado actual y la entrega de alertas por correo requieren nuevas verificaciones. La configuración TLS efectiva no está versionada.
 - El checkout observado en producción era anterior a integraciones recientes; no se confirmó el despliegue de SCRUM-203, SCRUM-204 o SCRUM-206.
 - El Security Group aún tenía reglas públicas para 3000 y 5173 y permitía 22 desde cualquier IPv4. Queda pendiente retirar las primeras y restringir SSH a una fuente administrativa.

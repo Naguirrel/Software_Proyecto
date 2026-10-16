@@ -68,7 +68,7 @@ visa-app/
   nginx/                           # Nginx del host EC2 (reverse proxy publico)
   init.sql                         # Esquema y seed inicial para Postgres
   docker-compose.yml               # backend + frontend + db
-  docker-compose.override.yml      # Overrides locales (se carga automaticamente con docker compose up)
+  docker-compose.dev.yml           # Desarrollo local; se incluye explicitamente con -f
   .env.example                     # Variables esperadas
 ```
 
@@ -313,7 +313,7 @@ PAYMENT_BANK_NAME / PAYMENT_ACCOUNT_NAME / PAYMENT_ACCOUNT_NUMBER / PAYMENT_ACCO
 
 Notas:
 
-- Docker Compose carga `.env` desde la raiz de `visa-app/`.
+- Docker Compose carga `.env` desde la raiz de `visa-app/`; `SESSION_SECRET` debe definirse alli para ambas modalidades.
 - `backend/app.js` carga `backend/.env` con `dotenv` (no el de la raiz). En local fuera de Docker configure `backend/.env`.
 - `SESSION_SECRET` es obligatorio con `NODE_ENV=production`. Fuera de produccion `auth.js` usa un secreto de desarrollo fijo.
 - Con `NODE_ENV=development`, `app.js` crea cuentas de prueba (ver `testUsers` en `app.js`) y tramites de ejemplo al arrancar.
@@ -326,10 +326,10 @@ Con Docker:
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-`docker compose up` aplica automaticamente `docker-compose.override.yml`, que fuerza `NODE_ENV=development` y un `SESSION_SECRET` de desarrollo. Para produccion use solo el archivo base: `docker compose -f docker-compose.yml up -d --build`.
+El archivo `docker-compose.dev.yml` activa `NODE_ENV=development` solo si se incluye con `-f`; no contiene un secreto de sesion. Para produccion use solo el archivo base: `docker compose -f docker-compose.yml up -d --build`. El archivo base fija `NODE_ENV=production` y exige `SESSION_SECRET` desde `.env`.
 
 Puertos por defecto:
 
@@ -685,7 +685,7 @@ Estado actual:
 Pendientes conocidos, en orden de prioridad (no los "arregle" de paso sin pedido del usuario, pero no los replique en codigo nuevo):
 
 1. `perfilRoutes.js` e `interviewSessionRoutes.js` (excepto listado y feedback admin) no exigen sesion: se puede leer o modificar el perfil/tramite de otro usuario con su correo o `id_tramite`, y descargar audios de entrevistas por ID.
-2. `docker-compose.override.yml` tiene un `SESSION_SECRET` commiteado y fuerza `NODE_ENV=development`; si se despliega con `docker compose up` sin `-f`, se crean las cuentas de prueba y se pueden falsificar tokens.
+2. Un valor de `SESSION_SECRET` estuvo versionado en el antiguo `docker-compose.override.yml`; debe rotarse donde se haya utilizado. El desarrollo ahora exige `docker-compose.dev.yml` explicitamente y recibe el secreto desde `.env`.
 3. `config/email.js` usa `tls.rejectUnauthorized: false` con Resend.
 4. Sin rate limiting en login, recuperacion y reenvio de verificacion; sin `helmet` ni cabeceras de seguridad en Nginx.
 5. Politica de contrasenas debil: el registro no exige longitud y el reset pide 4 caracteres. El login no normaliza el correo a minusculas (el registro si).
@@ -790,9 +790,9 @@ Base de datos:
 
 ## Riesgos conocidos y trampas
 
-- `docker-compose.yml` construye el frontend con `VITE_API_URL=${FRONTEND_API_URL:-/api}`; el Nginx del contenedor proxea `/api/` al backend. Backend (`3000`) y frontend (`8080`) se publican solo en `127.0.0.1`; Postgres (`5433`) se publica en todas las interfaces.
-- `docker-compose.yml` usa `NODE_ENV=${NODE_ENV:-production}`, pero `docker-compose.override.yml` lo sobrescribe a `development` cuando se usa `docker compose up` sin `-f`. Ver "Datos y seguridad".
-- El `Dockerfile` del backend fija `NODE_ENV=production` y usa `node:20`; CI usa Node 22.
+- `docker-compose.yml` construye el frontend con `VITE_API_URL=${FRONTEND_API_URL:-/api}`; el Nginx del contenedor proxea `/api/` al backend. Backend (`3000`), frontend (`8080`) y Postgres (`5433`) se publican solo en `127.0.0.1`; entre contenedores Postgres escucha en `db:5432`.
+- `docker-compose.yml` fija `NODE_ENV=production`; `docker-compose.dev.yml` lo sobrescribe a `development` solo al incluirlo explicitamente con `-f`. Ver "Datos y seguridad".
+- El `Dockerfile` del backend fija `NODE_ENV=production`, usa `node:20`, ejecuta como `USER node` y prepara `/app/local_uploads` con permisos de escritura; CI usa Node 22.
 - `LOCAL_UPLOAD_DIR=/app/local_uploads` vive en el volumen `local_uploads`; los archivos locales no deben asumirse persistidos en el filesystem del host salvo que el volumen se conserve.
 - El servidor publico usa dos Nginx: el del host (`nginx/visa-app.duckdns.org.conf`, que envia `/api/` a `127.0.0.1:3000` y el resto a `127.0.0.1:8080`) y el del contenedor del frontend (`frontend/nginx.conf`). Los cambios de proxy pueden requerir tocar ambos.
 - CI solo corre en push/PR a `main`; las ramas de trabajo no se prueban hasta abrir el PR.
