@@ -646,6 +646,8 @@ describe("panel de administracion", () => {
     render(<App />);
 
     await screen.findByDisplayValue("VisaGuide");
+    expect(screen.queryByRole("combobox", { name: "Idioma" })).not.toBeInTheDocument();
+    expect(screen.queryByText("English")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Notificaciones automáticas/ }));
 
     const toggle = await screen.findByRole("checkbox", { name: /Activar notificaciones automáticas/ });

@@ -256,28 +256,6 @@ export default function Perfil() {
     }
   };
 
-  // Cambio de idioma (siempre en vivo)
-  const handleCambiarIdioma = async (nuevoIdioma) => {
-    if (!usuario) return;
-    const idiomaAnterior = usuario.preferencias.idioma;
-    setUsuario({
-      ...usuario,
-      preferencias: { ...usuario.preferencias, idioma: nuevoIdioma },
-    });
-    setIdiomaPreferido(nuevoIdioma);
-    try {
-      await actualizarServidor({ idioma: nuevoIdioma });
-    } catch (err) {
-      // Revertir si falla
-      setUsuario((u) => u && ({
-        ...u,
-        preferencias: { ...u.preferencias, idioma: idiomaAnterior },
-      }));
-      setIdiomaPreferido(idiomaAnterior);
-      alert(err.message);
-    }
-  };
-
   // -----------------------------------------------------------------
   // Estados de carga
   // -----------------------------------------------------------------
@@ -563,26 +541,6 @@ export default function Perfil() {
                 </button>
               </div>
 
-              {/* Idioma de la interfaz */}
-              <div style={s.prefRow}>
-                <div style={s.prefText}>
-                  <div style={{ ...s.prefRowTitle, fontSize: fz("15px", "17px") }}>
-                    {t("profile.language")}
-                  </div>
-                  <div style={{ ...s.prefRowDesc, fontSize: fz("13px", "15px") }}>
-                    {t("profile.languageDesc")}
-                  </div>
-                </div>
-                <select
-                  style={s.select}
-                  aria-label={t("profile.language")}
-                  value={usuario.preferencias.idioma}
-                  onChange={(e) => handleCambiarIdioma(e.target.value)}
-                >
-                  <option value="es">Español</option>
-                  <option value="en">English</option>
-                </select>
-              </div>
             </article>
 
             {/* ----- Aviso amarillo ----- */}

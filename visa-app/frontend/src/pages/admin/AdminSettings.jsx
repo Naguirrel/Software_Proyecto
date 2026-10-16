@@ -66,7 +66,6 @@ export default function AdminSettingsPage() {
                   <label>Nombre comercial<input value={form.nombre_comercial || ""} onChange={(event) => setDraft({ ...form, nombre_comercial: event.target.value })} /></label>
                   <label>Razón social<input value={form.razon_social || ""} onChange={(event) => setDraft({ ...form, razon_social: event.target.value })} /></label>
                   <label className="wide">Sitio web<input type="url" value={form.sitio_web || ""} onChange={(event) => setDraft({ ...form, sitio_web: event.target.value })} /></label>
-                  <label>Idioma<select value={form.idioma || "es"} onChange={(event) => setDraft({ ...form, idioma: event.target.value })}><option value="es">Español</option><option value="en">English</option></select></label>
                   <label>Zona horaria<input value={form.zona_horaria || ""} onChange={(event) => setDraft({ ...form, zona_horaria: event.target.value })} /></label>
                 </div>
                 {notice && <p role="status">{notice}</p>}

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import Perfil from "../pages/Perfil/Perfil";
@@ -86,51 +86,15 @@ describe("traducciones", () => {
 });
 
 describe("Perfil - idioma de la interfaz", () => {
-  it("cambia la interfaz a inglés y guarda la preferencia", async () => {
-    const user = userEvent.setup();
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((_url, options = {}) => {
-      if (options.method === "PUT") {
-        const body = JSON.parse(options.body);
-        return Promise.resolve({ ok: true, json: async () => ({ usuario: perfilResponse(body.idioma).usuario }) });
-      }
-      return Promise.resolve({ ok: true, json: async () => perfilResponse("es") });
-    });
+  it("oculta el selector de idioma y conserva las preferencias disponibles", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: async () => perfilResponse() });
 
     render(<Perfil />);
 
     expect(await screen.findByRole("heading", { name: "Perfil de Usuario" })).toBeInTheDocument();
-    await user.selectOptions(screen.getByRole("combobox", { name: "Idioma de la interfaz" }), "en");
-
-    expect(await screen.findByRole("heading", { name: "User Profile" })).toBeInTheDocument();
-    expect(screen.getByText("Account preferences")).toBeInTheDocument();
-    expect(screen.getByText("Visa payment")).toBeInTheDocument();
-    expect(screen.getByText("B1/B2 (Tourism / Business)")).toBeInTheDocument();
-    expect(localStorage.getItem("idioma")).toBe("en");
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/usuario-perfil"),
-        expect.objectContaining({ method: "PUT", body: JSON.stringify({ correo: "ana@example.com", idioma: "en" }) })
-      )
-    );
-    setIdiomaPreferido("es");
-  });
-
-  it("revierte el idioma si no se pudo guardar", async () => {
-    const user = userEvent.setup();
-    vi.spyOn(window, "alert").mockImplementation(() => {});
-    vi.spyOn(globalThis, "fetch").mockImplementation((_url, options = {}) => {
-      if (options.method === "PUT") {
-        return Promise.resolve({ ok: false, json: async () => ({ error: "Error de servidor" }) });
-      }
-      return Promise.resolve({ ok: true, json: async () => perfilResponse("es") });
-    });
-
-    render(<Perfil />);
-    await user.selectOptions(await screen.findByRole("combobox", { name: "Idioma de la interfaz" }), "en");
-
-    expect(await screen.findByRole("heading", { name: "Perfil de Usuario" })).toBeInTheDocument();
-    expect(localStorage.getItem("idioma")).toBe("es");
-    expect(window.alert).toHaveBeenCalledWith("Error de servidor");
+    expect(screen.queryByRole("combobox", { name: "Idioma de la interfaz" })).not.toBeInTheDocument();
+    expect(screen.queryByText("English")).not.toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Notificaciones por Email" })).toBeInTheDocument();
   });
 
   it("el interruptor de notificaciones mueve la perilla dentro del riel", async () => {
