@@ -147,10 +147,6 @@ jobs:
             artifact: npm-audit-backend
             working-directory: visa-app/backend
             lockfile: visa-app/backend/package-lock.json
-          - project: root
-            artifact: npm-audit-root
-            working-directory: visa-app
-            lockfile: visa-app/package-lock.json
           - project: e2e
             artifact: npm-audit-e2e
             working-directory: visa-app/e2e
@@ -227,8 +223,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  tracked-files:
+    name: Sensitive tracked filenames
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Reject sensitive tracked filenames
-        if: ${{ always() && matrix.project == 'root' }}
         run: |
           node - <<'NODE'
           const { execFileSync } = require('node:child_process');
@@ -253,8 +258,8 @@ jobs:
 
   notify-failure:
     name: CI failure notification
-    needs: [backend, frontend, security]
-    if: ${{ always() && (needs.backend.result != 'success' || needs.frontend.result != 'success' || needs.security.result != 'success') }}
+    needs: [backend, frontend, security, tracked-files]
+    if: ${{ always() && (needs.backend.result != 'success' || needs.frontend.result != 'success' || needs.security.result != 'success' || needs.tracked-files.result != 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions: {}
@@ -264,6 +269,7 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
+          TRACKED_FILES_RESULT: ${{ needs.tracked-files.result }}
         run: |
           {
             echo "## CI failure"
@@ -273,15 +279,16 @@ jobs:
             echo "| Backend | $BACKEND_RESULT |"
             echo "| Frontend | $FRONTEND_RESULT |"
             echo "| Security | $SECURITY_RESULT |"
+            echo "| Tracked files | $TRACKED_FILES_RESULT |"
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "::error::CI validation failed: backend=$BACKEND_RESULT, frontend=$FRONTEND_RESULT, security=$SECURITY_RESULT"
+          echo "::error::CI validation failed: backend=$BACKEND_RESULT, frontend=$FRONTEND_RESULT, security=$SECURITY_RESULT, tracked-files=$TRACKED_FILES_RESULT"
 
       - name: Mark failure notification
         run: exit 1
 
   summary:
     name: CI result
-    needs: [backend, frontend, security]
+    needs: [backend, frontend, security, tracked-files]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 3
@@ -292,6 +299,7 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
+          TRACKED_FILES_RESULT: ${{ needs.tracked-files.result }}
         run: |
           {
             echo "## CI result"
@@ -301,10 +309,12 @@ jobs:
             echo "| Backend | $BACKEND_RESULT |"
             echo "| Frontend | $FRONTEND_RESULT |"
             echo "| Security | $SECURITY_RESULT |"
+            echo "| Tracked files | $TRACKED_FILES_RESULT |"
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$BACKEND_RESULT" = "success" ] &&
              [ "$FRONTEND_RESULT" = "success" ] &&
-             [ "$SECURITY_RESULT" = "success" ]; then
+             [ "$SECURITY_RESULT" = "success" ] &&
+             [ "$TRACKED_FILES_RESULT" = "success" ]; then
             exit 0
           fi
           echo "::error::One or more required CI validations did not succeed"
