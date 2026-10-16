@@ -1,4 +1,11 @@
 const objectSchema = { type: "object", additionalProperties: true };
+const questionExampleText = (description) => ({ type: "string", nullable: true, maxLength: 2000, description });
+const questionExampleProperties = {
+  ejemplo_fuerte: questionExampleText("Ejemplo de respuesta fuerte."),
+  explicacion_fuerte: questionExampleText("Por qué el ejemplo fuerte funciona."),
+  ejemplo_debil: questionExampleText("Ejemplo de respuesta débil."),
+  explicacion_debil: questionExampleText("Por qué el ejemplo débil perjudica la entrevista."),
+};
 
 const schemas = {
   Error: {
@@ -191,6 +198,7 @@ const schemas = {
     required: ["question", "category", "difficulty"],
     properties: {
       question: { type: "string" }, category: { type: "string" }, difficulty: { type: "string", enum: ["Fácil", "Media", "Alta"] }, is_required: { type: "boolean" },
+      ...questionExampleProperties,
     },
   },
   AdvisorQuestionStatusRequest: {
@@ -545,6 +553,7 @@ Object.assign(schemas, {
       activo: { type: "boolean" },
       uso_count: { type: "integer", minimum: 0 },
       created_at: { type: "string", format: "date-time" },
+      ...questionExampleProperties,
     },
   },
   AdvisorQuestionListResponse: {
@@ -962,7 +971,7 @@ const advisorDocumentation = {
   },
   "/advisor/questions/{id}": {
     put: {
-      description: "Reemplaza el contenido editable de una pregunta existente.",
+      description: "Reemplaza el contenido editable de una pregunta existente. Los ejemplos y explicaciones que no se envíen conservan su valor; enviar null o texto vacío los borra.",
       response: [200, "Pregunta actualizada", "AdvisorQuestionResponse"],
       notFound: true,
       requestExample: { question: "¿Cómo financiará su viaje?", category: "Finanzas", difficulty: "Media", is_required: true },

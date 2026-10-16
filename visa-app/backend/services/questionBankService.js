@@ -12,6 +12,11 @@ const CATEGORIES = [
 const DIFFICULTIES = ["Fácil", "Media", "Alta"];
 const MAX_RANDOM_QUESTIONS = 20;
 const MAX_EXCLUDED_TEXT_LENGTH = 500;
+// Ejemplos de respuesta fuerte/débil y por qué lo son; todos opcionales.
+const EXAMPLE_FIELDS = ["ejemplo_fuerte", "explicacion_fuerte", "ejemplo_debil", "explicacion_debil"];
+const MAX_EXAMPLE_TEXT_LENGTH = 2000;
+const QUESTION_COLUMNS = `id, question, category, difficulty, is_required, created_at, activo, uso_count,
+       ${EXAMPLE_FIELDS.join(", ")}`;
 
 const SEED_QUESTIONS = [
   {
@@ -145,7 +150,11 @@ function createQuestionBankService(pool) {
     `);
     await pool.query(`ALTER TABLE question_bank
       ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE,
-      ADD COLUMN IF NOT EXISTS uso_count INT DEFAULT 0`);
+      ADD COLUMN IF NOT EXISTS uso_count INT DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS ejemplo_fuerte TEXT,
+      ADD COLUMN IF NOT EXISTS explicacion_fuerte TEXT,
+      ADD COLUMN IF NOT EXISTS ejemplo_debil TEXT,
+      ADD COLUMN IF NOT EXISTS explicacion_debil TEXT`);
   }
 
   async function seedInitialQuestions() {
@@ -213,6 +222,23 @@ function createQuestionBankService(pool) {
         payload.is_required === "1";
     }
 
+    // Solo se incluyen los ejemplos enviados, para que un PUT sin ellos no los borre.
+    for (const field of EXAMPLE_FIELDS) {
+      if (payload[field] === undefined) continue;
+      if (payload[field] !== null && typeof payload[field] !== "string") {
+        const error = new Error(`${field} debe ser texto`);
+        error.statusCode = 400;
+        throw error;
+      }
+      const value = (payload[field] || "").trim();
+      if (value.length > MAX_EXAMPLE_TEXT_LENGTH) {
+        const error = new Error(`${field} no puede superar ${MAX_EXAMPLE_TEXT_LENGTH} caracteres`);
+        error.statusCode = 400;
+        throw error;
+      }
+      normalized[field] = value || null;
+    }
+
     return normalized;
   }
 
@@ -220,7 +246,7 @@ function createQuestionBankService(pool) {
     await ensureSchema();
 
     const result = await pool.query(
-      `SELECT id, question, category, difficulty, is_required, created_at, activo, uso_count
+      `SELECT ${QUESTION_COLUMNS}
        FROM question_bank
        ${includeInactive ? "" : "WHERE activo = TRUE"}
        ORDER BY created_at DESC, id DESC`
@@ -279,7 +305,7 @@ function createQuestionBankService(pool) {
     const result = await pool.query(
       `WITH eligible AS (
          SELECT DISTINCT ON (LOWER(TRIM(question)))
-                id, question, category, difficulty, is_required, created_at, activo, uso_count
+                ${QUESTION_COLUMNS}
          FROM question_bank
          WHERE activo = TRUE
            AND id <> ALL($1::int[])
@@ -287,7 +313,7 @@ function createQuestionBankService(pool) {
            AND ($3::text IS NULL OR LOWER(TRIM(question)) <> LOWER(TRIM($3::text)))
          ORDER BY LOWER(TRIM(question)), id
        )
-       SELECT id, question, category, difficulty, is_required, created_at, activo, uso_count
+       SELECT ${QUESTION_COLUMNS}
        FROM eligible
        ORDER BY RANDOM()
        LIMIT $4`,
@@ -307,10 +333,16 @@ function createQuestionBankService(pool) {
 
     const data = normalizeQuestionPayload(payload);
     const result = await pool.query(
-      `INSERT INTO question_bank (question, category, difficulty, is_required)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, question, category, difficulty, is_required, created_at, activo, uso_count`,
-      [data.question, data.category, data.difficulty, data.is_required]
+      `INSERT INTO question_bank (question, category, difficulty, is_required, ${EXAMPLE_FIELDS.join(", ")})
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING ${QUESTION_COLUMNS}`,
+      [
+        data.question,
+        data.category,
+        data.difficulty,
+        data.is_required,
+        ...EXAMPLE_FIELDS.map((field) => data[field] ?? null),
+      ]
     );
 
     return result.rows[0];
@@ -327,15 +359,21 @@ function createQuestionBankService(pool) {
     }
 
     const data = normalizeQuestionPayload(payload);
+    const assignments = ["question = $1", "category = $2", "difficulty = $3", "is_required = $4"];
+    const values = [data.question, data.category, data.difficulty, data.is_required];
+    for (const field of EXAMPLE_FIELDS) {
+      if (data[field] === undefined) continue;
+      values.push(data[field]);
+      assignments.push(`${field} = $${values.length}`);
+    }
+    values.push(questionId);
+
     const result = await pool.query(
       `UPDATE question_bank
-       SET question = $1,
-           category = $2,
-           difficulty = $3,
-           is_required = $4
-       WHERE id = $5
-       RETURNING id, question, category, difficulty, is_required, created_at, activo, uso_count`,
-      [data.question, data.category, data.difficulty, data.is_required, questionId]
+       SET ${assignments.join(",\n           ")}
+       WHERE id = $${values.length}
+       RETURNING ${QUESTION_COLUMNS}`,
+      values
     );
 
     if (result.rows.length === 0) {
@@ -391,7 +429,7 @@ function createQuestionBankService(pool) {
     const result = await pool.query(
       `UPDATE question_bank SET activo = $1
        WHERE id = $2
-       RETURNING id, question, category, difficulty, is_required, created_at, activo, uso_count`,
+       RETURNING ${QUESTION_COLUMNS}`,
       [activo, questionId]
     );
 
@@ -419,6 +457,7 @@ function createQuestionBankService(pool) {
 module.exports = {
   CATEGORIES,
   DIFFICULTIES,
+  EXAMPLE_FIELDS,
   SEED_QUESTIONS,
   createQuestionBankService,
 };
