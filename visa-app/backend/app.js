@@ -35,7 +35,7 @@ const developmentUsers = require("./config/developmentUsers");
 const createConsularPaymentService = require("./services/consularPaymentService");
 const createConsularAppointmentService = require("./services/consularAppointmentService");
 const { streamDs160Pdf } = require("./services/ds160PdfService");
-const { LOCAL_STORAGE_DIR, uploadStoredFile, deleteStoredFile, getStoredFile } = require("./storage");
+const { LOCAL_STORAGE_DIR, uploadStoredFile, deleteStoredFile } = require("./storage");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 const { createApiDocsRouter } = require("./swagger");
 
@@ -350,74 +350,6 @@ emailReminderService.ensureSchema().catch((error) => {
   console.error("ERROR EMAIL REMINDER SCHEMA:", error);
 });
 
-async function notificarCambioEtapa(userId, etapa, titulo, mensaje) {
-  try {
-    await notificacionService.notificarCambioEtapa(userId, etapa, titulo, mensaje);
-  } catch (err) {
-    console.error("ERROR NOTIFICAR ETAPA:", err);
-  }
-}
-
-function buildStoredDocumentUrl(documentId) {
-  return `/documentos/${documentId}/archivo`;
-}
-
-function presentLoginUser(user) {
-  return {
-    id: user.id_usuario,
-    id_usuario: user.id_usuario,
-    nombre: user.nombre,
-    correo: user.correo,
-    perfil: user.perfil || null,
-    rol: user.rol || "cliente",
-  };
-}
-
-function inferDocumentContentType(document, storedFile = {}) {
-  if (document.tipo?.includes("/")) return document.tipo;
-  if (storedFile.contentType && storedFile.contentType !== "application/octet-stream") {
-    return storedFile.contentType;
-  }
-
-  const candidates = [
-    document.nombre,
-    document.archivo_url,
-    document.storage_key,
-  ].filter(Boolean);
-
-  const extension = candidates
-    .map((value) => path.extname(String(value)).toLowerCase())
-    .find(Boolean);
-
-  const mimeTypes = {
-    ".pdf": "application/pdf",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".webp": "image/webp",
-    ".gif": "image/gif",
-  };
-
-  return mimeTypes[extension] || storedFile.contentType || "application/octet-stream";
-}
-
-function canPreviewInline(contentType) {
-  return contentType === "application/pdf" || contentType.startsWith("image/");
-}
-
-function getUrlPathname(url) {
-  try {
-    return new URL(url, "http://visaguide.local").pathname;
-  } catch {
-    return "";
-  }
-}
-
-function isSelfDocumentFileUrl(document) {
-  return getUrlPathname(document.archivo_url) === buildStoredDocumentUrl(document.id);
-}
-
-
 // Prueba
 app.get("/", (req, res) => {
   res.send("Backend funcionando");
@@ -455,28 +387,6 @@ app.use("/advisor", createAdvisorRoutes(pool, {
   notificacionService,
   activityLogService,
 }));
-
-
-// =====================
-// ENDPOINTS DS-160
-// =====================
-
-// PUT /tramite — actualizar etapa del trámite y generar notificación automática
-const ETAPAS_VALIDAS = {
-  "Formulario DS-160": { progreso: 17, siguientePaso: "Completar el formulario DS-160" },
-  "Pago de visa":      { progreso: 34, siguientePaso: "Realizar el pago de la tarifa de visa" },
-  "Cita consular":     { progreso: 51, siguientePaso: "Programar tu cita consular" },
-  "Entrevista":        { progreso: 67, siguientePaso: "Prepararte para la entrevista consular" },
-  "Decisión final":    { progreso: 84, siguientePaso: "Esperar la decisión final del consulado" },
-};
-
-const MENSAJES_ETAPA = {
-  "Formulario DS-160": "Tu perfil fue configurado. El siguiente paso es completar el formulario DS-160.",
-  "Pago de visa":      "Formulario DS-160 completado. Ahora debes realizar el pago de la tarifa de visa.",
-  "Cita consular":     "Pago de visa confirmado. El siguiente paso es programar tu cita consular.",
-  "Entrevista":        "Cita consular agendada. Prepárate para tu entrevista.",
-  "Decisión final":    "Entrevista completada. Tu solicitud está en proceso de revisión final.",
-};
 
 
 app.use(upload.handleUploadError);

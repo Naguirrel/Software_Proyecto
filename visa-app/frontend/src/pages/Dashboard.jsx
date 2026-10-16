@@ -176,7 +176,6 @@ export default function Dashboard() {
   const quickCards = workflow && !workflow.assigned
     ? calculatedQuickCards.filter((card) => card.path !== "/entrevista")
     : calculatedQuickCards;
-  const showLegacyQuickCards = false;
 
   const ETAPAS = getProcessTimeline(etapaActual, {}, idioma).map((step) => ({
     n: step.number,
@@ -345,39 +344,6 @@ export default function Dashboard() {
                   </span>
                 </article>
               ))}
-              {showLegacyQuickCards && <article className="dash-card dash-card--yellow" onClick={() => (window.location.href = "/documents")} onKeyDown={(event) => activarTarjeta(event, "/documents")} role="button" tabIndex={0}>
-                <span className="dash-important-badge">IMPORTANTE</span>
-                <div className="dash-card-icon" aria-hidden="true" />
-                <h4 style={{ fontSize: modoSenior ? "19px" : "16px" }}>Revisión de documentos</h4>
-                <p style={{ fontSize: modoSenior ? "14px" : "13px" }}>
-                  Tienes <strong style={{ color: "var(--vg-warning)" }}>1 documento</strong> que requiere corrección.
-                </p>
-                <span className="dash-card-cta" style={{ color: "var(--vg-warning)", fontSize: modoSenior ? "14px" : "13px" }}>
-                  Corregir ahora &rarr;
-                </span>
-              </article>}
-
-              {showLegacyQuickCards && (<><article className="dash-card dash-card--white" onClick={() => (window.location.href = "/cronologia")} onKeyDown={(event) => activarTarjeta(event, "/cronologia")} role="button" tabIndex={0}>
-                <div className="dash-card-icon" aria-hidden="true" />
-                <h4 style={{ fontSize: modoSenior ? "19px" : "16px" }}>Ver cronología completa</h4>
-                <p style={{ fontSize: modoSenior ? "14px" : "13px", color: "var(--vg-text-muted)" }}>
-                  Revisa todos los pasos de tu proceso y qué esperar en cada uno.
-                </p>
-                <span className="dash-card-cta" style={{ color: "var(--vg-text-muted)", fontSize: modoSenior ? "14px" : "13px" }}>
-                  Explorar &rarr;
-                </span>
-              </article></>)}
-
-              {showLegacyQuickCards && <article className="dash-card dash-card--dark" onClick={() => (window.location.href = "/entrevista")} onKeyDown={(event) => activarTarjeta(event, "/entrevista")} role="button" tabIndex={0}>
-                <div className="dash-card-icon-light" aria-hidden="true" />
-                <h4 style={{ fontSize: modoSenior ? "19px" : "16px", color: "white" }}>Simulador de entrevista</h4>
-                <p style={{ fontSize: modoSenior ? "14px" : "13px", color: "var(--vg-text-light)", flex: 1 }}>
-                  Practica con preguntas reales para ganar confianza antes de tu cita consular.
-                </p>
-                <span className="dash-card-cta" style={{ color: "var(--vg-success)", fontSize: modoSenior ? "14px" : "13px" }}>
-                  Practicar &rarr;
-                </span>
-              </article>}
             </section>
           </>
         )}

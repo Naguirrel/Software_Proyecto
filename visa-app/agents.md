@@ -381,7 +381,7 @@ Antes de cerrar una tarea, ejecute al menos las pruebas relacionadas con el area
 
 El backend usa CommonJS. Mantenga `require`/`module.exports`; no mezcle ESM.
 
-Todas las rutas son modulares. `app.js` ya no define endpoints de negocio (solo `GET /`); crea el pool, ejecuta las migraciones ligeras, instancia servicios compartidos (notificaciones, activity log, recordatorios, consular) y monta los routers. Queda codigo muerto de antes del refactor en `app.js` (`ETAPAS_VALIDAS`, `MENSAJES_ETAPA`, `notificarCambioEtapa`, etc.); no lo use como referencia.
+Todas las rutas son modulares. `app.js` ya no define endpoints de negocio (solo `GET /`); crea el pool, ejecuta las migraciones ligeras, instancia servicios compartidos (notificaciones, activity log, recordatorios, consular) y monta los routers.
 
 Los routers siguen el patron de fabrica: `createXRoutes(pool, { dependencias })`. Las dependencias (middlewares de auth, servicios, promesas `schemaReady`) se inyectan desde `app.js`, lo que permite mockearlas en pruebas.
 
@@ -803,7 +803,7 @@ Base de datos:
 - El fallback local expone `/local-files` sin autenticacion cuando `NODE_ENV !== "production"`; no construya flujos de produccion que dependan de esa ruta.
 - El endpoint de audio `GET /interview-sessions/:id/audio/:questionId` se consume con `<audio src>`, que no envia `Authorization`. Si se protege, habra que usar URL firmada, cookie o descarga via `fetch` + `blob:`.
 - `localStorage` tiene llaves legacy (`correoUsuario`, `perfilUsuario`) usadas por varias pantallas. No las elimine sin migracion.
-- Puede haber archivos sueltos sin seguimiento (por ejemplo `temp_app.js`, una copia vieja de `app.js` en UTF-16). No los use como referencia.
+- No use copias antiguas de `app.js` como referencia para rutas de negocio; consulte los modulos vigentes.
 
 ## Estado esperado de calidad
 
