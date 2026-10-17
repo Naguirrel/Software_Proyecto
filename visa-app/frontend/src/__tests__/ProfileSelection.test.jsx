@@ -49,13 +49,10 @@ describe("ProfileSelection", () => {
       expect(screen.getByText("¡Perfil seleccionado con éxito!")).toBeInTheDocument()
     );
     expect(localStorage.getItem("perfilUsuario")).toBe("turismo_negocios");
-    expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/guardar-perfil"), {
+    expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/guardar-perfil"), expect.objectContaining({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        correo: "norman@example.com",
-        perfil: "turismo_negocios",
-      }),
-    });
+      headers: { "Content-Type": "application/json", Authorization: "Bearer signed-session-token" },
+      body: JSON.stringify({ perfil: "turismo_negocios" }),
+    }));
   });
 });

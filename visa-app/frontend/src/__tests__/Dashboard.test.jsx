@@ -101,7 +101,7 @@ describe("Dashboard", () => {
       expect.stringContaining("/estado-tramite"),
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ correo: "ana@example.com" }),
+        body: JSON.stringify({}),
         signal: expect.any(AbortSignal),
       })
     );

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import "./ProfileSelection.css";
-import { buildApiUrl } from "../../config/api";
 import useModoSenior from "../../hooks/useModoSenior";
 import useRequireAuth from "../../hooks/useRequireAuth";
+import { apiRequest } from "../../utils/apiClient";
+import { buildSessionHeaders } from "../../utils/sessionAuth";
 
 function ProfileSelection() {
   const { isValidating, session } = useRequireAuth();
@@ -62,9 +63,7 @@ function ProfileSelection() {
       return;
     }
 
-    const correo = localStorage.getItem("correoUsuario");
-
-    if (!correo) {
+    if (!session) {
       setErrorMessage("Primero inicia sesión para guardar el perfil.");
       return;
     }
@@ -73,40 +72,32 @@ function ProfileSelection() {
       setLoading(true);
       setErrorMessage("");
 
-      const res = await fetch(buildApiUrl("/guardar-perfil"), {
+      // El usuario lo identifica el token de sesión; solo se envía el perfil elegido.
+      await apiRequest("/guardar-perfil", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          correo,
-          perfil: selectedProfile,
-        }),
+        headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ perfil: selectedProfile }),
+        fallbackMessage: "No se pudo guardar el perfil.",
       });
 
-      const data = await res.json();
+      localStorage.setItem("perfilUsuario", selectedProfile);
 
-      if (res.ok) {
-        localStorage.setItem("perfilUsuario", selectedProfile);
-        
-        // Actualizar también la sesión con el perfil
-        const session = localStorage.getItem("visaguide_session");
-        if (session) {
-          const sessionData = JSON.parse(session);
-          sessionData.perfil = selectedProfile;
-          localStorage.setItem("visaguide_session", JSON.stringify(sessionData));
-        }
-        
-        setSuccessMessage("¡Perfil seleccionado con éxito!");
-
-        setTimeout(() => {
-          window.location.href = "/dashboard";
-        }, 1500);
-      } else {
-        setErrorMessage(data.error || "No se pudo guardar el perfil.");
+      // Actualizar también la sesión con el perfil
+      const storedSession = localStorage.getItem("visaguide_session");
+      if (storedSession) {
+        const sessionData = JSON.parse(storedSession);
+        sessionData.perfil = selectedProfile;
+        localStorage.setItem("visaguide_session", JSON.stringify(sessionData));
       }
-    } catch {
-      setErrorMessage("Error de conexión con el servidor.");
+
+      setSuccessMessage("¡Perfil seleccionado con éxito!");
+
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1500);
+    } catch (error) {
+      // Con 401 apiRequest ya limpió la sesión y useRequireAuth redirige a /login.
+      setErrorMessage(error.status ? error.message : "Error de conexión con el servidor.");
     } finally {
       setLoading(false);
     }

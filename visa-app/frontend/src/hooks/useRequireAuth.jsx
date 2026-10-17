@@ -57,5 +57,30 @@ export default function useRequireAuth() {
     return () => controller.abort();
   }, []);
 
+  // Si la sesión expira (401 en cualquier petición) o cambia en otra pestaña, se descarta la
+  // sesión en memoria y se vuelve al login para no dejar a la vista datos de la cuenta anterior.
+  useEffect(() => {
+    const leaveSession = () => {
+      setSession(null);
+      window.location.href = "/login";
+    };
+    const onStorage = (event) => {
+      if (event.key !== null && event.key !== "visaguide_session") return;
+      let stored = null;
+      try {
+        stored = JSON.parse(localStorage.getItem("visaguide_session") || "null");
+      } catch {
+        stored = null;
+      }
+      if (!stored?.token || (session && stored.id !== session.id)) leaveSession();
+    };
+    window.addEventListener("visaguide:session-expired", leaveSession);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("visaguide:session-expired", leaveSession);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [session]);
+
   return { isValidating, session };
 }

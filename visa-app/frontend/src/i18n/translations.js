@@ -194,6 +194,7 @@ const es = {
   // Perfil
   "profile.loading": "Cargando perfil…",
   "profile.loadError": "No se pudo cargar el perfil.",
+  "profile.forbiddenError": "No tienes permiso para ver este perfil.",
   "profile.saveError": "No se pudo guardar.",
   "profile.title": "Perfil de Usuario",
   "profile.subtitle": "Gestiona tu información personal y los detalles de tu trámite.",
@@ -449,6 +450,7 @@ const en = {
 
   "profile.loading": "Loading profile…",
   "profile.loadError": "The profile could not be loaded.",
+  "profile.forbiddenError": "You do not have permission to view this profile.",
   "profile.saveError": "Changes could not be saved.",
   "profile.title": "User Profile",
   "profile.subtitle": "Manage your personal information and the details of your application.",
