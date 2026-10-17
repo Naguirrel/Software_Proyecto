@@ -8,6 +8,7 @@ import useRequireAuth from "../hooks/useRequireAuth";
 import { SkeletonCard, SkeletonList } from "../components/SkeletonCard";
 import InformationSection from "../components/InformationSection";
 import DashboardStats from "../components/DashboardStats";
+import ProcessChecklist from "../components/ProcessChecklist";
 import {
   calculateDs160Percentage,
   getCurrentProcessStage,
@@ -18,6 +19,7 @@ import {
   summarizeDocuments,
   TOTAL_PROCESS_STEPS,
 } from "../utils/dashboardStats";
+import { getWorkflowNextAction } from "../utils/processChecklist";
 import { buildSessionHeaders } from "../utils/sessionAuth";
 import useClientWorkflow from "../hooks/useClientWorkflow";
 import "../styles/dashboard.css";
@@ -39,7 +41,12 @@ export default function Dashboard() {
   const { isValidating, session } = useRequireAuth();
   const modoSenior = useModoSenior();
   const { idioma, t } = useIdioma();
-  const { workflow, isLoading: workflowLoading } = useClientWorkflow({ enabled: !isValidating && Boolean(session) });
+  const {
+    workflow,
+    isLoading: workflowLoading,
+    error: workflowError,
+    retry: retryWorkflow,
+  } = useClientWorkflow({ enabled: !isValidating && Boolean(session) });
   const activarTarjeta = (event, path) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -158,6 +165,17 @@ export default function Dashboard() {
     tramite,
     idioma,
   });
+  const workflowNextAction = getWorkflowNextAction({
+    workflow,
+    t,
+    stageAction: (stageNumber) => getDashboardNextAction({
+      stageNumber,
+      ds160Percentage: stats.ds160Percentage,
+      documentSummary,
+      tramite,
+      idioma,
+    }),
+  });
   const nextAction = workflow && !workflow.assigned
     ? {
         priority: "ACCIÓN DISPONIBLE",
@@ -167,7 +185,8 @@ export default function Dashboard() {
         path: "/documents",
         buttonLabel: "Subir documentos",
       }
-    : calculatedNextAction;
+    : workflowNextAction || calculatedNextAction;
+  const workflowFailed = !workflowLoading && !workflow && Boolean(workflowError);
   const calculatedQuickCards = getDashboardQuickCards({
     documentSummary,
     stageNumber: etapaActual,
@@ -239,7 +258,9 @@ export default function Dashboard() {
           <EmailVerificationNotice correo={session.correo} variant="banner" />
         )}
 
-        {loading ? (
+        {workflowFailed ? (
+          <ProcessChecklist workflow={null} error={workflowError} onRetry={retryWorkflow} t={t} />
+        ) : loading ? (
           <DashSkeleton />
         ) : (
           <>
@@ -319,6 +340,14 @@ export default function Dashboard() {
                 </button>
               </div>
             </section>
+
+            <ProcessChecklist
+              workflow={workflow}
+              isLoading={workflowLoading}
+              error={workflowError}
+              onRetry={retryWorkflow}
+              t={t}
+            />
 
             {/* QUICK CARDS */}
             <section className="dash-quick-grid">
