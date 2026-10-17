@@ -357,7 +357,13 @@ app.get("/", (req, res) => {
 
 app.use("/interview-sessions", createInterviewSessionRoutes(pool, { requireAdmin, requireSession, requireWorkflowStep, notificacionService, activityLogService }));
 app.use("/questions", createQuestionBankRoutes(pool, { requireAdmin, requireSession, requireWorkflowStep }));
-app.use("/", createPerfilRoutes(pool, { userSchemaReady, tramiteSchemaReady, activityLogService, notificacionService }));
+app.use("/", createPerfilRoutes(pool, {
+  userSchemaReady,
+  tramiteSchemaReady,
+  activityLogService,
+  notificacionService,
+  requireSession,
+}));
 app.use("/", createAuthRoutes(pool, { userSchemaReady, tramiteSchemaReady, passwordResetSchemaReady, emailVerificationSchemaReady, loginSecuritySchemaReady, testUsersReady, requireSession, activityLogService }));
 app.use("/notificaciones", createNotificacionRoutes(pool, { requireSession, requireAdmin }));
 app.use("/chat", createChatRoutes(pool, { requireSession, notificacionService }));

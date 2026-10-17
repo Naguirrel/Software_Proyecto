@@ -51,6 +51,7 @@ async function createPostgresTask5Harness() {
     const createDocumentRoutes = require("../routes/documentRoutes");
     const createInterviewSessionRoutes = require("../routes/interviewSessionRoutes");
     const createAdminMetricsRoutes = require("../routes/adminMetricsRoutes");
+    const createPerfilRoutes = require("../routes/perfilRoutes");
     const { createRoleMiddleware, createSessionMiddleware } = require("../auth");
     const upload = require("../upload");
     const { notFoundHandler, errorHandler } = require("../middleware/errorHandler");
@@ -81,6 +82,13 @@ async function createPostgresTask5Harness() {
     app.use("/", createDocumentRoutes(pool, {
       documentSchemaReady: ready,
       activityLogService,
+      requireSession,
+    }));
+    app.use("/", createPerfilRoutes(pool, {
+      userSchemaReady: ready,
+      tramiteSchemaReady: ready,
+      activityLogService,
+      notificacionService: { crear: jest.fn(async () => {}) },
       requireSession,
     }));
     app.use("/interview-sessions", createInterviewSessionRoutes(pool, {

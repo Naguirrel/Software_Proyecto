@@ -16,22 +16,22 @@ function calcularEtapa(progreso, perfil) {
 
 function createPerfilService(pool, { userSchemaReady, tramiteSchemaReady }) {
 
-  async function findUserByEmail(correo) {
+  async function findUserById(userId) {
     await userSchemaReady;
     const result = await pool.query(
       `SELECT id_usuario, nombre, correo, perfil,
               telefono, ciudad, pais,
               notificaciones_email, idioma, rol
-       FROM usuario WHERE correo = $1`,
-      [correo]
+       FROM usuario WHERE id_usuario = $1`,
+      [userId]
     );
     return result.rows[0] || null;
   }
 
-  async function guardarPerfil(correo, perfil) {
+  async function guardarPerfil(userId, perfil) {
     const result = await pool.query(
-      "UPDATE usuario SET perfil = $1 WHERE correo = $2 RETURNING *",
-      [perfil, correo]
+      "UPDATE usuario SET perfil = $1 WHERE id_usuario = $2 RETURNING *",
+      [perfil, userId]
     );
     return result.rows[0] || null;
   }
@@ -79,7 +79,7 @@ function createPerfilService(pool, { userSchemaReady, tramiteSchemaReady }) {
     }
   }
 
-  async function updateUsuarioPerfil(correo, campos) {
+  async function updateUsuarioPerfil(userId, campos) {
     await userSchemaReady;
 
     const sets = [];
@@ -95,12 +95,12 @@ function createPerfilService(pool, { userSchemaReady, tramiteSchemaReady }) {
 
     if (sets.length === 0) return null;
 
-    valores.push(correo);
+    valores.push(userId);
 
     const result = await pool.query(
       `UPDATE usuario
        SET ${sets.join(", ")}
-       WHERE correo = $${i}
+       WHERE id_usuario = $${i}
        RETURNING id_usuario, nombre, correo, perfil,
                  telefono, ciudad, pais,
                  notificaciones_email, idioma`,
@@ -110,41 +110,15 @@ function createPerfilService(pool, { userSchemaReady, tramiteSchemaReady }) {
     return result.rows[0] || null;
   }
 
-  async function updateTramite(tramiteId, campos) {
-    await tramiteSchemaReady;
-
-    const sets = [];
-    const valores = [];
-    let i = 1;
-
-    if (campos.estado !== undefined) { sets.push(`estado = $${i++}`); valores.push(campos.estado); }
-    if (campos.etapa_actual !== undefined) { sets.push(`etapa_actual = $${i++}`); valores.push(campos.etapa_actual); }
-    if (campos.progreso !== undefined) { sets.push(`progreso = $${i++}`); valores.push(campos.progreso); }
-    if (campos.siguiente_paso !== undefined) { sets.push(`siguiente_paso = $${i++}`); valores.push(campos.siguiente_paso); }
-    if (campos.mensaje !== undefined) { sets.push(`mensaje = $${i++}`); valores.push(campos.mensaje); }
-
-    if (sets.length === 0) return null;
-
-    valores.push(tramiteId);
-
-    const result = await pool.query(
-      `UPDATE tramite SET ${sets.join(", ")} WHERE id_tramite = $${i} RETURNING *`,
-      valores
-    );
-
-    return result.rows[0] || null;
-  }
-
   return {
     PERFIL_A_VISA,
     calcularEtapa,
-    findUserByEmail,
+    findUserById,
     guardarPerfil,
     getTramiteByUserId,
     getOrCreateTramite,
     avanzarTramiteDS160,
     updateUsuarioPerfil,
-    updateTramite,
   };
 }
 

@@ -212,4 +212,53 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
     expect(after.body.user.emailVerificado).toBe(true);
     expect((await request(ctx.app).post("/verificar-email").send({ token })).status).toBe(400);
   });
+
+  test("SEC-001: el perfil usa la identidad de la sesión y bloquea el avance manual del trámite", async () => {
+    const owner = await registerUser();
+    const other = await registerUser();
+
+    const profile = await request(ctx.app)
+      .post("/usuario-perfil")
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ id_usuario: other.id, correo: other.correo });
+
+    expect(profile.status).toBe(200);
+    expect(profile.body.usuario).toMatchObject({ id: owner.id, correo: owner.correo });
+
+    const before = (await ctx.pool.query(
+      "SELECT estado, etapa_actual, progreso FROM tramite WHERE id_usuario = $1",
+      [owner.id]
+    )).rows[0];
+    const forbidden = await request(ctx.app)
+      .put("/tramite")
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ id_usuario: other.id, estado: "Completado", etapa_actual: "Entrevista", progreso: 100 });
+    const after = (await ctx.pool.query(
+      "SELECT estado, etapa_actual, progreso FROM tramite WHERE id_usuario = $1",
+      [owner.id]
+    )).rows[0];
+
+    expect(forbidden.status).toBe(403);
+    expect(after).toEqual(before);
+  });
+
+  test("DB-001: PostgreSQL impone el límite de 2000 caracteres en ejemplos del banco", async () => {
+    const valid = await ctx.pool.query(
+      `INSERT INTO question_bank (question, category, difficulty, ejemplo_fuerte)
+       VALUES ($1, 'General', 'Media', $2)
+       RETURNING id, ejemplo_fuerte`,
+      [`Pregunta límite ${crypto.randomUUID()}`, "a".repeat(2000)]
+    );
+
+    try {
+      expect(valid.rows[0].ejemplo_fuerte).toHaveLength(2000);
+      await expect(ctx.pool.query(
+        `INSERT INTO question_bank (question, category, difficulty, ejemplo_fuerte)
+         VALUES ($1, 'General', 'Media', $2)`,
+        [`Pregunta inválida ${crypto.randomUUID()}`, "a".repeat(2001)]
+      )).rejects.toMatchObject({ code: "23514" });
+    } finally {
+      await ctx.pool.query("DELETE FROM question_bank WHERE id = $1", [valid.rows[0].id]);
+    }
+  });
 });
