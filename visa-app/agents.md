@@ -796,7 +796,7 @@ Base de datos:
 - `LOCAL_UPLOAD_DIR=/app/local_uploads` vive en el volumen `local_uploads`; los archivos locales no deben asumirse persistidos en el filesystem del host salvo que el volumen se conserve.
 - El servidor publico usa dos Nginx: el del host (`nginx/visa-app.duckdns.org.conf`, que envia `/api/` a `127.0.0.1:3000` y el resto a `127.0.0.1:8080`) y el del contenedor del frontend (`frontend/nginx.conf`). Los cambios de proxy pueden requerir tocar ambos.
 - CI solo corre en push/PR a `main`; las ramas de trabajo no se prueban hasta abrir el PR.
-- El `package.json` de `visa-app/` solo declara `cors` y no se usa; los scripts reales estan en `backend/package.json` y `frontend/package.json`.
+- `visa-app/` no tiene `package.json` propio; los scripts reales estan en `backend/package.json`, `frontend/package.json` y `e2e/package.json`.
 - Algunos archivos muestran caracteres mojibake en terminal Windows si la consola no esta en UTF-8. Antes de "corregir" textos, confirme que el archivo realmente este mal y no sea solo la salida de PowerShell.
 - `app.js` concentra migraciones, seed y wiring. No agregue endpoints ahi; cree un router.
 - Los endpoints de documentos existen como `/upload` y `/documentos`; revise consumidores antes de consolidar.

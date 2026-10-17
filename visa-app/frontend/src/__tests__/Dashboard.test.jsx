@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Dashboard from "../pages/Dashboard";
+import { workflowFixture } from "./helpers/workflowFixture";
 
 const user = userEvent.setup();
 
@@ -18,6 +19,8 @@ const authState = vi.hoisted(() => ({
 const workflowState = vi.hoisted(() => ({
   workflow: { assigned: true, gates: { ds160: { allowed: true } } },
   isLoading: false,
+  error: "",
+  retry: vi.fn(),
 }));
 
 vi.mock("../hooks/useRequireAuth", () => ({
@@ -50,7 +53,9 @@ describe("Dashboard", () => {
     Object.assign(workflowState, {
       workflow: { assigned: true, gates: { ds160: { allowed: true } } },
       isLoading: false,
+      error: "",
     });
+    workflowState.retry.mockClear();
   });
 
   it("muestra la información principal y los datos del usuario", async () => {
@@ -96,7 +101,7 @@ describe("Dashboard", () => {
       expect.stringContaining("/estado-tramite"),
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ correo: "ana@example.com" }),
+        body: JSON.stringify({}),
         signal: expect.any(AbortSignal),
       })
     );
@@ -217,5 +222,143 @@ describe("Dashboard", () => {
       expect(screen.getByText("7", { selector: ".dash-etapa-num" })).toBeInTheDocument()
     );
     expect(screen.getByText("100%", { selector: ".dash-ring-pct" })).toBeInTheDocument();
+  });
+});
+
+describe("Dashboard: checklist del trámite", () => {
+  function mockDashboardRequests() {
+    vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      const requestUrl = String(url);
+      if (requestUrl.includes("/estado-tramite")) return Promise.resolve({ ok: true, json: async () => ({ progreso: 34, siguientePaso: "Prepararte para la entrevista consular" }) });
+      if (requestUrl.includes("/ds160")) return Promise.resolve({ ok: true, json: async () => ({ seccion_actual: 10, completado: true }) });
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+  }
+
+  beforeEach(() => {
+    Object.assign(authState, {
+      isValidating: false,
+      session: { id: 7, nombre: "Ana López", correo: "ana@example.com", perfil: "turismo_negocios" },
+    });
+    Object.assign(workflowState, { isLoading: false, error: "" });
+    workflowState.retry.mockClear();
+  });
+
+  it("muestra las actividades hechas y las pendientes, no solo la siguiente acción", async () => {
+    workflowState.workflow = workflowFixture("partial");
+    mockDashboardRequests();
+
+    render(<Dashboard />);
+
+    const checklist = await screen.findByRole("region", { name: "Checklist de tu trámite" });
+    expect(within(checklist).getAllByRole("listitem")).toHaveLength(7);
+    expect(within(checklist).getAllByText("Completada")).toHaveLength(3);
+    expect(within(checklist).getByText("3 de 7 actividades completadas")).toBeInTheDocument();
+    expect(within(checklist).getByText("Siguiente paso")).toBeInTheDocument();
+    expect(within(checklist).getAllByText("Pendiente")).toHaveLength(3);
+    expect(screen.getByText("SIGUIENTE ACCIÓN REQUERIDA")).toBeInTheDocument();
+  });
+
+  it("la siguiente acción coincide con el siguiente paso del checklist (pago)", async () => {
+    workflowState.workflow = workflowFixture("payment");
+    mockDashboardRequests();
+
+    render(<Dashboard />);
+
+    const checklist = await screen.findByRole("region", { name: "Checklist de tu trámite" });
+    const current = within(checklist).getAllByRole("listitem").find((item) => item.getAttribute("aria-current") === "step");
+    expect(current).toHaveTextContent("Pago consular completado");
+    expect(screen.getByRole("heading", { name: "Registra tu pago" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ir a pagos/ })).toBeInTheDocument();
+    expect(within(current).getByRole("link")).toHaveAttribute("href", "/pagos");
+  });
+
+  it("la siguiente acción coincide con el siguiente paso del checklist (documentos)", async () => {
+    workflowState.workflow = workflowFixture("partial");
+    mockDashboardRequests();
+
+    render(<Dashboard />);
+
+    const checklist = await screen.findByRole("region", { name: "Checklist de tu trámite" });
+    const current = within(checklist).getAllByRole("listitem").find((item) => item.getAttribute("aria-current") === "step");
+    expect(current).toHaveTextContent("Documentos obligatorios aprobados");
+    expect(within(current).getByRole("link")).toHaveAttribute("href", "/documents");
+    expect(screen.getByRole("heading", { name: "Subir documentos", level: 3 })).toBeInTheDocument();
+  });
+
+  it("al volver a consultar después de completar una actividad, el checklist refleja el cambio", async () => {
+    workflowState.workflow = workflowFixture("partial");
+    mockDashboardRequests();
+    const { rerender } = render(<Dashboard />);
+    const checklist = await screen.findByRole("region", { name: "Checklist de tu trámite" });
+    expect(within(checklist).getByText("3 de 7 actividades completadas")).toBeInTheDocument();
+
+    workflowState.workflow = workflowFixture("partial", {
+      requirements: { requiredDocumentsApproved: 3, documentsApproved: true },
+      currentStep: "payment",
+      gates: { payment: { allowed: true, reason: "", requiredStep: null, requiredPath: null } },
+    });
+    rerender(<Dashboard />);
+
+    expect(await screen.findByText("4 de 7 actividades completadas")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Registra tu pago" })).toBeInTheDocument();
+  });
+
+  it("trámite completo: el checklist lo indica y la siguiente acción deja de pedir preparar la entrevista", async () => {
+    workflowState.workflow = workflowFixture("complete");
+    mockDashboardRequests();
+
+    render(<Dashboard />);
+
+    expect(await screen.findByText("¡Completaste todas las actividades del trámite!")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Esperar la decisión final del consulado" })).toBeInTheDocument();
+  });
+
+  it("sin perfil elegido, la siguiente acción pide completarlo igual que el checklist", async () => {
+    workflowState.workflow = workflowFixture("initial");
+    mockDashboardRequests();
+
+    render(<Dashboard />);
+
+    const checklist = await screen.findByRole("region", { name: "Checklist de tu trámite" });
+    const current = within(checklist).getAllByRole("listitem").find((item) => item.getAttribute("aria-current") === "step");
+    expect(current).toHaveTextContent("Completar tu perfil");
+    expect(screen.getByRole("heading", { name: "Completar perfil", level: 3 })).toBeInTheDocument();
+  });
+
+  it("esperando asesor, la siguiente acción propone avanzar con los documentos mientras el checklist marca la asignación", async () => {
+    workflowState.workflow = workflowFixture("profileDone");
+    mockDashboardRequests();
+
+    render(<Dashboard />);
+
+    const checklist = await screen.findByRole("region", { name: "Checklist de tu trámite" });
+    const current = within(checklist).getAllByRole("listitem").find((item) => item.getAttribute("aria-current") === "step");
+    expect(current).toHaveTextContent("Asesor asignado");
+    expect(screen.getByRole("heading", { name: "Prepara tus documentos" })).toBeInTheDocument();
+  });
+
+  it("si falla la carga del flujo muestra un error con reintento en lugar de quedarse cargando", async () => {
+    workflowState.workflow = null;
+    workflowState.error = "No fue posible cargar el flujo";
+    mockDashboardRequests();
+
+    render(<Dashboard />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar el checklist de tu trámite.");
+    expect(document.querySelector(".sk-shimmer")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(workflowState.retry).toHaveBeenCalledTimes(1);
+  });
+
+  it("mientras carga el flujo mantiene el esqueleto y no muestra el checklist", () => {
+    workflowState.workflow = null;
+    workflowState.isLoading = true;
+    mockDashboardRequests();
+
+    render(<Dashboard />);
+
+    expect(screen.queryByRole("region", { name: "Checklist de tu trámite" })).not.toBeInTheDocument();
+    expect(document.querySelectorAll(".sk-shimmer").length).toBeGreaterThan(0);
   });
 });
