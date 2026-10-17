@@ -70,6 +70,13 @@ jobs:
       - name: Run existing backend tests
         run: npm test -- --json --outputFile=../test-artifacts/backend-existing.json
 
+      - name: Repeat auth recovery regression with recorded seeds
+        run: |
+          for seed in 2202 7707 9909; do
+            echo "Running auth recovery regression with Jest seed ${seed}"
+            npm test -- --runTestsByPath __tests__/authRecovery.integration.test.js --randomize --seed="${seed}"
+          done
+
       - name: Run PostgreSQL integration and regression tests
         run: npm run test:postgres -- --json --outputFile=../test-artifacts/backend-postgres.json
 

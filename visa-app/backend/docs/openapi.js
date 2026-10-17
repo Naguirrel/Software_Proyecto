@@ -55,31 +55,18 @@ const schemas = {
   },
   ProfileRequest: {
     type: "object",
-    required: ["correo", "perfil"],
-    properties: { correo: { type: "string", format: "email" }, perfil: objectSchema },
+    required: ["perfil"],
+    properties: { perfil: objectSchema },
   },
   ProfileUpdateRequest: {
     type: "object",
-    required: ["correo"],
     properties: {
-      correo: { type: "string", format: "email" },
       nombre: { type: "string" },
       telefono: { type: "string" },
       ciudad: { type: "string" },
       pais: { type: "string" },
       notificacionesEmail: { type: "boolean" },
       idioma: { type: "string" },
-    },
-  },
-  ProcessUpdateRequest: {
-    type: "object",
-    properties: {
-      id_tramite: { type: "integer" },
-      estado: { type: "string" },
-      etapa_actual: { type: "string" },
-      progreso: { type: "integer", minimum: 0, maximum: 100 },
-      siguiente_paso: { type: "string" },
-      mensaje: { type: "string" },
     },
   },
   Ds160Request: {
@@ -655,11 +642,11 @@ const endpoints = [
   ["post", "/verificar-email", "Autenticación", "Verificar correo", null, "TokenRequest"],
   ["post", "/reenviar-verificacion", "Autenticación", "Reenviar verificación", null, "EmailRequest"],
   ["post", "/desbloquear-cuenta", "Autenticación", "Desbloquear cuenta con el enlace del correo", null, "TokenRequest"],
-  ["post", "/guardar-perfil", "Perfil y trámite", "Guardar perfil de visa", null, "ProfileRequest"],
-  ["post", "/estado-tramite", "Perfil y trámite", "Consultar estado del trámite", null, "UserEmailRequest"],
-  ["post", "/usuario-perfil", "Perfil y trámite", "Consultar perfil del usuario", null, "UserEmailRequest"],
-  ["put", "/usuario-perfil", "Perfil y trámite", "Actualizar perfil del usuario", null, "ProfileUpdateRequest"],
-  ["put", "/tramite", "Perfil y trámite", "Actualizar trámite", null, "ProcessUpdateRequest"],
+  ["post", "/guardar-perfil", "Perfil y trámite", "Guardar perfil de visa", "session", "ProfileRequest"],
+  ["post", "/estado-tramite", "Perfil y trámite", "Consultar estado del trámite", "session"],
+  ["post", "/usuario-perfil", "Perfil y trámite", "Consultar perfil del usuario", "session"],
+  ["put", "/usuario-perfil", "Perfil y trámite", "Actualizar perfil del usuario", "session", "ProfileUpdateRequest"],
+  ["put", "/tramite", "Perfil y trámite", "Actualización manual de trámite bloqueada", "session"],
   ["post", "/ds160/load", "DS-160", "Cargar formulario DS-160", null, "UserEmailRequest"],
   ["post", "/ds160", "DS-160", "Guardar formulario DS-160", null, "Ds160Request"],
   ["post", "/ds160/pdf", "DS-160", "Exportar DS-160 en PDF", null, "UserEmailRequest", 200, "binary"],
@@ -670,11 +657,11 @@ const endpoints = [
   ["get", "/documentos/{usuarioId}", "Documentos", "Listar documentos del usuario", "session"],
   ["delete", "/documentos", "Documentos", "Eliminar documento", "session", "GenericRequest"],
   ["delete", "/documentos/{id}", "Documentos", "Eliminar documento", "session"],
-  ["get", "/questions", "Preguntas", "Listar preguntas activas"],
-  ["get", "/questions/random", "Preguntas", "Seleccionar preguntas activas aleatorias"],
+  ["get", "/questions", "Preguntas", "Listar preguntas activas", "session"],
+  ["get", "/questions/random", "Preguntas", "Seleccionar preguntas activas aleatorias", "session"],
   ["get", "/questions/admin", "Preguntas", "Listar banco de preguntas", "admin"],
-  ["post", "/questions", "Preguntas", "Crear pregunta", "admin", "GenericRequest", 201],
-  ["put", "/questions/{id}", "Preguntas", "Actualizar pregunta", "admin", "GenericRequest"],
+  ["post", "/questions", "Preguntas", "Crear pregunta", "admin", "AdvisorQuestionRequest", 201],
+  ["put", "/questions/{id}", "Preguntas", "Actualizar pregunta", "admin", "AdvisorQuestionRequest"],
   ["patch", "/questions/{id}/status", "Preguntas", "Cambiar estado de pregunta", "admin", "GenericRequest"],
   ["delete", "/questions/{id}", "Preguntas", "Eliminar pregunta", "admin"],
   ["get", "/interview-sessions", "Entrevistas", "Listar sesiones", "admin"],
@@ -812,6 +799,13 @@ for (const endpoint of endpoints) {
   paths[path] ??= {};
   paths[path][method] = buildOperation(method, path, ...settings);
 }
+
+paths["/tramite"].put.description = "Ruta heredada protegida. Los clientes no pueden modificar estado, etapa ni progreso; el sistema los actualiza al completar cada actividad validada.";
+delete paths["/tramite"].put.responses[200];
+paths["/tramite"].put.responses[403] = {
+  description: "La actualización manual del trámite no está permitida.",
+  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+};
 
 paths["/questions/random"].get.description = "Devuelve preguntas activas con texto distinto. intro excluye la categoría Viaje, que contiene la pregunta del banco sobre el propósito del viaje; el ID de esa pregunta depende de cada base de datos. La introducción fija del simulador no forma parte del banco.";
 paths["/questions/random"].get.parameters = [

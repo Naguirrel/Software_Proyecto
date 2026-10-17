@@ -102,6 +102,17 @@ function defaultQueryHandler(sql, values) {
     if (ds160Correo) {
       return Promise.resolve({ rows: [{ id_usuario: values[0], nombre: "Usuario DS160", correo: ds160Correo, perfil: null, rol: "cliente", activo: true, email_verificado: true }] });
     }
+    if (values?.[0] === 3) {
+      return Promise.resolve({ rows: [{
+        id_usuario: 3,
+        nombre: "Usuario Login",
+        correo: "login@example.com",
+        perfil: "turismo_negocios",
+        rol: "cliente",
+        activo: true,
+        email_verificado: true,
+      }] });
+    }
     return Promise.resolve({ rows: [{ id_usuario: values[0], nombre: "Admin", correo: "admin@test.dev", perfil: null, rol: "admin" }] });
   }
 
@@ -262,6 +273,10 @@ function defaultQueryHandler(sql, values) {
           category: "Viaje",
           difficulty: "Facil",
           is_required: true,
+          ejemplo_fuerte: "Viajo por diez días y regreso a mi empleo.",
+          explicacion_fuerte: "Es concreta y demuestra arraigo.",
+          ejemplo_debil: "Me quedaré el tiempo que pueda.",
+          explicacion_debil: "No define un plan ni evidencia regreso.",
           created_at: "2026-07-01T00:00:00.000Z",
         },
       ],
@@ -277,6 +292,10 @@ function defaultQueryHandler(sql, values) {
           category: values[1],
           difficulty: values[2],
           is_required: values[3],
+          ejemplo_fuerte: values[4],
+          explicacion_fuerte: values[5],
+          ejemplo_debil: values[6],
+          explicacion_debil: values[7],
           created_at: "2026-07-02T00:00:00.000Z",
         },
       ],
@@ -302,7 +321,7 @@ function defaultQueryHandler(sql, values) {
     return Promise.resolve({
       rows: [
         {
-          id: values[4],
+          id: values.at(-1),
           question: values[0],
           category: values[1],
           difficulty: values[2],
@@ -443,7 +462,7 @@ function defaultQueryHandler(sql, values) {
       rows: [{
         id_usuario: 3,
         nombre: values[0],
-        correo: values[values.length - 1],
+        correo: "login@example.com",
         perfil: "turismo_negocios",
         telefono: values[1],
         ciudad: values[2],
@@ -708,11 +727,13 @@ function createIntegrationFlowQueryHandler() {
 
 let app;
 let adminToken;
+let profileToken;
 
 beforeAll(() => {
   mockQuery.mockImplementation(defaultQueryHandler);
   app = require("../app");
   adminToken = require("../auth").issueSessionToken({ id_usuario: 99, correo: "admin@test.dev", rol: "admin" });
+  profileToken = require("../auth").issueSessionToken({ id_usuario: 3, correo: "login@example.com", rol: "cliente" });
 });
 
 beforeEach(() => {
@@ -1411,6 +1432,52 @@ describe("app endpoints", () => {
     });
   });
 
+  test("POST /questions persiste y devuelve los cuatro campos de ejemplos", async () => {
+    const examples = {
+      ejemplo_fuerte: "Mi empresa cubre el viaje y regreso a trabajar el lunes.",
+      explicacion_fuerte: "Explica financiación y arraigo laboral.",
+      ejemplo_debil: "Tal vez me quede a buscar oportunidades.",
+      explicacion_debil: "Sugiere una intención distinta a la declarada.",
+    };
+    const response = await request(app).post("/questions").set("Authorization", `Bearer ${adminToken}`).send({
+      question: "¿Quién financiará su viaje?",
+      category: "Finanzas",
+      difficulty: "Media",
+      is_required: true,
+      ...examples,
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body.question).toMatchObject(examples);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("ejemplo_fuerte, explicacion_fuerte, ejemplo_debil, explicacion_debil"),
+      [
+        "¿Quién financiará su viaje?",
+        "Finanzas",
+        "Media",
+        true,
+        examples.ejemplo_fuerte,
+        examples.explicacion_fuerte,
+        examples.ejemplo_debil,
+        examples.explicacion_debil,
+      ]
+    );
+  });
+
+  test("POST /questions rechaza ejemplos mayores a 2000 caracteres", async () => {
+    const response = await request(app).post("/questions").set("Authorization", `Bearer ${adminToken}`).send({
+      question: "¿Quién financiará su viaje?",
+      category: "Finanzas",
+      difficulty: "Media",
+      is_required: true,
+      ejemplo_fuerte: "a".repeat(2001),
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("2000 caracteres");
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes("INSERT INTO question_bank"))).toBe(false);
+  });
+
   test("PUT /questions/:id actualiza una pregunta existente", async () => {
     const response = await request(app).put("/questions/11").set("Authorization", `Bearer ${adminToken}`).send({
       question: "Cuanto tiempo permanecera en el pais?",
@@ -1422,6 +1489,34 @@ describe("app endpoints", () => {
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Pregunta actualizada correctamente");
     expect(response.body.question.id).toBe(11);
+  });
+
+  test("PUT /questions/:id actualiza únicamente los ejemplos enviados", async () => {
+    const response = await request(app).put("/questions/11").set("Authorization", `Bearer ${adminToken}`).send({
+      question: "¿Cuánto tiempo permanecerá en el país?",
+      category: "Viaje",
+      difficulty: "Media",
+      is_required: false,
+      ejemplo_debil: "No tengo una fecha definida.",
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("ejemplo_debil = $5"),
+      ["¿Cuánto tiempo permanecerá en el país?", "Viaje", "Media", false, "No tengo una fecha definida.", 11]
+    );
+  });
+
+  test("GET /questions/admin devuelve los ejemplos guardados", async () => {
+    const response = await request(app)
+      .get("/questions/admin")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body.questions[0]).toMatchObject({
+      ejemplo_fuerte: "Viajo por diez días y regreso a mi empleo.",
+      explicacion_debil: "No define un plan ni evidencia regreso.",
+    });
   });
 
   test("DELETE /questions/:id elimina una pregunta existente", async () => {
@@ -2356,13 +2451,16 @@ describe("app endpoints", () => {
   });
 
   test("PUT /usuario-perfil persiste la edición del perfil", async () => {
-    const response = await request(app).put("/usuario-perfil").send({
-      correo: "login@example.com",
-      nombre: "Nombre Actualizado",
-      telefono: "55550000",
-      ciudad: "Guatemala",
-      pais: "Guatemala",
-    });
+    const response = await request(app)
+      .put("/usuario-perfil")
+      .set("Authorization", `Bearer ${profileToken}`)
+      .send({
+        correo: "otro@example.com",
+        nombre: "Nombre Actualizado",
+        telefono: "55550000",
+        ciudad: "Guatemala",
+        pais: "Guatemala",
+      });
 
     expect(response.status).toBe(200);
     expect(response.body.usuario).toMatchObject({
@@ -2371,6 +2469,10 @@ describe("app endpoints", () => {
       ciudad: "Guatemala",
       pais: "Guatemala",
     });
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("WHERE id_usuario = $5"),
+      ["Nombre Actualizado", "55550000", "Guatemala", "Guatemala", 3]
+    );
   });
 
   describe("flujo de integracion registro, login, DS-160 y documentos", () => {

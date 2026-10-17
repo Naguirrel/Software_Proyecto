@@ -1,69 +1,99 @@
+const http = require("http");
 const request = require("supertest");
 const { createAuthIntegrationApp, extractTokenFromMail } = require("../test-utils/authIntegrationHarness");
 
 const USER = { nombre: "Ana Pérez", correo: "ana@example.com", contrasena: "clave-original-1" };
 const HOUR_MS = 60 * 60 * 1000;
 
-async function registerUser(app) {
-  const response = await request(app).post("/register").send(USER);
+async function registerUser(target) {
+  const client = typeof target === "function" || typeof target.address === "function"
+    ? request(target)
+    : target;
+  const response = await client.post("/register").send(USER);
   expect(response.status).toBe(200);
   return response.body;
 }
 
+async function openTestServer(app) {
+  const server = http.createServer(app);
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  return {
+    api: request(server),
+    close: () => new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    }),
+  };
+}
+
 describe("integración: recuperación de contraseña", () => {
-  beforeEach(() => {
+  let context;
+  let api;
+  let closeServer;
+
+  beforeEach(async () => {
     process.env.NODE_ENV = "test";
     delete process.env.SESSION_SECRET;
     jest.spyOn(console, "error").mockImplementation(() => {});
+    context = createAuthIntegrationApp();
+    ({ api, close: closeServer } = await openTestServer(context.app));
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
+  afterEach(async () => {
+    try {
+      if (closeServer) await closeServer();
+    } finally {
+      closeServer = undefined;
+      jest.restoreAllMocks();
+    }
   });
 
   test("olvidé mi contraseña → correo con enlace → restablecer → login con la nueva clave", async () => {
-    const { app, mailbox } = createAuthIntegrationApp();
-    await registerUser(app);
+    const { mailbox } = context;
+    await registerUser(api);
     mailbox.length = 0;
 
-    const forgot = await request(app).post("/forgot-password").send({ correo: USER.correo });
+    const forgot = await api.post("/forgot-password").send({ correo: USER.correo });
     expect(forgot.status).toBe(200);
     expect(mailbox).toHaveLength(1);
     expect(mailbox[0].to).toBe(USER.correo);
     const token = extractTokenFromMail(mailbox[0]);
     expect(token).toHaveLength(64);
 
-    const reset = await request(app).post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
+    const reset = await api.post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
     expect(reset.status).toBe(200);
 
-    const oldLogin = await request(app).post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
-    const newLogin = await request(app).post("/login").send({ correo: USER.correo, contrasena: "clave-nueva-2" });
+    const oldLogin = await api.post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
+    const newLogin = await api.post("/login").send({ correo: USER.correo, contrasena: "clave-nueva-2" });
     expect(oldLogin.status).toBe(401);
     expect(newLogin.status).toBe(200);
   });
 
   test("el enlace de recuperación solo se puede usar una vez", async () => {
-    const { app, mailbox } = createAuthIntegrationApp();
-    await registerUser(app);
+    const { mailbox } = context;
+    await registerUser(api);
     mailbox.length = 0;
-    await request(app).post("/forgot-password").send({ correo: USER.correo });
+    await api.post("/forgot-password").send({ correo: USER.correo });
     const token = extractTokenFromMail(mailbox[0]);
 
-    const first = await request(app).post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
-    const second = await request(app).post("/reset-password").send({ token, nuevaContrasena: "clave-otra-3" });
+    const first = await api.post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
+    const second = await api.post("/reset-password").send({ token, nuevaContrasena: "clave-otra-3" });
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(400);
-    const login = await request(app).post("/login").send({ correo: USER.correo, contrasena: "clave-nueva-2" });
+    const login = await api.post("/login").send({ correo: USER.correo, contrasena: "clave-nueva-2" });
     expect(login.status).toBe(200);
   });
 
   test("el enlace de recuperación vence a la hora de emitido", async () => {
-    const { app, mailbox, state } = createAuthIntegrationApp();
-    await registerUser(app);
+    const { mailbox, state } = context;
+    await registerUser(api);
     mailbox.length = 0;
     const before = Date.now();
-    await request(app).post("/forgot-password").send({ correo: USER.correo });
+    await api.post("/forgot-password").send({ correo: USER.correo });
     const token = extractTokenFromMail(mailbox[0]);
 
     const [record] = state.passwordResets;
@@ -71,36 +101,36 @@ describe("integración: recuperación de contraseña", () => {
     expect(record.expires_at.getTime() - before).toBeLessThanOrEqual(HOUR_MS + 5000);
 
     record.expires_at = new Date(Date.now() - 1000);
-    const reset = await request(app).post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
+    const reset = await api.post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
 
     expect(reset.status).toBe(400);
-    const login = await request(app).post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
+    const login = await api.post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
     expect(login.status).toBe(200);
   });
 
   test("rechaza tokens inventados y contraseñas nuevas demasiado cortas", async () => {
-    const { app, mailbox } = createAuthIntegrationApp();
-    await registerUser(app);
+    const { mailbox } = context;
+    await registerUser(api);
     mailbox.length = 0;
-    await request(app).post("/forgot-password").send({ correo: USER.correo });
+    await api.post("/forgot-password").send({ correo: USER.correo });
     const token = extractTokenFromMail(mailbox[0]);
 
-    const fakeToken = await request(app).post("/reset-password").send({ token: "a".repeat(64), nuevaContrasena: "clave-nueva-2" });
-    const shortPassword = await request(app).post("/reset-password").send({ token, nuevaContrasena: "123" });
+    const fakeToken = await api.post("/reset-password").send({ token: "a".repeat(64), nuevaContrasena: "clave-nueva-2" });
+    const shortPassword = await api.post("/reset-password").send({ token, nuevaContrasena: "123" });
 
     expect(fakeToken.status).toBe(400);
     expect(shortPassword.status).toBe(400);
-    const login = await request(app).post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
+    const login = await api.post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
     expect(login.status).toBe(200);
   });
 
   test("no revela si un correo está registrado: la respuesta es idéntica y no se envía correo", async () => {
-    const { app, mailbox } = createAuthIntegrationApp();
-    await registerUser(app);
+    const { mailbox } = context;
+    await registerUser(api);
     mailbox.length = 0;
 
-    const known = await request(app).post("/forgot-password").send({ correo: USER.correo });
-    const unknown = await request(app).post("/forgot-password").send({ correo: "nadie@example.com" });
+    const known = await api.post("/forgot-password").send({ correo: USER.correo });
+    const unknown = await api.post("/forgot-password").send({ correo: "nadie@example.com" });
 
     expect(known.status).toBe(unknown.status);
     expect(known.body).toEqual(unknown.body);
@@ -109,13 +139,13 @@ describe("integración: recuperación de contraseña", () => {
   });
 
   test("restablecer la contraseña deja el hash en bcrypt y registra la solicitud en la bitácora", async () => {
-    const { app, mailbox, state, activityLogService } = createAuthIntegrationApp();
-    await registerUser(app);
+    const { mailbox, state, activityLogService } = context;
+    await registerUser(api);
     mailbox.length = 0;
-    await request(app).post("/forgot-password").send({ correo: USER.correo });
+    await api.post("/forgot-password").send({ correo: USER.correo });
     const token = extractTokenFromMail(mailbox[0]);
 
-    await request(app).post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
+    await api.post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
 
     expect(state.users[0].contrasena).toMatch(/^\$2[aby]\$/);
     const actions = activityLogService.logActivity.mock.calls.map(([entry]) => entry.action);
@@ -124,53 +154,63 @@ describe("integración: recuperación de contraseña", () => {
 });
 
 describe("integración: verificación de correo", () => {
-  beforeEach(() => {
+  let context;
+  let api;
+  let closeServer;
+
+  beforeEach(async () => {
     process.env.NODE_ENV = "test";
     delete process.env.SESSION_SECRET;
     jest.spyOn(console, "error").mockImplementation(() => {});
+    context = createAuthIntegrationApp();
+    ({ api, close: closeServer } = await openTestServer(context.app));
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
+  afterEach(async () => {
+    try {
+      if (closeServer) await closeServer();
+    } finally {
+      closeServer = undefined;
+      jest.restoreAllMocks();
+    }
   });
 
   test("registro → correo de verificación → verificar → el login refleja el correo verificado", async () => {
-    const { app, mailbox } = createAuthIntegrationApp();
-    const registered = await registerUser(app);
+    const { mailbox } = context;
+    const registered = await registerUser(api);
     expect(registered.data.emailVerificado).toBe(false);
     expect(mailbox).toHaveLength(1);
     expect(mailbox[0].text).toContain("/verificar-email?token=");
     const token = extractTokenFromMail(mailbox[0]);
 
-    const verified = await request(app).post("/verificar-email").send({ token });
+    const verified = await api.post("/verificar-email").send({ token });
     expect(verified.status).toBe(200);
     expect(verified.body.usuario.emailVerificado).toBe(true);
 
-    const login = await request(app).post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
+    const login = await api.post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
     expect(login.body.usuario.emailVerificado).toBe(true);
-    const session = await request(app).get("/validar-sesion").set("Authorization", `Bearer ${login.body.token}`);
+    const session = await api.get("/validar-sesion").set("Authorization", `Bearer ${login.body.token}`);
     expect(session.body.user.emailVerificado).toBe(true);
   });
 
   test("un usuario sin verificar puede iniciar sesión (el aviso no es bloqueante)", async () => {
-    const { app } = createAuthIntegrationApp();
-    await registerUser(app);
+    await registerUser(api);
 
-    const login = await request(app).post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
+    const login = await api.post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
 
     expect(login.status).toBe(200);
     expect(login.body.usuario.emailVerificado).toBe(false);
   });
 
   test("el enlace de verificación solo funciona una vez y rechaza tokens inválidos", async () => {
-    const { app, mailbox } = createAuthIntegrationApp();
-    await registerUser(app);
+    const { mailbox } = context;
+    await registerUser(api);
     const token = extractTokenFromMail(mailbox[0]);
 
-    const first = await request(app).post("/verificar-email").send({ token });
-    const second = await request(app).post("/verificar-email").send({ token });
-    const fake = await request(app).post("/verificar-email").send({ token: "b".repeat(64) });
-    const missing = await request(app).post("/verificar-email").send({});
+    const first = await api.post("/verificar-email").send({ token });
+    const second = await api.post("/verificar-email").send({ token });
+    const fake = await api.post("/verificar-email").send({ token: "b".repeat(64) });
+    const missing = await api.post("/verificar-email").send({});
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(400);
@@ -179,26 +219,26 @@ describe("integración: verificación de correo", () => {
   });
 
   test("reenviar verificación genera un enlace nuevo funcional mientras el correo esté sin verificar", async () => {
-    const { app, mailbox } = createAuthIntegrationApp();
-    await registerUser(app);
+    const { mailbox } = context;
+    await registerUser(api);
 
-    const resend = await request(app).post("/reenviar-verificacion").send({ correo: USER.correo });
+    const resend = await api.post("/reenviar-verificacion").send({ correo: USER.correo });
     expect(resend.status).toBe(200);
     expect(mailbox).toHaveLength(2);
 
     const newToken = extractTokenFromMail(mailbox[1]);
-    const verified = await request(app).post("/verificar-email").send({ token: newToken });
+    const verified = await api.post("/verificar-email").send({ token: newToken });
     expect(verified.status).toBe(200);
   });
 
   test("reenviar verificación no envía correo si ya está verificado o el usuario no existe", async () => {
-    const { app, mailbox } = createAuthIntegrationApp();
-    await registerUser(app);
-    await request(app).post("/verificar-email").send({ token: extractTokenFromMail(mailbox[0]) });
+    const { mailbox } = context;
+    await registerUser(api);
+    await api.post("/verificar-email").send({ token: extractTokenFromMail(mailbox[0]) });
     mailbox.length = 0;
 
-    const alreadyVerified = await request(app).post("/reenviar-verificacion").send({ correo: USER.correo });
-    const unknown = await request(app).post("/reenviar-verificacion").send({ correo: "nadie@example.com" });
+    const alreadyVerified = await api.post("/reenviar-verificacion").send({ correo: USER.correo });
+    const unknown = await api.post("/reenviar-verificacion").send({ correo: "nadie@example.com" });
 
     expect(alreadyVerified.status).toBe(200);
     expect(alreadyVerified.body).toEqual(unknown.body);
@@ -208,13 +248,18 @@ describe("integración: verificación de correo", () => {
   test("el registro sigue funcionando aunque el servicio de correo falle", async () => {
     const sendEmail = jest.fn(() => Promise.reject(new Error("smtp caído")));
     const { app } = createAuthIntegrationApp({ sendEmail });
+    const customServer = await openTestServer(app);
 
-    const registered = await request(app).post("/register").send(USER);
-    const login = await request(app).post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
+    try {
+      const registered = await customServer.api.post("/register").send(USER);
+      const login = await customServer.api.post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
 
-    expect(registered.status).toBe(200);
-    expect(registered.body.token).toEqual(expect.any(String));
-    expect(sendEmail).toHaveBeenCalled();
-    expect(login.status).toBe(200);
+      expect(registered.status).toBe(200);
+      expect(registered.body.token).toEqual(expect.any(String));
+      expect(sendEmail).toHaveBeenCalled();
+      expect(login.status).toBe(200);
+    } finally {
+      await customServer.close();
+    }
   });
 });
