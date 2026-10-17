@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { buildApiUrl } from "../config/api";
 import Sidebar from "../components/Sidebar";
 import EmailVerificationNotice from "../components/EmailVerificationNotice";
 import useModoSenior from "../hooks/useModoSenior";
@@ -21,6 +20,7 @@ import {
 } from "../utils/dashboardStats";
 import { getWorkflowNextAction } from "../utils/processChecklist";
 import { buildSessionHeaders } from "../utils/sessionAuth";
+import { apiRequest } from "../utils/apiClient";
 import useClientWorkflow from "../hooks/useClientWorkflow";
 import "../styles/dashboard.css";
 
@@ -77,25 +77,18 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         setStatsError("");
-        const fetchJson = async (path, options = {}) => {
-          const response = await fetch(buildApiUrl(path), { ...options, signal: controller.signal });
-          if (!response.ok) throw new Error("No se pudo cargar la información");
-          return response.json();
-        };
-        const correoBody = JSON.stringify({ correo: session.correo });
+        // El usuario lo identifica el token de sesión (Authorization); no se envía correo ni id.
         const postJson = {
           method: "POST",
           headers: buildSessionHeaders({ "Content-Type": "application/json" }),
-          body: correoBody,
+          body: JSON.stringify({}),
+          signal: controller.signal,
         };
+        const fetchJson = (path) => apiRequest(path, postJson);
         const [tramiteResult, ds160Result, documentsResult] = await Promise.allSettled([
-          fetchJson("/estado-tramite", postJson),
-          workflow.gates?.ds160?.allowed ? fetchJson("/ds160/load", postJson) : Promise.resolve(null),
-          fetchJson("/documentos/listar", {
-            method: "POST",
-            headers: buildSessionHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ usuario_id: session.id }),
-          }),
+          fetchJson("/estado-tramite"),
+          workflow.gates?.ds160?.allowed ? fetchJson("/ds160/load") : Promise.resolve(null),
+          fetchJson("/documentos/listar"),
         ]);
         if (controller.signal.aborted) return;
 

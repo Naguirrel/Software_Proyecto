@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { buildApiUrl } from "../config/api";
 import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useIdioma from "../hooks/useIdioma";
@@ -13,6 +12,7 @@ import {
   summarizeDocuments,
 } from "../utils/dashboardStats";
 import { buildSessionHeaders } from "../utils/sessionAuth";
+import { apiRequest } from "../utils/apiClient";
 import "../styles/cronologia.css";
 
 function CheckIcon() {
@@ -173,28 +173,19 @@ export default function Cronologia() {
         setLoading(true);
         setLoadError("");
 
-        const fetchJson = async (path, options = {}) => {
-          const response = await fetch(buildApiUrl(path), { ...options, signal: controller.signal });
-          if (!response.ok) throw new Error("No se pudo actualizar la cronología.");
-          return response.json();
-        };
-
-        const correoBody = JSON.stringify({ correo: session.correo || "" });
+        // El usuario lo identifica el token de sesión (Authorization); no se envía correo ni id.
         const postJson = {
           method: "POST",
           headers: buildSessionHeaders({ "Content-Type": "application/json" }),
-          body: correoBody,
+          body: JSON.stringify({}),
+          signal: controller.signal,
         };
+        const fetchJson = (path) => apiRequest(path, postJson);
         const [tramiteResult, ds160Result, documentsResult] = await Promise.allSettled([
-          fetchJson("/estado-tramite", postJson),
-          workflow.gates?.ds160?.allowed ? fetchJson("/ds160/load", postJson) : Promise.resolve(null),
-          fetchJson("/documentos/listar", {
-            method: "POST",
-            headers: buildSessionHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ usuario_id: session.id }),
-          }),
+          fetchJson("/estado-tramite"),
+          workflow.gates?.ds160?.allowed ? fetchJson("/ds160/load") : Promise.resolve(null),
+          fetchJson("/documentos/listar"),
         ]);
-
         if (controller.signal.aborted) return;
 
         const tramiteData = tramiteResult.status === "fulfilled" ? tramiteResult.value : null;

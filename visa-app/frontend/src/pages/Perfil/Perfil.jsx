@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { buildApiUrl } from "../../config/api";
 import Sidebar from "../../components/Sidebar";
 import useModoSenior from "../../hooks/useModoSenior";
 import useRequireAuth from "../../hooks/useRequireAuth";
 import useIdioma from "../../hooks/useIdioma";
+import { apiRequest } from "../../utils/apiClient";
+import { buildSessionHeaders } from "../../utils/sessionAuth";
 import { setIdiomaPreferido, translateValue } from "../../i18n/translations";
 import "../../styles/perfil.css";
 
@@ -105,6 +106,7 @@ const Icon = {
 
 export default function Perfil() {
   const { isValidating, session } = useRequireAuth();
+  const sessionId = session?.id;
   const modoSenior = useModoSenior();
   const { idioma, t } = useIdioma();
   const s = getS();
@@ -130,7 +132,7 @@ export default function Perfil() {
   // Carga inicial desde /usuario-perfil
   // -----------------------------------------------------------------
   useEffect(() => {
-    if (isValidating || !session?.correo) return;
+    if (isValidating || !sessionId) return;
     const controller = new AbortController();
 
     const cargar = async () => {
@@ -138,16 +140,14 @@ export default function Perfil() {
         setCargando(true);
         setErrorCarga("");
 
-        const res = await fetch(buildApiUrl("/usuario-perfil"), {
+        // El usuario lo identifica el token de sesión; no se envía el correo.
+        const data = await apiRequest("/usuario-perfil", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ correo: session.correo }),
+          headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({}),
           signal: controller.signal,
         });
 
-        if (!res.ok) throw new Error("profile.loadError");
-
-        const data = await res.json();
         setUsuario(data.usuario);
         setTramite(data.tramite);
         setIdiomaPreferido();
@@ -160,7 +160,10 @@ export default function Perfil() {
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error(err);
-        setErrorCarga("profile.loadError");
+        // Sin datos de la cuenta anterior en pantalla si la sesión expiró o no hay permiso.
+        setUsuario(null);
+        setTramite(null);
+        setErrorCarga(err.status === 403 ? "profile.forbiddenError" : "profile.loadError");
       } finally {
         if (!controller.signal.aborted) setCargando(false);
       }
@@ -168,7 +171,7 @@ export default function Perfil() {
 
     cargar();
     return () => controller.abort();
-  }, [isValidating, session?.correo]);
+  }, [isValidating, sessionId]);
 
   // Auto-dismiss del mensaje de éxito
   useEffect(() => {
@@ -181,20 +184,15 @@ export default function Perfil() {
   // Helpers de actualización
   // -----------------------------------------------------------------
   const actualizarServidor = async (cambios) => {
-    if (!session?.correo) return null;
+    if (!session) return null;
 
-    const res = await fetch(buildApiUrl("/usuario-perfil"), {
+    const data = await apiRequest("/usuario-perfil", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ correo: session.correo, ...cambios }),
+      headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(cambios),
+      fallbackMessage: t("profile.saveError"),
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || t("profile.saveError"));
-    }
-
-    const data = await res.json();
     return data.usuario;
   };
 
@@ -275,7 +273,7 @@ export default function Perfil() {
       <div style={s.layout}>
         <Sidebar currentPage="perfil" />
         <main id="main-content" tabIndex="-1" className="vg-authenticated-page" style={s.main}>
-          <p style={s.error}>{t("profile.loadError")}</p>
+          <p style={s.error}>{t(errorCarga || "profile.loadError")}</p>
         </main>
       </div>
     );
