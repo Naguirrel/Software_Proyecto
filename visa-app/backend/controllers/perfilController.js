@@ -1,14 +1,14 @@
 function createPerfilController(perfilService, { activityLogService, notificacionService }) {
 
   async function guardarPerfil(req, res) {
-    const { correo, perfil } = req.body;
+    const { perfil } = req.body;
 
-    if (!correo || !perfil) {
-      return res.status(400).json({ error: "Correo y perfil son obligatorios" });
+    if (!perfil) {
+      return res.status(400).json({ error: "Perfil es obligatorio" });
     }
 
     try {
-      const usuario = await perfilService.guardarPerfil(correo, perfil);
+      const usuario = await perfilService.guardarPerfil(req.auth.id_usuario, perfil);
 
       if (!usuario) {
         return res.status(404).json({ error: "Usuario no encontrado" });
@@ -53,14 +53,8 @@ function createPerfilController(perfilService, { activityLogService, notificacio
   }
 
   async function estadoTramite(req, res) {
-    const { correo } = req.body || {};
-
-    if (!correo) {
-      return res.status(400).json({ error: "Correo requerido en el body" });
-    }
-
     try {
-      const usuario = await perfilService.findUserByEmail(correo);
+      const usuario = await perfilService.findUserById(req.auth.id_usuario);
 
       if (!usuario) {
         return res.status(404).json({ error: "Usuario no encontrado" });
@@ -85,14 +79,8 @@ function createPerfilController(perfilService, { activityLogService, notificacio
   }
 
   async function getUsuarioPerfil(req, res) {
-    const { correo } = req.body || {};
-
-    if (!correo) {
-      return res.status(400).json({ error: "Correo requerido en el body" });
-    }
-
     try {
-      const usuario = await perfilService.findUserByEmail(correo);
+      const usuario = await perfilService.findUserById(req.auth.id_usuario);
 
       if (!usuario) {
         return res.status(404).json({ error: "Usuario no encontrado" });
@@ -138,14 +126,10 @@ function createPerfilController(perfilService, { activityLogService, notificacio
   }
 
   async function updateUsuarioPerfil(req, res) {
-    const { correo, nombre, telefono, ciudad, pais, notificacionesEmail, idioma } = req.body;
-
-    if (!correo) {
-      return res.status(400).json({ error: "Correo requerido" });
-    }
+    const { nombre, telefono, ciudad, pais, notificacionesEmail, idioma } = req.body;
 
     try {
-      const usuario = await perfilService.updateUsuarioPerfil(correo, {
+      const usuario = await perfilService.updateUsuarioPerfil(req.auth.id_usuario, {
         nombre,
         telefono,
         ciudad,
@@ -203,30 +187,9 @@ function createPerfilController(perfilService, { activityLogService, notificacio
   }
 
   async function updateTramite(req, res) {
-    const { id_tramite, estado, etapa_actual, progreso, siguiente_paso, mensaje } = req.body;
-
-    if (!id_tramite) {
-      return res.status(400).json({ error: "id_tramite requerido" });
-    }
-
-    try {
-      const tramite = await perfilService.updateTramite(id_tramite, {
-        estado,
-        etapa_actual,
-        progreso,
-        siguiente_paso,
-        mensaje,
-      });
-
-      if (!tramite) {
-        return res.status(404).json({ error: "Trámite no encontrado o nada que actualizar" });
-      }
-
-      res.json({ message: "Trámite actualizado", tramite });
-    } catch (error) {
-      console.error("ERROR PUT TRAMITE:", error);
-      res.status(500).json({ error: error.message });
-    }
+    return res.status(403).json({
+      error: "La etapa del trámite se actualiza automáticamente al completar cada actividad",
+    });
   }
 
   return {
