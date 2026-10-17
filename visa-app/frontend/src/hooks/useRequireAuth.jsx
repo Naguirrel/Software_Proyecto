@@ -62,6 +62,7 @@ export default function useRequireAuth() {
   useEffect(() => {
     const leaveSession = () => {
       setSession(null);
+      setIsValidating(true);
       window.location.href = "/login";
     };
     const onStorage = (event) => {
