@@ -172,11 +172,13 @@ export default function Dashboard() {
       stageNumber,
       ds160Percentage: stats.ds160Percentage,
       documentSummary,
-      tramite,
+      // En el seguimiento final el `siguiente_paso` del servidor sigue siendo el de la entrevista.
+      tramite: stageNumber === 7 ? null : tramite,
       idioma,
     }),
   });
-  const nextAction = workflow && !workflow.assigned
+  const waitingForAdvisor = workflow && !workflow.assigned && workflow.currentStep !== "profile";
+  const nextAction = waitingForAdvisor
     ? {
         priority: "ACCIÓN DISPONIBLE",
         timeEstimate: "Mientras asignamos tu asesor",

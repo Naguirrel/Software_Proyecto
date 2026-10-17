@@ -97,6 +97,8 @@ export function getWorkflowNextAction({ workflow, stageAction, t }) {
       buttonLabel: t(`action.${step}.button`),
     };
   }
+  // Con la práctica de entrevista ya hecha no queda nada por preparar: acción de seguimiento.
+  if (step === "interview" && workflow.requirements.interviewStarted) return stageAction(7);
   const stage = STAGE_BY_STEP[step];
   return stage ? stageAction(stage) : null;
 }

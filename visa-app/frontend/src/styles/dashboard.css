@@ -791,3 +791,35 @@ html.modo-senior .info-card__header > span { width: 44px; height: 44px; font-siz
   html.modo-senior .dash-stats__grid { grid-template-columns: 1fr; }
   html.modo-senior .dash-action-btn { width: 100%; white-space: normal; }
 }
+
+/* ══════════════════════════════
+   CHECKLIST: móvil, modo Senior y accesibilidad
+   ══════════════════════════════ */
+@media (max-width: 768px) {
+  .dash-checklist { padding: 18px 16px; }
+  .dash-checklist__item { grid-template-columns: auto 1fr; gap: 10px 12px; padding: 12px; }
+  .dash-checklist__action { grid-column: 1 / -1; width: 100%; min-height: 44px; }
+}
+
+html.modo-senior .dash-checklist { margin-bottom: 36px; padding: 32px; }
+html.modo-senior .dash-checklist__summary { font-size: 18px; margin-bottom: 16px; }
+html.modo-senior .dash-checklist__bar { height: 12px; margin-bottom: 24px; }
+html.modo-senior .dash-checklist__list { gap: 14px; }
+html.modo-senior .dash-checklist__item { gap: 20px; padding: 20px 22px; }
+html.modo-senior .dash-checklist__label { font-size: 20px; }
+html.modo-senior .dash-checklist__state,
+html.modo-senior .dash-checklist__detail,
+html.modo-senior .dash-checklist__blocked { font-size: 17px; }
+html.modo-senior .dash-checklist__action,
+html.modo-senior .dash-checklist__retry { min-height: 52px; padding: 14px 26px; font-size: 17px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-checklist__bar-fill { transition: none; }
+}
+
+/* Alto contraste del sistema: la barra y el paso actual no dependen del color de fondo */
+@media (forced-colors: active) {
+  .dash-checklist__bar { border: 1px solid CanvasText; background: Canvas; }
+  .dash-checklist__bar-fill { background: Highlight; }
+  .dash-checklist__item--current { border: 2px solid Highlight; }
+}
