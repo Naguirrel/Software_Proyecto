@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 const request = require("supertest");
 const { issueSessionToken, verifySessionToken } = require("../auth");
 const { createPostgresTask5Harness } = require("../test-utils/postgresTask5Harness");
+const { EXAMPLE_FIELDS, SEED_QUESTIONS, createQuestionBankService } = require("../services/questionBankService");
 
 // Only the external R2 adapter is replaced. HTTP routes, SQL and local storage remain real.
 jest.mock("../r2", () => ({
@@ -259,6 +260,50 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
       )).rejects.toMatchObject({ code: "23514" });
     } finally {
       await ctx.pool.query("DELETE FROM question_bank WHERE id = $1", [valid.rows[0].id]);
+    }
+  });
+
+  test("DB-002: el seed completa ejemplos vacíos sin duplicar preguntas ni pisar ediciones", async () => {
+    const service = createQuestionBankService(ctx.pool);
+    const [emptySeed, editedSeed] = SEED_QUESTIONS;
+    const examplesOf = async (question) => (await ctx.pool.query(
+      `SELECT ${EXAMPLE_FIELDS.join(", ")} FROM question_bank WHERE question = $1`,
+      [question]
+    )).rows;
+    const nullExamples = EXAMPLE_FIELDS.map((field) => `${field} = NULL`).join(", ");
+
+    await service.seedInitialQuestions();
+    try {
+      await ctx.pool.query(`UPDATE question_bank SET ${nullExamples} WHERE question = $1`, [emptySeed.question]);
+      await ctx.pool.query(
+        `UPDATE question_bank SET ${nullExamples}, ejemplo_fuerte = 'Editado por admin' WHERE question = $1`,
+        [editedSeed.question]
+      );
+
+      await service.seedInitialQuestions();
+
+      expect(await examplesOf(emptySeed.question)).toEqual([
+        Object.fromEntries(EXAMPLE_FIELDS.map((field) => [field, emptySeed[field]])),
+      ]);
+      expect(await examplesOf(editedSeed.question)).toEqual([{
+        ejemplo_fuerte: "Editado por admin",
+        explicacion_fuerte: null,
+        ejemplo_debil: null,
+        explicacion_debil: null,
+      }]);
+      const duplicates = await ctx.pool.query(
+        `SELECT LOWER(TRIM(question)) AS question FROM question_bank
+         WHERE LOWER(TRIM(question)) = ANY($1::text[])
+         GROUP BY LOWER(TRIM(question)) HAVING COUNT(*) > 1`,
+        [SEED_QUESTIONS.map((item) => item.question.trim().toLowerCase())]
+      );
+      expect(duplicates.rows).toEqual([]);
+    } finally {
+      await ctx.pool.query(
+        `UPDATE question_bank SET ${EXAMPLE_FIELDS.map((field, index) => `${field} = $${index + 2}`).join(", ")}
+         WHERE question = $1`,
+        [editedSeed.question, ...EXAMPLE_FIELDS.map((field) => editedSeed[field])]
+      );
     }
   });
 });
