@@ -1,3 +1,5 @@
+const { SEED_QUESTION_EXAMPLES } = require("./questionBankSeedExamples");
+
 const CATEGORIES = [
   "General",
   "Viaje",
@@ -18,7 +20,7 @@ const MAX_EXAMPLE_TEXT_LENGTH = 2000;
 const QUESTION_COLUMNS = `id, question, category, difficulty, is_required, created_at, activo, uso_count,
        ${EXAMPLE_FIELDS.join(", ")}`;
 
-const SEED_QUESTIONS = [
+const BASE_SEED_QUESTIONS = [
   {
     question: "¿Cuál es el propósito principal de su viaje?",
     category: "Viaje",
@@ -136,6 +138,11 @@ const SEED_QUESTIONS = [
   { question: "¿Cómo se relaciona este viaje con sus planes personales o profesionales?", category: "General", difficulty: "Alta", is_required: false },
 ];
 
+const SEED_QUESTIONS = BASE_SEED_QUESTIONS.map((item) => ({
+  ...item,
+  ...SEED_QUESTION_EXAMPLES[item.question],
+}));
+
 function createQuestionBankService(pool) {
   async function ensureSchema() {
     await pool.query(`
@@ -161,18 +168,38 @@ function createQuestionBankService(pool) {
     await ensureSchema();
 
     const values = [];
+    const columnsPerRow = 4 + EXAMPLE_FIELDS.length;
     const placeholders = SEED_QUESTIONS.map((item, index) => {
-      const offset = index * 4;
-      values.push(item.question, item.category, item.difficulty, item.is_required);
-      return `($${offset + 1}::text, $${offset + 2}::text, $${offset + 3}::text, $${offset + 4}::boolean)`;
+      const offset = index * columnsPerRow;
+      values.push(
+        item.question,
+        item.category,
+        item.difficulty,
+        item.is_required,
+        ...EXAMPLE_FIELDS.map((field) => item[field] ?? null)
+      );
+      const examplePlaceholders = EXAMPLE_FIELDS.map((_field, fieldIndex) => `$${offset + 5 + fieldIndex}::text`);
+      return `($${offset + 1}::text, $${offset + 2}::text, $${offset + 3}::text, $${offset + 4}::boolean, ${examplePlaceholders.join(", ")})`;
     });
+    const exampleColumns = EXAMPLE_FIELDS.join(", ");
 
+    // Inserta las preguntas faltantes y completa los ejemplos de las que ya existían.
+    // Solo se completan preguntas sin ningún ejemplo, para no pisar lo que un admin editó.
     await pool.query(
-      `WITH seed_questions (question, category, difficulty, is_required) AS (
+      `WITH seed_questions (question, category, difficulty, is_required, ${exampleColumns}) AS (
          VALUES ${placeholders.join(", ")}
+       ),
+       filled_examples AS (
+         UPDATE question_bank existing
+         SET ${EXAMPLE_FIELDS.map((field) => `${field} = seed.${field}`).join(", ")}
+         FROM seed_questions seed
+         WHERE LOWER(TRIM(existing.question)) = LOWER(TRIM(seed.question))
+           AND ${EXAMPLE_FIELDS.map((field) => `existing.${field} IS NULL`).join(" AND ")}
+         RETURNING existing.id
        )
-       INSERT INTO question_bank (question, category, difficulty, is_required)
-       SELECT seed.question, seed.category, seed.difficulty, seed.is_required
+       INSERT INTO question_bank (question, category, difficulty, is_required, ${exampleColumns})
+       SELECT seed.question, seed.category, seed.difficulty, seed.is_required,
+              ${EXAMPLE_FIELDS.map((field) => `seed.${field}`).join(", ")}
        FROM seed_questions seed
        WHERE NOT EXISTS (
          SELECT 1 FROM question_bank existing
