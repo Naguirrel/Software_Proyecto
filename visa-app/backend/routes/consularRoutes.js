@@ -1,8 +1,11 @@
 const express = require("express");
+const { sendErrorResponse } = require("../middleware/errorResponse");
 
 function handleError(res, error) {
-  if (!error.statusCode || error.statusCode >= 500) console.error("CONSULAR MODULE ERROR:", error);
-  return res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : "No fue posible procesar la solicitud" });
+  return sendErrorResponse(null, res, error, {
+    fallback: "No fue posible procesar la solicitud",
+    context: "consular.request",
+  });
 }
 
 function createConsularRoutes({ requireSession, requireStaff, requireWorkflowStep = () => (_req, _res, next) => next(), paymentService, appointmentService,

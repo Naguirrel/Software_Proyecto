@@ -4,6 +4,7 @@ const createInterviewSessionService = require("../services/interviewSessionServi
 const { createQuestionBankService } = require("../services/questionBankService");
 const createAdvisorCommunicationService = require("../services/advisorCommunicationService");
 const createProcessChangeHistoryService = require("../services/processChangeHistoryService");
+const { sendErrorResponse } = require("../middleware/errorResponse");
 
 const VALID_PROCESS_STATES = new Set(["En proceso", "Pendiente", "Aprobado", "Inactivo", "Completado"]);
 const PROCESS_STAGES = {
@@ -19,8 +20,10 @@ const PROCESS_STAGES = {
 const VALID_DS160_STATES = new Set(["en_progreso", "por_revisar", "correccion", "aprobado"]);
 
 function handleError(res, error, fallback = "No fue posible procesar la solicitud") {
-  if (!error.statusCode || error.statusCode >= 500) console.error("ADVISOR MODULE ERROR:", error);
-  return res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : fallback });
+  return sendErrorResponse(null, res, error, {
+    fallback,
+    context: "advisor.request",
+  });
 }
 
 function presentProcess(row) {

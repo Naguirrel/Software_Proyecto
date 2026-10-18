@@ -1,3 +1,5 @@
+const { sendErrorResponse } = require("../middleware/errorResponse");
+
 function createDocumentController(documentService) {
   function canAccessUser(req, usuarioId) {
     const role = req.auth?.rol || "cliente";
@@ -62,18 +64,10 @@ function createDocumentController(documentService) {
         documento,
       });
     } catch (error) {
-      console.error("UPLOAD ERROR:", error);
-
-      if (error.statusCode) {
-        return res.status(error.statusCode).json({ error: error.message });
-      }
-
-      if (process.env.NODE_ENV === "production" &&
-          (error.message?.includes("Missing R2") || error.message?.includes("placeholder"))) {
-        return res.status(500).json({ error: "No fue posible subir el archivo. Inténtalo nuevamente más tarde." });
-      }
-
-      return res.status(500).json({ error: "No se pudo guardar el documento" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No se pudo guardar el documento",
+        context: "documents.upload",
+      });
     }
   }
 
@@ -103,18 +97,10 @@ function createDocumentController(documentService) {
         documento,
       });
     } catch (error) {
-      console.error("DOCUMENTO ERROR:", error);
-
-      if (error.statusCode) {
-        return res.status(error.statusCode).json({ error: error.message });
-      }
-
-      if (process.env.NODE_ENV === "production" &&
-          (error.message?.includes("Missing R2") || error.message?.includes("placeholder"))) {
-        return res.status(500).json({ error: "No fue posible subir el archivo. Inténtalo nuevamente más tarde." });
-      }
-
-      return res.status(500).json({ error: "No se pudo guardar el documento" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No se pudo guardar el documento",
+        context: "documents.create",
+      });
     }
   }
 
@@ -128,12 +114,10 @@ function createDocumentController(documentService) {
       const documentos = await documentService.listDocumentos(usuarioId);
       return res.json(documentos);
     } catch (error) {
-      if (error.statusCode) {
-        return res.status(error.statusCode).json({ error: error.message });
-      }
-
-      console.error("ERROR GET DOCUMENTOS:", error);
-      return res.status(500).json({ error: "No se pudieron cargar los documentos" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No se pudieron cargar los documentos",
+        context: "documents.list",
+      });
     }
   }
 
@@ -160,8 +144,10 @@ function createDocumentController(documentService) {
 
       return res.json({ message: "Documento eliminado correctamente" });
     } catch (error) {
-      console.error("ERROR DELETE DOCUMENTO:", error);
-      return res.status(500).json({ error: "No se pudo eliminar el documento" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No se pudo eliminar el documento",
+        context: "documents.delete",
+      });
     }
   }
 
@@ -204,19 +190,23 @@ function createDocumentController(documentService) {
       }
 
       storedFile.stream.on("error", (error) => {
-        console.error("ERROR STREAM DOCUMENTO:", error);
         if (!res.headersSent) {
-          res.status(500).json({ error: "No se pudo cargar el documento" });
+          sendErrorResponse(req, res, error, {
+            fallback: "No se pudo cargar el documento",
+            context: "documents.stream",
+          });
         } else {
+          console.error("ERROR STREAM DOCUMENTO:", error);
           res.destroy(error);
         }
       });
 
       return storedFile.stream.pipe(res);
     } catch (error) {
-      console.error("ERROR GET DOCUMENTO ARCHIVO:", error);
-      return res.status(error.statusCode || 500).json({
-        error: error.statusCode ? error.message : "No se pudo cargar el documento",
+      if (res.headersSent) return res.end();
+      return sendErrorResponse(req, res, error, {
+        fallback: "No se pudo cargar el documento",
+        context: "documents.file",
       });
     }
   }

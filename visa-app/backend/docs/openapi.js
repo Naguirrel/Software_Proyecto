@@ -11,7 +11,17 @@ const schemas = {
   Error: {
     type: "object",
     required: ["error"],
-    properties: { error: { type: "string" } },
+    properties: {
+      error: { type: "string" },
+      code: { type: "string", nullable: true },
+      requestId: {
+        type: "string",
+        nullable: true,
+        maxLength: 100,
+        pattern: "^[A-Za-z0-9._:-]+$",
+        description: "Identificador de correlación incluido en errores internos y límites de solicitudes.",
+      },
+    },
   },
   RegisterRequest: {
     type: "object",
@@ -768,6 +778,7 @@ function buildOperation(method, path, tag, summary, auth, body, successStatus = 
         ? { description: "Respuesta correcta", content: { "application/octet-stream": { schema: { type: "string", format: "binary" } } } }
         : { description: "Respuesta correcta", content: { "application/json": { schema: objectSchema } } },
       400: { $ref: "#/components/responses/BadRequest" },
+      429: { $ref: "#/components/responses/TooManyRequests" },
       500: { $ref: "#/components/responses/InternalError" },
     },
   };
@@ -1092,6 +1103,7 @@ module.exports = {
       Unauthorized: { description: "Sesión ausente o inválida", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       Forbidden: { description: "Permisos insuficientes", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       NotFound: { description: "Recurso no encontrado o no asignado al asesor autenticado", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      TooManyRequests: { description: "Límite temporal de solicitudes excedido", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       InternalError: { description: "Error interno", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
     },
   },

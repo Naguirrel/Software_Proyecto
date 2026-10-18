@@ -27,7 +27,7 @@ flowchart LR
 1. El navegador solicita la SPA al Nginx del host; este la reenvía al servicio `frontend` publicado en loopback.
 2. La SPA usa la base de API compilada en el build (`VITE_API_URL`). En el build de Compose, su valor predeterminado es `/api`.
 3. Para `/api/`, el Nginx del host reenvía directamente al `backend`; el Nginx del frontend tiene su propio proxy `/api/` para accesos directos a `:8080`.
-4. Express aplica CORS, procesa la ruta y consulta PostgreSQL. Si la operación requiere archivos o correo, usa las integraciones correspondientes.
+4. Express asigna un identificador de solicitud, aplica cabeceras de seguridad, CORS y límites por IP antes de procesar la ruta y consultar PostgreSQL. Si la operación requiere archivos o correo, usa las integraciones correspondientes.
 5. Rutas como `/documentos/` pasan por el frontend cuando entran por la configuración del Nginx del host versionada; el Nginx del contenedor las reenvía al backend.
 
 ### Servicios y responsabilidades
@@ -106,8 +106,16 @@ Compose deriva `POSTGRES_USER`, `POSTGRES_PASSWORD` y `POSTGRES_DB` de `DB_USER`
 | `HOST` | Backend | Opcional | Dirección de escucha | Configuración |
 | `PORT` | Backend | Opcional | Puerto de escucha | Configuración |
 | `FRONTEND_URL` | Backend | Opcional; recomendable en producción | Base de enlaces de recuperación/verificación | Configuración |
+| `RATE_LIMIT_API_WINDOW_MS` / `RATE_LIMIT_API_MAX` | Backend | Opcional | Ventana en ms y máximo global por IP; predeterminado 600 cada 15 minutos | Configuración |
+| `RATE_LIMIT_LOGIN_WINDOW_MS` / `RATE_LIMIT_LOGIN_MAX` | Backend | Opcional | Ventana y máximo de intentos fallidos de inicio de sesión; predeterminado 10 cada 15 minutos | Configuración |
+| `RATE_LIMIT_REGISTER_WINDOW_MS` / `RATE_LIMIT_REGISTER_MAX` | Backend | Opcional | Ventana y máximo de registros por IP; predeterminado 5 por hora | Configuración |
+| `RATE_LIMIT_RECOVERY_WINDOW_MS` / `RATE_LIMIT_RECOVERY_MAX` | Backend | Opcional | Límite compartido para recuperación, verificación y desbloqueo; predeterminado 8 cada 15 minutos | Configuración |
 
 Compose exige `SESSION_SECRET` en `.env` para ambas modalidades. Sustituya el marcador de `.env.example` por un valor aleatorio único. Si ejecuta el backend fuera de Compose, `auth.js` usa un valor fijo solo fuera de producción cuando no se configura esta variable; en producción no puede emitir sesiones sin ella. El secreto que estuvo versionado en el antiguo override debe rotarse en cualquier entorno que lo haya usado.
+
+Los límites HTTP se calculan por IP y admiten ajuste operativo sin cambiar código. El inicio de sesión solo consume el límite específico cuando la respuesta no es exitosa; registro y recuperación consumen cada intento. Los valores inválidos o no positivos impiden iniciar la aplicación para evitar una configuración insegura accidental. La API responde `429`, `Retry-After` y cabeceras estándar `RateLimit` cuando se excede un límite.
+
+Helmet elimina la identificación de Express y establece, entre otras, HSTS, protección contra interpretación de MIME, política de referentes y restricciones de recursos. Swagger UI usa una CSP específica porque requiere estilos y configuración en línea. Cada respuesta recibe `X-Request-Id`; los errores 5xx ocultan detalles internos al cliente, conservan ese identificador en el cuerpo y registran el detalle en el servidor para correlación.
 
 ### Frontend y CORS
 

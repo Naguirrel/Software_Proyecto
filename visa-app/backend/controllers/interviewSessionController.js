@@ -1,3 +1,5 @@
+const { sendErrorResponse } = require("../middleware/errorResponse");
+
 function createInterviewSessionController(interviewSessionService, { notificacionService, activityLogService } = {}) {
   function scopeSessionPayload(req) {
     if (req.auth?.rol !== "cliente") return req.body.session;
@@ -24,15 +26,10 @@ function createInterviewSessionController(interviewSessionService, { notificacio
   }
 
   function handleError(res, error) {
-    const status = error.statusCode || 500;
-    const message =
-      status === 500 ? "Error interno al procesar sesiones" : error.message;
-
-    if (status === 500) {
-      console.error("INTERVIEW SESSION ERROR:", error);
-    }
-
-    return res.status(status).json({ error: message });
+    return sendErrorResponse(null, res, error, {
+      fallback: "Error interno al procesar sesiones",
+      context: "interview_sessions.request",
+    });
   }
 
   async function createSession(req, res) {

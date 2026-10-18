@@ -1,3 +1,5 @@
+const { sendErrorResponse } = require("../middleware/errorResponse");
+
 function createPerfilController(perfilService, { activityLogService, notificacionService }) {
 
   async function guardarPerfil(req, res) {
@@ -47,8 +49,10 @@ function createPerfilController(perfilService, { activityLogService, notificacio
         perfil: usuario.perfil,
       });
     } catch (error) {
-      console.error("ERROR GUARDAR-PERFIL:", error);
-      res.status(500).json({ error: error.message });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible guardar el perfil",
+        context: "profile.save",
+      });
     }
   }
 
@@ -73,8 +77,10 @@ function createPerfilController(perfilService, { activityLogService, notificacio
         updated_at: tramite.updated_at,
       });
     } catch (error) {
-      console.error("ERROR ESTADO-TRAMITE:", error);
-      res.status(500).json({ error: error.message });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible cargar el estado del trámite",
+        context: "profile.process_status",
+      });
     }
   }
 
@@ -120,8 +126,10 @@ function createPerfilController(perfilService, { activityLogService, notificacio
         },
       });
     } catch (error) {
-      console.error("ERROR GET USUARIO-PERFIL:", error);
-      res.status(500).json({ error: error.message });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible cargar el perfil",
+        context: "profile.read",
+      });
     }
   }
 
@@ -181,8 +189,10 @@ function createPerfilController(perfilService, { activityLogService, notificacio
         },
       });
     } catch (error) {
-      console.error("ERROR PUT USUARIO-PERFIL:", error);
-      res.status(500).json({ error: error.message });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible actualizar el perfil",
+        context: "profile.update",
+      });
     }
   }
 
