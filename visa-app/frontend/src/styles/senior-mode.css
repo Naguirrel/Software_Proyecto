@@ -103,16 +103,23 @@ html.modo-senior .vg-senior-toggle[aria-pressed="true"] {
     width: auto !important;
     max-width: none !important;
     opacity: 1 !important;
+    visibility: visible !important;
     overflow: visible !important;
     pointer-events: auto !important;
     white-space: normal !important;
   }
 
+  html.modo-senior .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) :is(.vg-sidebar-action, .vg-sidebar-user-link),
   html.modo-senior .vg-sidebar :is(.vg-sidebar-action, .vg-sidebar-user-link) {
     width: 100% !important;
     justify-content: flex-start !important;
     gap: 16px !important;
     padding-inline: 18px !important;
+  }
+
+  html.modo-senior .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-bottom-section {
+    justify-items: stretch;
+    padding: 10px 12px 12px !important;
   }
 
   html.modo-senior .vg-sidebar-expand-button {
@@ -414,6 +421,19 @@ html.modo-senior .question-bank-grid {
     padding: 100px 18px 48px;
   }
 
+  html.modo-senior .advisor-header {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  html.modo-senior .advisor-header .advisor-global-search {
+    min-width: 0;
+  }
+
+  html.modo-senior .advisor-header .admin-header__actions {
+    flex: 0 0 auto;
+  }
+
   html.modo-senior :where(.admin-page-header, .advisor-page-header, .admin-panel-card__header) {
     align-items: stretch;
     flex-direction: column;
@@ -426,5 +446,44 @@ html.modo-senior .question-bank-grid {
 
   html.modo-senior :where(.chat-panel, .consular-card, .ds160-form-card, .interview-hero, .documents-list) {
     padding: 24px;
+  }
+
+  html.modo-senior .dash-progress-body {
+    width: 100%;
+  }
+
+  html.modo-senior .dash-timeline {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    overscroll-behavior-inline: contain;
+  }
+
+  html.modo-senior .vg-email-verify-notice--banner {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+  }
+
+  html.modo-senior .vg-email-verify-notice--banner .vg-email-verify-notice__row {
+    display: grid;
+    width: 100%;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  html.modo-senior .vg-email-verify-notice--banner .vg-email-verify-notice__text {
+    min-width: 0;
+  }
+
+  html.modo-senior .vg-email-verify-notice--banner .vg-email-verify-notice__resend {
+    min-height: 52px;
+    align-self: stretch;
+    border: 1px solid currentColor;
+    border-radius: 10px;
+    padding: 10px 16px;
+    text-align: center;
   }
 }
