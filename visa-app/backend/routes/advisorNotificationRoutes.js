@@ -1,14 +1,16 @@
 const express = require("express");
 const createNotificacionService = require("../services/notificacionService");
 const { notificationRealtimeHub } = require("../services/notificationRealtime");
+const { sendErrorResponse } = require("../middleware/errorResponse");
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
 
 function handleError(res, error, fallback = "No fue posible procesar las notificaciones") {
   if (res.headersSent) return res.end();
-  const status = error.statusCode || 500;
-  if (status >= 500) console.error("ADVISOR NOTIFICATION ERROR:", error);
-  return res.status(status).json({ error: status >= 500 ? fallback : error.message });
+  return sendErrorResponse(null, res, error, {
+    fallback,
+    context: "advisor_notifications.request",
+  });
 }
 
 function writeEvent(res, { event, data, id }) {

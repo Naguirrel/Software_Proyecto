@@ -1,6 +1,7 @@
 const express = require("express");
 const createProcessChangeHistoryService = require("../services/processChangeHistoryService");
 const createAdvisorAssignmentService = require("../services/advisorAssignmentService");
+const { sendErrorResponse } = require("../middleware/errorResponse");
 
 const VALID_STATES = new Set(["En proceso", "Pendiente", "Aprobado", "Inactivo", "Completado"]);
 const STAGES = {
@@ -405,9 +406,10 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
 
       res.json({ message: "Trámite actualizado correctamente", tramite: presentProcess(refreshedProcess) });
     } catch (error) {
-      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
-      console.error("ERROR UPDATE ADMIN PROCESS:", error);
-      res.status(500).json({ error: "No fue posible actualizar el trámite" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible actualizar el trámite",
+        context: "admin_processes.update",
+      });
     }
   });
 

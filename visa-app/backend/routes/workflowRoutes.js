@@ -1,5 +1,6 @@
 const express = require("express");
 const { createClientWorkflowService } = require("../services/clientWorkflowService");
+const { normalizeErrorStatus, sendErrorResponse } = require("../middleware/errorResponse");
 
 function createWorkflowRoutes(pool, { requireSession, schemaReady = Promise.resolve() }) {
   const router = express.Router();
@@ -23,8 +24,9 @@ function createWorkflowRoutes(pool, { requireSession, schemaReady = Promise.reso
     try {
       return res.json(await service.getWorkflow(req.auth.id_usuario));
     } catch (error) {
-      return res.status(error.statusCode || 500).json({
-        error: error.statusCode ? error.message : "No fue posible cargar el flujo del trámite",
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible cargar el flujo del trámite",
+        context: "workflow.load",
       });
     }
   });
@@ -41,12 +43,17 @@ function createWorkflowStepMiddleware(pool, { schemaReady = Promise.resolve() } 
       req.clientWorkflow = await service.assertStep(req.auth.id_usuario, step);
       return next();
     } catch (error) {
-      if (!error.statusCode || error.statusCode >= 500) console.error("WORKFLOW GATE ERROR:", error);
-      return res.status(error.statusCode || 500).json({
-        error: error.statusCode ? error.message : "No fue posible validar la etapa del trámite",
-        code: error.code,
-        requiredStep: error.requiredStep,
-        requiredPath: error.requiredPath,
+      const isClientError = normalizeErrorStatus(error) < 500;
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible validar la etapa del trámite",
+        context: "workflow.gate",
+        clientDetails: isClientError
+          ? {
+              code: error.code,
+              requiredStep: error.requiredStep,
+              requiredPath: error.requiredPath,
+            }
+          : undefined,
       });
     }
   };

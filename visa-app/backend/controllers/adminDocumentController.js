@@ -1,3 +1,5 @@
+const { sendErrorResponse } = require("../middleware/errorResponse");
+
 function createAdminDocumentController(adminDocumentService, { notificacionService, activityLogService } = {}) {
   function hasOwn(body, key) {
     return Object.prototype.hasOwnProperty.call(body || {}, key);
@@ -118,12 +120,10 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
         documento,
       });
     } catch (error) {
-      if (error.statusCode) {
-        return res.status(error.statusCode).json({ error: error.message });
-      }
-
-      console.error("ERROR ADMIN DOCUMENT STATUS:", error);
-      return res.status(500).json({ error: "No fue posible actualizar el documento" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible actualizar el documento",
+        context: "admin_documents.update",
+      });
     }
   }
 

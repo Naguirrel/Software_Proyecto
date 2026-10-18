@@ -49,7 +49,8 @@ function createCorsOptions(env = process.env) {
       callback(null, allowedOrigins.has(normalizeOrigin(origin)));
     },
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type"],
+    allowedHeaders: ["Authorization", "Content-Type", "X-Request-Id"],
+    exposedHeaders: ["X-Request-Id", "RateLimit", "RateLimit-Policy", "Retry-After"],
     credentials: false,
     maxAge: 600,
     optionsSuccessStatus: 204,

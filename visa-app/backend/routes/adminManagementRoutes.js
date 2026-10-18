@@ -4,6 +4,7 @@ const createAdvisorAssignmentService = require("../services/advisorAssignmentSer
 const { parseAdminSearch, buildDashboardCohort } = require("../services/adminSearchFilter");
 const createActivityLogService = require("../services/activityLogService");
 const createEmailReminderService = require("../services/emailReminderService");
+const { getRequestId, logServerError, sendErrorResponse } = require("../middleware/errorResponse");
 
 const SALT_ROUNDS = 10;
 const VALID_ROLES = new Set(["cliente", "asesor", "admin"]);
@@ -105,17 +106,18 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
             recipientEmail: candidate.recipient_email,
             status: result.status,
             reason: result.reason || "",
-            error: result.error || "",
+            error: result.status === "failed" ? "No fue posible ejecutar el recordatorio" : "",
           });
         } catch (error) {
           summary.errores += 1;
+          logServerError(error, req, getRequestId(req, res), "admin.emailReminders.candidate");
           summary.detalles.push({
             reminderType: candidate.reminder_type,
             entityType: candidate.entity_type,
             entityId: candidate.entity_id,
             recipientEmail: candidate.recipient_email,
             status: "failed",
-            error: error.message || "No fue posible ejecutar el recordatorio",
+            error: "No fue posible ejecutar el recordatorio",
           });
         }
       }
@@ -224,9 +226,10 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
         atencion: attention.rows,
       });
     } catch (error) {
-      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
-      console.error("ERROR ADMIN DASHBOARD:", error);
-      res.status(500).json({ error: "No fue posible cargar el panel administrativo" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible cargar el panel administrativo",
+        context: "admin.dashboard",
+      });
     }
   });
 
@@ -506,9 +509,10 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
       }
       res.json({ message: "Solicitud asignada correctamente" });
     } catch (error) {
-      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
-      console.error("ERROR CREATE ASSIGNMENT:", error);
-      res.status(500).json({ error: "No fue posible asignar la solicitud" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible asignar la solicitud",
+        context: "admin.assignments.create",
+      });
     }
   });
 

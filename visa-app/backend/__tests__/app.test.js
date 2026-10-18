@@ -762,7 +762,8 @@ describe("app endpoints", () => {
     expect(response.status).toBe(204);
     expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
     expect(response.headers["access-control-allow-methods"]).toContain("PATCH");
-    expect(response.headers["access-control-allow-headers"]).toBe("Authorization,Content-Type");
+    expect(response.headers["access-control-allow-headers"]).toBe("Authorization,Content-Type,X-Request-Id");
+    expect(response.headers["access-control-expose-headers"]).toBe("X-Request-Id,RateLimit,RateLimit-Policy,Retry-After");
   });
 
   test("OPTIONS no autoriza un origen fuera de la lista", async () => {
@@ -904,6 +905,9 @@ describe("app endpoints", () => {
 
     expect(response.status).toBe(500);
     expect(response.body.error).toBe("No fue posible registrar el usuario");
+    expect(response.body.code).toBe("INTERNAL_ERROR");
+    expect(response.body.requestId).toEqual(expect.any(String));
+    expect(JSON.stringify(response.body)).not.toContain("internal database detail");
   });
 
   test("POST /login devuelve usuario cuando las credenciales son validas", async () => {
@@ -1034,7 +1038,12 @@ describe("app endpoints", () => {
     });
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "connection timeout" });
+    expect(response.body).toMatchObject({
+      error: "No fue posible iniciar sesión",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
+    expect(JSON.stringify(response.body)).not.toContain("connection timeout");
   });
 
   test("POST /ds160/load carga el formulario del usuario autenticado", async () => {
@@ -1107,7 +1116,12 @@ describe("app endpoints", () => {
       .send({});
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "ds160 read failed" });
+    expect(response.body).toMatchObject({
+      error: "No fue posible cargar el formulario DS-160",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
+    expect(JSON.stringify(response.body)).not.toContain("ds160 read failed");
   });
 
   test("POST /ds160/pdf genera el PDF del formulario del usuario autenticado", async () => {
@@ -1163,7 +1177,12 @@ describe("app endpoints", () => {
       .send({});
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "ds160 pdf failed" });
+    expect(response.body).toMatchObject({
+      error: "No fue posible generar el PDF del formulario DS-160",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
+    expect(JSON.stringify(response.body)).not.toContain("ds160 pdf failed");
   });
 
   test("POST /ds160 crea el formulario inicial y guarda el progreso", async () => {
@@ -1335,7 +1354,12 @@ describe("app endpoints", () => {
       .send({ datos: { personal: { nombreCompleto: "Error DB" } }, seccion_actual: 1, completado: false });
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "ds160 write failed" });
+    expect(response.body).toMatchObject({
+      error: "No fue posible guardar el formulario DS-160",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
+    expect(JSON.stringify(response.body)).not.toContain("ds160 write failed");
   });
 
   test("GET /questions lista preguntas desde el servicio", async () => {
@@ -1892,7 +1916,11 @@ describe("app endpoints", () => {
       .attach("file", Buffer.from("pdf de prueba"), "pasaporte.pdf");
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "No se pudo guardar el documento" });
+    expect(response.body).toMatchObject({
+      error: "No se pudo guardar el documento",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
     expect(mockUploadStoredFile).toHaveBeenCalledTimes(1);
     expect(mockDeleteStoredFile).not.toHaveBeenCalled();
   });
@@ -1913,7 +1941,11 @@ describe("app endpoints", () => {
       .attach("file", Buffer.from("pdf de prueba"), "pasaporte.pdf");
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "No se pudo guardar el documento" });
+    expect(response.body).toMatchObject({
+      error: "No se pudo guardar el documento",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
     expect(mockUploadStoredFile).toHaveBeenCalledTimes(1);
     expect(mockDeleteStoredFile).toHaveBeenCalledWith("local/mock-document.pdf");
   });
@@ -1936,7 +1968,11 @@ describe("app endpoints", () => {
       .attach("file", Buffer.from("pdf de prueba"), "pasaporte.pdf");
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "No se pudo guardar el documento" });
+    expect(response.body).toMatchObject({
+      error: "No se pudo guardar el documento",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
     expect(mockDeleteStoredFile).toHaveBeenCalledWith("local/mock-document.pdf");
   });
 
@@ -2035,7 +2071,11 @@ describe("app endpoints", () => {
       .attach("file", Buffer.from("pdf de prueba"), "visa-anterior.pdf");
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "No se pudo guardar el documento" });
+    expect(response.body).toMatchObject({
+      error: "No se pudo guardar el documento",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
     expect(mockDeleteStoredFile).toHaveBeenCalledWith("local/mock-document.pdf");
   });
 
@@ -2055,7 +2095,11 @@ describe("app endpoints", () => {
       .attach("file", Buffer.from("pdf de prueba"), "visa-anterior.pdf");
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "No se pudo guardar el documento" });
+    expect(response.body).toMatchObject({
+      error: "No se pudo guardar el documento",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
     expect(mockUploadStoredFile).toHaveBeenCalledTimes(1);
     expect(mockDeleteStoredFile).toHaveBeenCalledWith("local/mock-document.pdf");
   });
@@ -2207,7 +2251,11 @@ describe("app endpoints", () => {
       .set("Authorization", `Bearer ${adminToken}`);
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "No se pudieron cargar los documentos" });
+    expect(response.body).toMatchObject({
+      error: "No se pudieron cargar los documentos",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
   });
 
   test("GET /admin/documents lista todos los documentos para administradores", async () => {
@@ -2434,7 +2482,11 @@ describe("app endpoints", () => {
       .send({ documento_id: 41, usuario_id: 3 });
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "No se pudo eliminar el documento" });
+    expect(response.body).toMatchObject({
+      error: "No se pudo eliminar el documento",
+      code: "INTERNAL_ERROR",
+      requestId: expect.any(String),
+    });
   });
 
   test("DELETE /documentos mantiene respuesta exitosa si falla deleteStoredFile", async () => {

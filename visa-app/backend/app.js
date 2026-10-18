@@ -37,13 +37,22 @@ const createConsularAppointmentService = require("./services/consularAppointment
 const { streamDs160Pdf } = require("./services/ds160PdfService");
 const { LOCAL_STORAGE_DIR, uploadStoredFile, deleteStoredFile } = require("./storage");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
+const { createRequestContext } = require("./middleware/requestContext");
+const { createApiDocsSecurityHeaders, createSecurityHeaders } = require("./middleware/securityHeaders");
+const { createRateLimiters } = require("./middleware/rateLimiters");
 const { createApiDocsRouter } = require("./swagger");
 
 const app = express();
+const rateLimiters = createRateLimiters();
 
+app.disable("x-powered-by");
 app.set("trust proxy", 1);
+app.use(createRequestContext());
+app.use(createSecurityHeaders());
 app.use(cors(createCorsOptions()));
+app.use(rateLimiters.api);
 app.use(express.json());
+app.use("/api-docs", createApiDocsSecurityHeaders());
 app.use(createApiDocsRouter());
 
 if (process.env.NODE_ENV !== "production") {
@@ -364,7 +373,19 @@ app.use("/", createPerfilRoutes(pool, {
   notificacionService,
   requireSession,
 }));
-app.use("/", createAuthRoutes(pool, { userSchemaReady, tramiteSchemaReady, passwordResetSchemaReady, emailVerificationSchemaReady, loginSecuritySchemaReady, testUsersReady, requireSession, activityLogService }));
+app.use("/", createAuthRoutes(pool, {
+  userSchemaReady,
+  tramiteSchemaReady,
+  passwordResetSchemaReady,
+  emailVerificationSchemaReady,
+  loginSecuritySchemaReady,
+  testUsersReady,
+  requireSession,
+  activityLogService,
+  loginLimiter: rateLimiters.login,
+  registerLimiter: rateLimiters.register,
+  recoveryLimiter: rateLimiters.recovery,
+}));
 app.use("/notificaciones", createNotificacionRoutes(pool, { requireSession, requireAdmin }));
 app.use("/chat", createChatRoutes(pool, { requireSession, notificacionService }));
 app.use("/workflow", createWorkflowRoutes(pool, { requireSession, schemaReady: workflowSchemaReady }));

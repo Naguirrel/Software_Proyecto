@@ -1,4 +1,5 @@
 const { streamDs160Pdf } = require("../services/ds160PdfService");
+const { sendErrorResponse } = require("../middleware/errorResponse");
 
 function createDs160Controller(ds160Service) {
 
@@ -20,8 +21,10 @@ function createDs160Controller(ds160Service) {
         completado: formulario.completado,
       });
     } catch (error) {
-      console.error("ERROR GET DS160:", error);
-      res.status(500).json({ error: error.message });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible cargar el formulario DS-160",
+        context: "ds160.load",
+      });
     }
   }
 
@@ -49,8 +52,10 @@ function createDs160Controller(ds160Service) {
         formulario,
       });
     } catch (error) {
-      console.error("ERROR SAVE DS160:", error);
-      res.status(500).json({ error: error.message });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible guardar el formulario DS-160",
+        context: "ds160.save",
+      });
     }
   }
 
@@ -73,9 +78,11 @@ function createDs160Controller(ds160Service) {
         formulario,
       }, res);
     } catch (error) {
-      console.error("ERROR DS160 PDF:", error);
       if (res.headersSent) return res.end();
-      return res.status(500).json({ error: error.message });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible generar el PDF del formulario DS-160",
+        context: "ds160.pdf",
+      });
     }
   }
 
