@@ -14,6 +14,21 @@ vi.mock("../components/TopActions", () => ({
   ),
 }));
 
+vi.mock("../hooks/useClientWorkflow", () => ({
+  default: () => ({
+    workflow: {
+      assigned: true,
+      gates: {
+        ds160: { allowed: true },
+        payment: { allowed: true },
+        appointment: { allowed: true },
+        interview: { allowed: true },
+        chat: { allowed: true },
+      },
+    },
+  }),
+}));
+
 const renderSidebar = (currentPage = "inicio") =>
   render(
     <MemoryRouter>
@@ -28,6 +43,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       perfil: "turismo_negocios",
+      rol: "cliente",
     }));
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
@@ -79,6 +95,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       perfil: "turismo_negocios",
+      rol: "cliente",
       emailVerificado: false,
     }));
     const user = userEvent.setup();
@@ -107,6 +124,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       emailVerificado: false,
+      rol: "cliente",
     }));
     const user = userEvent.setup();
 
@@ -123,6 +141,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       emailVerificado: false,
+      rol: "cliente",
     }));
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
@@ -145,6 +164,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       emailVerificado: false,
+      rol: "cliente",
     }));
 
     renderSidebar();
@@ -155,6 +175,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       emailVerificado: true,
+      rol: "cliente",
     }));
     window.dispatchEvent(new StorageEvent("storage", { key: "visaguide_session" }));
 

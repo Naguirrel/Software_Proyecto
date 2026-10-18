@@ -31,8 +31,6 @@ import { buildSessionHeaders } from "../../utils/sessionAuth";
 import useTheme from "../../hooks/useTheme";
 import { useAdminSession } from "./AdminSessionContext";
 import { preloadRoute } from "../../routes/lazyRoutes";
-import useModoSenior from "../../hooks/useModoSenior";
-import SeniorModeToggle from "../SeniorModeToggle";
 import "../../styles/admin.css";
 import "../../styles/admin-prototype.css";
 
@@ -66,7 +64,6 @@ export default function AdminLayout({ children }) {
   const session = useAdminSession();
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
-  const modoSenior = useModoSenior();
   const userName = session?.nombre || "Administrador";
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -74,7 +71,7 @@ export default function AdminLayout({ children }) {
   const [notifications, setNotifications] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
-  const isSidebarCollapsed = modoSenior ? false : sidebarCollapsed;
+  const isSidebarCollapsed = sidebarCollapsed;
   const notificationRef = useRef(null);
   const notificationTriggerRef = useRef(null);
   const menuTriggerRef = useRef(null);
@@ -209,7 +206,6 @@ export default function AdminLayout({ children }) {
         </nav>
 
         <div className="admin-sidebar__footer">
-          <SeniorModeToggle className="admin-sidebar__theme admin-sidebar__senior" />
           <button
             type="button"
             className="admin-sidebar__theme"

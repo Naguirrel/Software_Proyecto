@@ -286,7 +286,7 @@ export default function Entrevista() {
           </article>
         </section>
 
-        <section className="emotional-section">
+        <section className="emotional-section" data-senior-priority="secondary">
           <div className="emotional-heading">
             <HeartIcon />
             <h2>Preparación Emocional</h2>

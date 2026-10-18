@@ -1,9 +1,13 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initModoSenior, isModoSeniorEnabled, setModoSenior } from "../utils/modoSenior";
 
 afterEach(() => {
   document.documentElement.classList.remove("modo-senior");
   delete document.documentElement.dataset.uiMode;
+});
+
+beforeEach(() => {
+  localStorage.setItem("visaguide_session", JSON.stringify({ id: 7, rol: "cliente" }));
 });
 
 describe("modoSenior", () => {
@@ -30,13 +34,24 @@ describe("modoSenior", () => {
     expect(isModoSeniorEnabled()).toBe(false);
   });
 
-  it("al iniciar la app restaura el modo guardado en cualquier pantalla", () => {
+  it("al iniciar la app restaura el modo guardado para un cliente", () => {
     localStorage.setItem("modoSenior", "true");
 
     initModoSenior();
 
     expect(document.documentElement).toHaveClass("modo-senior");
     expect(document.documentElement).toHaveAttribute("data-ui-mode", "senior");
+  });
+
+  it("no activa el modo para personal administrativo o asesor", () => {
+    localStorage.setItem("visaguide_session", JSON.stringify({ id: 9, rol: "admin" }));
+    localStorage.setItem("modoSenior", "true");
+
+    initModoSenior();
+
+    expect(document.documentElement).not.toHaveClass("modo-senior");
+    expect(document.documentElement).toHaveAttribute("data-ui-mode", "standard");
+    expect(isModoSeniorEnabled()).toBe(false);
   });
 
   it("sincroniza el atributo cuando cambia desde otra pestaña", () => {

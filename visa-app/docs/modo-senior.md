@@ -1,14 +1,16 @@
 # Modo senior
 
-El modo senior es una capa global de accesibilidad y simplificación. Se activa desde las pantallas públicas, el panel del cliente, el panel del asesor y el panel administrativo. La preferencia se conserva en `localStorage` y se sincroniza entre pestañas.
+El modo senior es una capa de accesibilidad y simplificación exclusiva del cliente. Se activa desde su navegación o selección de perfil; no se muestra en las pantallas públicas ni en los paneles del asesor y administrador. La preferencia se conserva en `localStorage`, se sincroniza entre pestañas y solo se aplica si la sesión activa tiene rol `cliente`.
 
 ## Comportamiento
 
-- Texto base de 20 px y texto auxiliar de al menos 18 px.
-- Controles de formulario de 56 px de alto y objetivos táctiles de al menos 52 px.
+- Texto base de 24 px y texto auxiliar de al menos 20 px.
+- Controles de formulario de al menos 64 px de alto.
 - Foco visible de alto contraste y reducción de movimiento cuando el sistema lo solicita.
 - Navegación lateral expandida en escritorio para evitar depender únicamente de iconos.
-- Tableros con un máximo de dos columnas; formularios y flujos principales pasan a una sola columna cuando mejora la lectura.
+- Navegación simplificada: conserva las áreas autónomas del cliente, el paso actual y los pasos que ya están permitidos por el flujo.
+- Guía contextual visible en cada vista con una instrucción breve y la siguiente acción recomendada.
+- Tableros, formularios y flujos principales pasan a una sola columna cuando mejora la lectura.
 - Contenido secundario oculto para conservar acciones, estado, errores, instrucciones necesarias y datos del trámite.
 - Diseño adaptable: en móvil se mantiene la navegación mediante menú y las cuadrículas pasan a una columna.
 
@@ -30,14 +32,16 @@ Ese contenido se oculta únicamente cuando el modo senior está activo. No debe 
 
 ## Componentes y estado global
 
-- `SeniorModeToggle.jsx` concentra interacción, estado accesible y anuncios para lectores de pantalla.
-- `modoSenior.js` persiste la preferencia, refleja el estado en `<html>` y emite el evento global.
+- `SeniorModeToggle.jsx` concentra interacción, estado accesible y anuncios para lectores de pantalla del cliente.
+- `SeniorGuidance.jsx` presenta instrucciones específicas de cada página y contempla el estado sin asesor asignado.
+- `modoSenior.js` valida el rol, persiste la preferencia, refleja el estado en `<html>` y emite el evento global.
 - `senior-mode.css` contiene las reglas transversales. Los estilos específicos de una vista solo deben añadirse cuando el patrón global no sea suficiente.
 
 ## Criterios de validación
 
-1. Activar el modo desde cualquier layout actualiza todas las vistas y otra pestaña abierta.
+1. Solo una sesión con rol `cliente` puede activar y conservar el modo senior.
 2. La navegación y las acciones esenciales siguen disponibles con teclado y lector de pantalla.
-3. No hay texto funcional menor de 18 px ni controles principales menores de 52 px.
+3. No hay texto funcional menor de 20 px ni controles principales menores de 64 px.
 4. No se ocultan errores, estados del trámite ni pasos obligatorios.
-5. Las vistas funcionan sin desplazamiento horizontal, excepto tablas extensas dentro de su contenedor desplazable.
+5. Los pasos futuros bloqueados no se presentan como acciones disponibles.
+6. Las vistas funcionan sin desplazamiento horizontal, excepto tablas extensas dentro de su contenedor desplazable.

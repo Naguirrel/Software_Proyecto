@@ -135,7 +135,7 @@ function EtapaItem({ etapa, esUltima, senior }) {
   }
 
   return (
-    <li className="cron-item">
+    <li className="cron-item" data-stage-state={etapa.estado}>
       <div className="cron-timeline-col">
         <Nodo numero={etapa.number} estado={etapa.estado} />
         {!esUltima && (

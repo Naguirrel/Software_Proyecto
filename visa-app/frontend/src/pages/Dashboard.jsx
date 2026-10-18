@@ -266,7 +266,7 @@ export default function Dashboard() {
               </section>
             )}
             {/* PROGRESS CARD */}
-            <section className="dash-progress-card">
+            <section className="dash-progress-card" data-senior-priority="secondary">
               <div className="dash-progress-body">
                 <div className="dash-progress-head">
                   <h2 style={{ fontSize: modoSenior ? "24px" : "var(--vg-card-title)" }}>{t("dashboard.progressTitle")}</h2>

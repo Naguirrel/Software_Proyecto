@@ -297,7 +297,7 @@ export default function DS160Form() {
               </p>
             </div>
             <div style={st.headerActions}>
-              <button className="ds160-header-btn" style={st.guardarBtn} onClick={descargarPdf} disabled={descargandoPdf} aria-label="Descargar PDF">
+              <button className="ds160-header-btn" style={st.guardarBtn} onClick={descargarPdf} disabled={descargandoPdf} aria-label="Descargar PDF" data-senior-priority="secondary">
                 <DownloadIcon />
                 {descargandoPdf ? "Descargando..." : "Descargar PDF"}
               </button>
@@ -400,7 +400,7 @@ export default function DS160Form() {
               </div>
             )}
 
-            <div className="ds160-help-box" style={st.seccionesBox}>
+            <div className="ds160-help-box" style={st.seccionesBox} data-senior-priority="secondary">
               <h4 className="ds160-sections-title" style={st.seccionesTitle}>
                 SECCIONES DEL FORMULARIO
               </h4>

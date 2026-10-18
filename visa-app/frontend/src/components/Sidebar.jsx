@@ -28,6 +28,7 @@ import EmailVerificationNotice from "./EmailVerificationNotice";
 import { preloadRoute } from "../routes/lazyRoutes";
 import useClientWorkflow from "../hooks/useClientWorkflow";
 import SeniorModeToggle from "./SeniorModeToggle";
+import SeniorGuidance from "./SeniorGuidance";
 
 const menuItems = [
   { id: "inicio", labelKey: "sidebar.inicio", Icon: LayoutGrid, path: "/dashboard" },
@@ -65,6 +66,13 @@ export default function Sidebar({ currentPage }) {
   const [noLeidas, setNoLeidas] = useState(0);
   const isClient = usuario?.rol === "cliente";
   const { workflow } = useClientWorkflow({ enabled: isClient });
+  const navigationItems = usuario?.rol === "asesor"
+    ? [menuItems[0], staffMenuItem, ...menuItems.slice(1)]
+    : menuItems;
+  const visibleNavigationItems = navigationItems.filter((item) => {
+    if (!modoSenior || !isClient || !item.gate) return true;
+    return currentPage === item.id || Boolean(workflow?.gates?.[item.gate]?.allowed);
+  });
 
   useEffect(() => {
     document.body.classList.add("vg-has-top-actions");
@@ -149,6 +157,12 @@ export default function Sidebar({ currentPage }) {
     <>
       {/* ─── Mobile hamburger button ─── */}
       <TopActions userId={usuario?.id} unreadCount={noLeidas} />
+      {isClient && modoSenior && (
+        <SeniorGuidance
+          currentPage={currentPage}
+          advisorAssigned={workflow?.assigned !== false}
+        />
+      )}
 
       <button
         className="vg-hamburger"
@@ -222,7 +236,7 @@ export default function Sidebar({ currentPage }) {
             <p className="vg-sidebar-label vg-sidebar-workflow-note">Asesor pendiente · documentos habilitados</p>
           )}
           <ul style={{ ...s.menuList, gap: modoSenior ? "6px" : "3px" }}>
-            {(usuario?.rol === "asesor" ? [menuItems[0], staffMenuItem, ...menuItems.slice(1)] : menuItems).map((item) => {
+            {visibleNavigationItems.map((item) => {
               const isActive = currentPage === item.id;
               const label = t(item.labelKey);
               const itemGate = item.gate ? workflow?.gates?.[item.gate] : null;
@@ -286,13 +300,16 @@ export default function Sidebar({ currentPage }) {
             <span className="vg-sidebar-label">{isDark ? t("sidebar.lightMode") : t("sidebar.darkMode")}</span>
           </button>
 
-          <SeniorModeToggle
-            className="vg-sidebar-action vg-sidebar-senior-row"
-            label={t("sidebar.seniorMode")}
-            ariaLabel={t("sidebar.toggleSenior")}
-            iconSize={iconSize}
-            style={{ ...s.sidebarAction, ...rowSenior }}
-          />
+          {isClient && (
+            <SeniorModeToggle
+              className="vg-sidebar-action vg-sidebar-senior-row"
+              label={t("sidebar.seniorMode")}
+              ariaLabel={t("sidebar.toggleSenior")}
+              iconSize={iconSize}
+              showState={modoSenior}
+              style={{ ...s.sidebarAction, ...rowSenior }}
+            />
+          )}
 
           {/* User */}
           <Link

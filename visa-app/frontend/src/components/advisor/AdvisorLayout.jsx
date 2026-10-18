@@ -14,8 +14,6 @@ import AdvisorNotificationCenter from "./AdvisorNotificationCenter";
 import AdvisorNotificationToasts from "./AdvisorNotificationToasts";
 import { AdvisorNotificationsProvider } from "./AdvisorNotificationsContext";
 import { useAdvisorNotifications } from "./advisorNotificationsStore";
-import useModoSenior from "../../hooks/useModoSenior";
-import SeniorModeToggle from "../SeniorModeToggle";
 import "../../styles/admin.css";
 import "../../styles/advisor.css";
 
@@ -47,10 +45,9 @@ function AdvisorLayoutContent({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
-  const modoSenior = useModoSenior();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
-  const isSidebarCollapsed = modoSenior ? false : sidebarCollapsed;
+  const isSidebarCollapsed = sidebarCollapsed;
   const initials = String(session.nombre || "Asesor").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
   const logout = () => {
@@ -97,7 +94,6 @@ function AdvisorLayoutContent({ children }) {
           ))}
         </nav>
         <div className="admin-sidebar__footer">
-          <SeniorModeToggle className="admin-sidebar__theme admin-sidebar__senior" />
           <button type="button" className="admin-sidebar__theme" onClick={toggleTheme} aria-pressed={isDark} data-tooltip={isDark ? "Modo claro" : "Modo oscuro"}>
             {isDark ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}<span>{isDark ? "Modo claro" : "Modo oscuro"}</span>
           </button>

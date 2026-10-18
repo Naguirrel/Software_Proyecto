@@ -1,9 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import SeniorModeToggle from "../components/SeniorModeToggle";
 
 describe("SeniorModeToggle", () => {
+  beforeEach(() => {
+    localStorage.setItem("visaguide_session", JSON.stringify({ id: 7, rol: "cliente" }));
+  });
+
   it("expone el estado, lo persiste y anuncia cada cambio", async () => {
     const user = userEvent.setup();
     render(<SeniorModeToggle showState />);

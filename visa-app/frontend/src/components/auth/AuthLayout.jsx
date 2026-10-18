@@ -1,7 +1,6 @@
 import { CheckCircle2, FileText, MessagesSquare } from "lucide-react";
 import authConsultation from "../../assets/auth-consultation.jpg";
 import VisaGuideLogo from "../VisaGuideLogo";
-import SeniorModeToggle from "../SeniorModeToggle";
 
 const benefits = [
   [<CheckCircle2 aria-hidden="true" />, "Seguimiento paso a paso"],
@@ -12,7 +11,6 @@ const benefits = [
 export default function AuthLayout({ children }) {
   return (
     <main id="main-content" tabIndex="-1" className="auth-page">
-      <SeniorModeToggle className="vg-senior-toggle--floating" showState />
       <div className="auth-shell">
         <section
           className="auth-photo"

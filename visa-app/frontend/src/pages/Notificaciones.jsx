@@ -210,16 +210,17 @@ export default function Notificaciones() {
               return (
                 <div
                   key={n.id}
+                  className="client-notification-card"
                   style={{
                     ...s.card,
-                    backgroundColor: n.leido ? "#ffffff" : "#f0f9ff",
-                    borderLeft: n.leido ? "4px solid #e2e8f0" : "4px solid #dc2649",
+                    backgroundColor: n.leido ? "var(--vg-card)" : "var(--vg-info-bg)",
+                    borderLeft: n.leido ? "4px solid var(--vg-border-mid)" : "4px solid var(--vg-red)",
                   }}
                 >
                   {!n.leido && <span style={s.puntoPendiente} />}
 
                   <div style={s.cardBody}>
-                    <div style={s.cardTop}>
+                    <div style={s.cardTop} data-senior-priority="secondary">
                       <span style={{ ...s.tipoBadge, background: cfg.bg, color: cfg.color, fontSize: fs(11) }}>
                         {cfg.label}
                       </span>

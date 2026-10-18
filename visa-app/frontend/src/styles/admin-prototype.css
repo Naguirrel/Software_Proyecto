@@ -10,6 +10,12 @@
   background: var(--admin-canvas);
 }
 
+[data-theme="dark"] .admin-shell {
+  --admin-navy: #121212;
+  --admin-navy-soft: #2c2c2e;
+  --admin-muted: #a8a8a8;
+}
+
 .admin-sidebar {
   width: 280px;
   border-color: var(--admin-border);
@@ -434,7 +440,7 @@
 [data-theme="dark"] .admin-sidebar__theme:hover,
 [data-theme="dark"] .admin-sidebar__profile:hover { background: var(--vg-bg-alt); color: var(--vg-text); }
 [data-theme="dark"] .admin-sidebar__link--active,
-[data-theme="dark"] .admin-sidebar__profile.admin-sidebar__link--active { background: #0b1325; color: #fff; }
+[data-theme="dark"] .admin-sidebar__profile.admin-sidebar__link--active { background: var(--vg-bg-alt); color: #fff; }
 
 @media (min-width: 761px) {
   .admin-sidebar--collapsed { width: 72px; padding: 0; }
