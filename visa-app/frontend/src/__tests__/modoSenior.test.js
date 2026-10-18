@@ -3,6 +3,7 @@ import { initModoSenior, isModoSeniorEnabled, setModoSenior } from "../utils/mod
 
 afterEach(() => {
   document.documentElement.classList.remove("modo-senior");
+  delete document.documentElement.dataset.uiMode;
 });
 
 describe("modoSenior", () => {
@@ -13,6 +14,7 @@ describe("modoSenior", () => {
     setModoSenior(true);
 
     expect(document.documentElement).toHaveClass("modo-senior");
+    expect(document.documentElement).toHaveAttribute("data-ui-mode", "senior");
     expect(localStorage.getItem("modoSenior")).toBe("true");
     expect(isModoSeniorEnabled()).toBe(true);
     expect(listener.mock.calls[0][0].detail).toBe(true);
@@ -24,6 +26,7 @@ describe("modoSenior", () => {
     setModoSenior(false);
 
     expect(document.documentElement).not.toHaveClass("modo-senior");
+    expect(document.documentElement).toHaveAttribute("data-ui-mode", "standard");
     expect(isModoSeniorEnabled()).toBe(false);
   });
 
@@ -33,6 +36,7 @@ describe("modoSenior", () => {
     initModoSenior();
 
     expect(document.documentElement).toHaveClass("modo-senior");
+    expect(document.documentElement).toHaveAttribute("data-ui-mode", "senior");
   });
 
   it("sincroniza el atributo cuando cambia desde otra pestaña", () => {
@@ -42,5 +46,6 @@ describe("modoSenior", () => {
     window.dispatchEvent(new StorageEvent("storage", { key: "modoSenior" }));
 
     expect(document.documentElement).toHaveClass("modo-senior");
+    expect(document.documentElement).toHaveAttribute("data-ui-mode", "senior");
   });
 });

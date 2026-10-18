@@ -5,7 +5,7 @@ const ETAPAS = [1, 2, 3, 4, 5];
 export default function InformationSection({ modoSenior = false }) {
   const { t } = useIdioma();
   return (
-    <section id="informacion" className="info-section" aria-labelledby="information-title">
+    <section id="informacion" className="info-section" aria-labelledby="information-title" data-senior-priority="secondary">
       <header className="info-section__header">
         <h2 id="information-title" style={{ fontSize: modoSenior ? "36px" : "var(--vg-section-title)" }}>{t("info.title")}</h2>
         <p style={{ fontSize: modoSenior ? "19px" : "var(--vg-body-size)" }}>

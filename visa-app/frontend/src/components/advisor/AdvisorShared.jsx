@@ -2,7 +2,7 @@ import { Search, X } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 
 export function AdvisorPageHeader({ title, description, action }) {
-  return <header className="advisor-page-header"><div><h1>{title}</h1><p>{description}</p></div>{action}</header>;
+  return <header className="advisor-page-header"><div><h1>{title}</h1><p data-senior-priority="secondary">{description}</p></div>{action}</header>;
 }
 
 export function AdvisorTabs({ items, value, onChange, label }) {

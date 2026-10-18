@@ -145,7 +145,7 @@ export default function InterviewFeedback() {
       >
         <header className="interview-header feedback-header">
           <h1>Retroalimentación de Entrevista</h1>
-          <p>
+          <p data-senior-priority="secondary">
             Aquí podrás revisar cómo te fue cuando el asesor procese tu sesión
             de práctica.
           </p>
@@ -216,7 +216,7 @@ export default function InterviewFeedback() {
               </section>
             )}
 
-            <section className="feedback-summary-grid" aria-label="Resumen">
+            <section className="feedback-summary-grid" aria-label="Resumen" data-senior-priority="secondary">
               <article>
                 <span>Estado</span>
                 <strong>{isReviewed ? "Revisada" : "Pendiente"}</strong>

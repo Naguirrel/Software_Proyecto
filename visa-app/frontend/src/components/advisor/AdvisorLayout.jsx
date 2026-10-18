@@ -14,6 +14,8 @@ import AdvisorNotificationCenter from "./AdvisorNotificationCenter";
 import AdvisorNotificationToasts from "./AdvisorNotificationToasts";
 import { AdvisorNotificationsProvider } from "./AdvisorNotificationsContext";
 import { useAdvisorNotifications } from "./advisorNotificationsStore";
+import useModoSenior from "../../hooks/useModoSenior";
+import SeniorModeToggle from "../SeniorModeToggle";
 import "../../styles/admin.css";
 import "../../styles/advisor.css";
 
@@ -45,8 +47,10 @@ function AdvisorLayoutContent({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
+  const modoSenior = useModoSenior();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
+  const isSidebarCollapsed = modoSenior ? false : sidebarCollapsed;
   const initials = String(session.nombre || "Asesor").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
   const logout = () => {
@@ -69,20 +73,20 @@ function AdvisorLayoutContent({ children }) {
   };
 
   return (
-    <div className={`admin-shell advisor-shell${sidebarCollapsed ? " admin-shell--sidebar-collapsed" : ""}`}>
-      <aside id="advisor-navigation" className={`admin-sidebar advisor-sidebar${sidebarOpen ? " admin-sidebar--open" : ""}${sidebarCollapsed ? " admin-sidebar--collapsed" : ""}`} aria-label="Navegación del panel de asesor">
+    <div className={`admin-shell advisor-shell${isSidebarCollapsed ? " admin-shell--sidebar-collapsed" : ""}`}>
+      <aside id="advisor-navigation" className={`admin-sidebar advisor-sidebar${sidebarOpen ? " admin-sidebar--open" : ""}${isSidebarCollapsed ? " admin-sidebar--collapsed" : ""}`} aria-label="Navegación del panel de asesor">
         <div className="admin-sidebar__top">
           <VisaGuideLogo variant="full" className="admin-sidebar__brand" subtitle="Asesor" />
           <button
             type="button"
             className="admin-sidebar__collapse"
-            aria-label={sidebarCollapsed ? "Expandir menú de asesor" : "Colapsar menú de asesor"}
+            aria-label={isSidebarCollapsed ? "Expandir menú de asesor" : "Colapsar menú de asesor"}
             aria-controls="advisor-navigation"
-            aria-expanded={!sidebarCollapsed}
-            data-tooltip={sidebarCollapsed ? "Expandir" : "Colapsar"}
+            aria-expanded={!isSidebarCollapsed}
+            data-tooltip={isSidebarCollapsed ? "Expandir" : "Colapsar"}
             onClick={toggleSidebar}
           >
-            {sidebarCollapsed ? <ChevronRight size={20} aria-hidden="true" /> : <ChevronLeft size={20} aria-hidden="true" />}
+            {isSidebarCollapsed ? <ChevronRight size={20} aria-hidden="true" /> : <ChevronLeft size={20} aria-hidden="true" />}
           </button>
         </div>
         <nav className="admin-sidebar__nav" aria-label="Módulos del asesor">
@@ -93,6 +97,7 @@ function AdvisorLayoutContent({ children }) {
           ))}
         </nav>
         <div className="admin-sidebar__footer">
+          <SeniorModeToggle className="admin-sidebar__theme admin-sidebar__senior" />
           <button type="button" className="admin-sidebar__theme" onClick={toggleTheme} aria-pressed={isDark} data-tooltip={isDark ? "Modo claro" : "Modo oscuro"}>
             {isDark ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}<span>{isDark ? "Modo claro" : "Modo oscuro"}</span>
           </button>

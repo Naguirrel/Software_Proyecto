@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import {
+  isModoSeniorEnabled,
+  MODO_SENIOR_EVENT_NAME,
+} from "../utils/modoSenior";
 
 export default function useModoSenior() {
-  const [modoSenior, setModoSenior] = useState(() => {
-    return localStorage.getItem("modoSenior") === "true";
-  });
+  const [modoSenior, setModoSenior] = useState(isModoSeniorEnabled);
 
   useEffect(() => {
     // Escuchar cambios del toggle en el Sidebar
@@ -11,17 +13,17 @@ export default function useModoSenior() {
       setModoSenior(e.detail);
     };
 
-    window.addEventListener("modoSeniorChange", handleChange);
+    window.addEventListener(MODO_SENIOR_EVENT_NAME, handleChange);
 
     // También escuchar cambios en localStorage (por si se cambia en otra pestaña)
     const handleStorage = () => {
-      setModoSenior(localStorage.getItem("modoSenior") === "true");
+      setModoSenior(isModoSeniorEnabled());
     };
 
     window.addEventListener("storage", handleStorage);
 
     return () => {
-      window.removeEventListener("modoSeniorChange", handleChange);
+      window.removeEventListener(MODO_SENIOR_EVENT_NAME, handleChange);
       window.removeEventListener("storage", handleStorage);
     };
   }, []);

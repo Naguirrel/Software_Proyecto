@@ -225,7 +225,7 @@ export default function Documents() {
             <section className="documents-header">
               <div>
                 <h1 className="documents-title">Gestor de Documentos</h1>
-                <p className="documents-subtitle">
+                <p className="documents-subtitle" data-senior-priority="secondary">
                   Sube y administra los documentos de soporte para tu entrevista.
                   Los archivos requeridos son obligatorios para continuar.
                 </p>
@@ -255,7 +255,7 @@ export default function Documents() {
               </button>
             </section>
 
-            <section className="status-grid" aria-label="Resumen de documentos">
+            <section className="status-grid" aria-label="Resumen de documentos" data-senior-priority="secondary">
               {SUMMARY_CARDS.map((card) => (
                 <StatusCard
                   key={card.status}

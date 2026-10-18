@@ -47,12 +47,12 @@ export default function AdminDashboard() {
     : null;
 
   return <AdminLayout>
-    <section className="admin-hero"><h1>Panel de Administración Global</h1><p>Supervisa el rendimiento, la carga de trabajo y el estado general de la plataforma.</p></section>
+    <section className="admin-hero"><h1>Panel de Administración Global</h1><p data-senior-priority="secondary">Supervisa el rendimiento, la carga de trabajo y el estado general de la plataforma.</p></section>
     <AdminAdvancedFilters value={filters} onChange={setFilters} advisors={advisors.data?.asesores || []}
       dateLabel="Fecha de creación de la solicitud (UTC)" status={status}
       statuses={[{ value: "", label: "Todos" }, ...["En proceso", "Pendiente", "Aprobado", "Inactivo", "Completado"].map((value) => ({ value, label: value }))]}
       onStatusChange={setStatus} onReset={() => { setFilters(EMPTY_ADMIN_FILTERS); setStatus(""); }} />
-    <p>Los indicadores y la actividad se limitan a las solicitudes seleccionadas. Al filtrar, se omiten los eventos administrativos sin solicitud asociada.</p>
+    <p data-senior-priority="secondary">Los indicadores y la actividad se limitan a las solicitudes seleccionadas. Al filtrar, se omiten los eventos administrativos sin solicitud asociada.</p>
     {advisors.error && <p role="alert">No se pudieron cargar los asesores. <button type="button" onClick={advisors.retry}>Reintentar asesores</button></p>}
     <AdminResourceState {...resource} />
     {data && !resource.isLoading && !resource.error && <>
@@ -67,7 +67,7 @@ export default function AdminDashboard() {
         {headlineStats.map(([label, key, path, tone, icon]) => <article className={`admin-stat-card admin-stat-card--${tone}`} key={key}><span className="admin-stat-card__icon">{icon}</span><strong>{data.resumen[key]}</strong><h3>{label}</h3><Link to={path}>Ver detalles →</Link></article>)}
       </section>
 
-      <div className="admin-dashboard-grid">
+      <div className="admin-dashboard-grid" data-senior-priority="secondary">
         <section className="admin-panel-card admin-workload-card"><div className="admin-panel-card__header"><h2>Carga de trabajo por asesor (Top 4)</h2><Link to="/admin/reports">Ver reporte completo</Link></div><AdminGroupedBarChart items={data.cargaAsesores} /></section>
         <section className="admin-panel-card" aria-labelledby="recent-activity-title"><div className="admin-panel-card__header"><h2 id="recent-activity-title">Actividad reciente</h2></div>{data.actividad.length ? <ol className="admin-activity-list">{data.actividad.map((item) => <li key={item.id}><strong>{item.accion}</strong><span>{item.actor || "Sistema"}{item.detalle ? ` · ${item.detalle}` : ""}</span><small>{formatActivityDate(item.created_at)}</small>{item.destino && <Link to={item.destino}>Ver detalle</Link>}</li>)}</ol> : <div className="admin-empty-state"><strong>Sin actividad reciente</strong><p>Los eventos de la plataforma aparecerán aquí.</p></div>}</section>
       </div>
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
 
       <div className="admin-dashboard-grid admin-dashboard-grid--operations">
         <section className="admin-panel-card" aria-labelledby="pending-title"><div className="admin-panel-card__header"><h2 id="pending-title">Pendientes por atender</h2></div><div className="admin-pending-list">{data.pendientes.map((item) => <Link to={item.destino} key={item.id}><span>{item.label}</span><strong>{item.total}</strong><small>Revisar →</small></Link>)}</div></section>
-        <section className="admin-dashboard-section admin-dashboard-extras" aria-labelledby="additional-metrics-title"><div className="admin-dashboard-section__heading"><div><h2 id="additional-metrics-title">Métricas adicionales</h2><p>Indicadores operativos calculados con los datos actuales.</p></div><Link to="/admin/reports">Ver reportes</Link></div><div className="admin-insights-grid">{additionalMetrics.map(([label, key, path, icon, helper]) => <Link className="admin-insight-card" to={path} key={key}><span>{icon}</span><div><strong>{data.resumen[key]}</strong><h3>{label}</h3>{helper && <small>{helper}</small>}</div></Link>)}<article className="admin-insight-card admin-insight-card--wide"><span><Gauge aria-hidden="true" /></span><div><strong>{data.resumen.progresoPromedio}%</strong><h3>Progreso promedio</h3><small>{data.resumen.tasaCompletitud}% de trámites completados</small></div></article></div></section>
+        <section className="admin-dashboard-section admin-dashboard-extras" aria-labelledby="additional-metrics-title" data-senior-priority="secondary"><div className="admin-dashboard-section__heading"><div><h2 id="additional-metrics-title">Métricas adicionales</h2><p>Indicadores operativos calculados con los datos actuales.</p></div><Link to="/admin/reports">Ver reportes</Link></div><div className="admin-insights-grid">{additionalMetrics.map(([label, key, path, icon, helper]) => <Link className="admin-insight-card" to={path} key={key}><span>{icon}</span><div><strong>{data.resumen[key]}</strong><h3>{label}</h3>{helper && <small>{helper}</small>}</div></Link>)}<article className="admin-insight-card admin-insight-card--wide"><span><Gauge aria-hidden="true" /></span><div><strong>{data.resumen.progresoPromedio}%</strong><h3>Progreso promedio</h3><small>{data.resumen.tasaCompletitud}% de trámites completados</small></div></article></div></section>
       </div>
     </>}
   </AdminLayout>;

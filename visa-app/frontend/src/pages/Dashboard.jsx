@@ -244,7 +244,7 @@ export default function Dashboard() {
           <h1 style={{ fontSize: modoSenior ? "44px" : "var(--vg-page-title)" }}>
             {t("dashboard.greeting", { nombre: firstName })}
           </h1>
-          <p style={{ fontSize: modoSenior ? "19px" : "var(--vg-body-size)" }}>
+          <p data-senior-priority="secondary" style={{ fontSize: modoSenior ? "19px" : "var(--vg-body-size)" }}>
             {t("dashboard.continue", { tipo: tipoVisa() })}
           </p>
         </header>
@@ -271,7 +271,7 @@ export default function Dashboard() {
                 <div className="dash-progress-head">
                   <h2 style={{ fontSize: modoSenior ? "24px" : "var(--vg-card-title)" }}>{t("dashboard.progressTitle")}</h2>
                 </div>
-                <p className="dash-progress-sub" style={{ fontSize: modoSenior ? "15px" : "13px" }}>
+                <p className="dash-progress-sub" data-senior-priority="secondary" style={{ fontSize: modoSenior ? "15px" : "13px" }}>
                   {t("dashboard.progressSub")}
                 </p>
                 <div className="dash-timeline">{timelineEls}</div>
@@ -345,7 +345,7 @@ export default function Dashboard() {
             />
 
             {/* QUICK CARDS */}
-            <section className="dash-quick-grid">
+            <section className="dash-quick-grid" data-senior-priority="secondary">
               {quickCards.map((card) => (
                 <article
                   key={card.title}

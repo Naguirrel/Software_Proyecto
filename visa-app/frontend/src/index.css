@@ -1179,18 +1179,18 @@ body.vg-has-top-actions main#main-content {
    ══════════════════════════════ */
 html.modo-senior {
   /* Tipografía */
-  --vg-body-size: 18px;
-  --vg-small-size: 16px;
-  --vg-control-size: 18px;
+  --vg-body-size: 20px;
+  --vg-small-size: 18px;
+  --vg-control-size: 20px;
   --vg-page-title: clamp(48px, 4.5vw, 52px);
   --vg-section-title: clamp(32px, 3vw, 36px);
-  --vg-card-title: 24px;
+  --vg-card-title: 26px;
   --vg-line-body: 1.7;
   --vg-line-heading: 1.25;
 
   /* Controles, iconos y foco */
   --vg-spacing-base: 24px;
-  --vg-button-min-height: 52px;
+  --vg-button-min-height: 56px;
   --vg-icon-size: 28px;
   --vg-focus-width: 4px;
   --vg-focus-color: #000000;
@@ -1210,7 +1210,7 @@ html.modo-senior {
   --vg-page-pad-bottom: 96px;
 
   /* Sidebar más ancho para iconos y textos grandes */
-  --vg-sidebar-w: 92px;
+  --vg-sidebar-w: 300px;
   --vg-sidebar-expanded-w: 300px;
 
   /* Contraste AAA (7:1 mínimo sobre fondos claros) */
@@ -1242,8 +1242,8 @@ html.modo-senior[data-theme="dark"] {
 @media (max-width: 768px) {
   html.modo-senior {
     --vg-sidebar-w: 0px;
-    --vg-page-title: 36px;
-    --vg-section-title: 28px;
+    --vg-page-title: 38px;
+    --vg-section-title: 30px;
     --vg-page-pad-x: 18px;
     --vg-page-pad-top: 28px;
     --vg-card-padding: 24px;
@@ -1278,8 +1278,8 @@ html.modo-senior :where(a, input:not([type="checkbox"], [type="radio"]), select,
 }
 
 html.modo-senior :where(button, [role="button"]) {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 52px;
+  min-height: 52px;
 }
 
 /* Botones con texto: más altos y con más relleno (los de solo icono llevan aria-label).
@@ -1287,14 +1287,14 @@ html.modo-senior :where(button, [role="button"]) {
 html.modo-senior :where(main button:not([aria-label], [role="tab"]), .btn) {
   min-height: var(--vg-button-min-height);
   padding: 16px 24px;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 /* Campos: el padding lateral se respeta para no tapar iconos dentro del campo */
 html.modo-senior :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]), select, textarea) {
-  min-height: 52px;
+  min-height: 56px;
   padding-block: 14px;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 html.modo-senior :where(input[type="checkbox"], input[type="radio"]) {
@@ -1365,7 +1365,7 @@ html.modo-senior .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--exp
 html.modo-senior .vg-sidebar-workflow-note,
 html.modo-senior .vg-email-verify-notice__text,
 html.modo-senior .vg-email-verify-notice__resend {
-  font-size: 15px;
+  font-size: 18px;
 }
 
 html.modo-senior :is(.vg-notification-trigger, .vg-top-action-button) {
@@ -1387,7 +1387,7 @@ html.modo-senior .vg-notification-count {
 }
 
 html.modo-senior .vg-notification-list p {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 html.modo-senior body.vg-has-top-actions main#main-content {
@@ -1396,13 +1396,10 @@ html.modo-senior body.vg-has-top-actions main#main-content {
 
 html.modo-senior :is(
   [style*="font-size: 9px"], [style*="font-size: 10px"], [style*="font-size: 11px"],
-  [style*="font-size: 12px"], [style*="font-size: 13px"]
+  [style*="font-size: 12px"], [style*="font-size: 13px"], [style*="font-size: 14px"],
+  [style*="font-size: 15px"], [style*="font-size: 16px"]
 ) {
-  font-size: 16px !important;
-}
-
-html.modo-senior [style*="font-size: 14px"] {
-  font-size: 17px !important;
+  font-size: 18px !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

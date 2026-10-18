@@ -236,7 +236,7 @@ export default function Cronologia() {
           <h1 className={`cron-titulo${senior ? " cron-titulo--senior" : ""}`}>
             {t("timeline.title")}
           </h1>
-          <p className={`cron-subtitulo${senior ? " cron-subtitulo--senior" : ""}`}>
+          <p data-senior-priority="secondary" className={`cron-subtitulo${senior ? " cron-subtitulo--senior" : ""}`}>
             {t("timeline.subtitle")}
           </p>
         </header>

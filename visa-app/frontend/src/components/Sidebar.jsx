@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  Accessibility,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -20,7 +19,6 @@ import {
 } from "lucide-react";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
-import { setModoSenior as applyModoSenior } from "../utils/modoSenior";
 import useModoSenior from "../hooks/useModoSenior";
 import useTheme from "../hooks/useTheme";
 import useIdioma from "../hooks/useIdioma";
@@ -29,6 +27,7 @@ import VisaGuideLogo from "./VisaGuideLogo";
 import EmailVerificationNotice from "./EmailVerificationNotice";
 import { preloadRoute } from "../routes/lazyRoutes";
 import useClientWorkflow from "../hooks/useClientWorkflow";
+import SeniorModeToggle from "./SeniorModeToggle";
 
 const menuItems = [
   { id: "inicio", labelKey: "sidebar.inicio", Icon: LayoutGrid, path: "/dashboard" },
@@ -47,7 +46,6 @@ export default function Sidebar({ currentPage }) {
   const modoSenior = useModoSenior();
   const iconSize = modoSenior ? 28 : 20;
   const rowSenior = modoSenior ? s.rowSenior : null;
-  const [seniorAnnouncement, setSeniorAnnouncement] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [autoExpandDisabled, setAutoExpandDisabled] = useState(false);
@@ -136,12 +134,6 @@ export default function Sidebar({ currentPage }) {
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
-
-  const toggleModoSenior = () => {
-    const next = !modoSenior;
-    applyModoSenior(next);
-    setSeniorAnnouncement(t(next ? "sidebar.seniorOn" : "sidebar.seniorOff"));
-  };
 
   const getPerfilLabel = (perfil) => {
     const perfiles = ["turismo_negocios", "estudiante", "renovacion", "grupo_familiar", "adulto_mayor"];
@@ -294,21 +286,13 @@ export default function Sidebar({ currentPage }) {
             <span className="vg-sidebar-label">{isDark ? t("sidebar.lightMode") : t("sidebar.darkMode")}</span>
           </button>
 
-          <button
-            type="button"
+          <SeniorModeToggle
             className="vg-sidebar-action vg-sidebar-senior-row"
+            label={t("sidebar.seniorMode")}
+            ariaLabel={t("sidebar.toggleSenior")}
+            iconSize={iconSize}
             style={{ ...s.sidebarAction, ...rowSenior }}
-            onClick={toggleModoSenior}
-            aria-label={t("sidebar.toggleSenior")}
-            aria-pressed={modoSenior}
-            data-tooltip={t("sidebar.seniorMode")}
-          >
-            <Accessibility size={iconSize} strokeWidth={2} aria-hidden="true" />
-            <span className="vg-sidebar-label">{t("sidebar.seniorMode")}</span>
-          </button>
-          <span className="visually-hidden" role="status" aria-live="polite">
-            {seniorAnnouncement}
-          </span>
+          />
 
           {/* User */}
           <Link

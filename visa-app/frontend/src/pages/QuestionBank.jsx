@@ -285,11 +285,11 @@ export default function QuestionBank() {
           <>
             <section className="question-bank-header">
               <div>
-                <span className="question-bank-eyebrow">
+                <span className="question-bank-eyebrow" data-senior-priority="secondary">
                   Administracion consular
                 </span>
                 <h1>Banco de Preguntas</h1>
-                <p>
+                <p data-senior-priority="secondary">
                   Gestiona preguntas reutilizables para entrevistas migratorias
                   con filtros, dificultad y prioridad operativa.
                 </p>
@@ -300,7 +300,7 @@ export default function QuestionBank() {
               </button>
             </section>
 
-            <section className="question-bank-stats" aria-label="Resumen">
+            <section className="question-bank-stats" aria-label="Resumen" data-senior-priority="secondary">
               <article>
                 <span>Total</span>
                 <strong>{stats.total}</strong>
