@@ -42,6 +42,7 @@ const menuItems = [
 ];
 
 const staffMenuItem = { id: "gestion-consular", labelKey: "sidebar.gestionConsular", Icon: CreditCard, path: "/gestion-consular" };
+const UNASSIGNED_CLIENT_MENU_IDS = new Set(["inicio", "cronologia", "documentos"]);
 
 export default function Sidebar({ currentPage }) {
   const modoSenior = useModoSenior();
@@ -69,8 +70,11 @@ export default function Sidebar({ currentPage }) {
   const navigationItems = usuario?.rol === "asesor"
     ? [menuItems[0], staffMenuItem, ...menuItems.slice(1)]
     : menuItems;
+  const waitingForAdvisor = isClient && workflow?.assigned === false;
   const visibleNavigationItems = navigationItems.filter((item) => {
-    if (!modoSenior || !isClient || !item.gate) return true;
+    if (!modoSenior || !isClient) return true;
+    if (waitingForAdvisor) return UNASSIGNED_CLIENT_MENU_IDS.has(item.id);
+    if (!item.gate) return true;
     return currentPage === item.id || Boolean(workflow?.gates?.[item.gate]?.allowed);
   });
 
@@ -240,7 +244,14 @@ export default function Sidebar({ currentPage }) {
               const isActive = currentPage === item.id;
               const label = t(item.labelKey);
               const itemGate = item.gate ? workflow?.gates?.[item.gate] : null;
-              const isLocked = Boolean(isClient && item.gate && (!workflow || !itemGate?.allowed));
+              const blockedByAssignment = waitingForAdvisor && !UNASSIGNED_CLIENT_MENU_IDS.has(item.id);
+              const isLocked = Boolean(
+                blockedByAssignment
+                || (isClient && item.gate && (!workflow || !itemGate?.allowed))
+              );
+              const lockedReason = blockedByAssignment
+                ? "Esta opción se habilitará cuando un administrador asigne tu asesor."
+                : itemGate?.reason || "Validando etapa…";
               if (isLocked) {
                 return (
                   <li key={item.id}>
@@ -248,8 +259,8 @@ export default function Sidebar({ currentPage }) {
                       className="vg-sidebar-locked-link"
                       style={{ ...s.menuItem, ...rowSenior }}
                       aria-disabled="true"
-                      data-tooltip={itemGate?.reason || "Validando etapa…"}
-                      title={itemGate?.reason || "Validando etapa…"}
+                      data-tooltip={lockedReason}
+                      title={lockedReason}
                     >
                       <span style={{ ...s.menuIcon, width: iconSize, height: iconSize }}><item.Icon size={iconSize} strokeWidth={2} aria-hidden="true" /></span>
                       <span className="vg-sidebar-label" style={{ ...s.menuText, fontSize: modoSenior ? "18px" : "14px" }}>{label}</span>
@@ -304,9 +315,10 @@ export default function Sidebar({ currentPage }) {
             <SeniorModeToggle
               className="vg-sidebar-action vg-sidebar-senior-row"
               label={t("sidebar.seniorMode")}
+              labelClassName="vg-sidebar-label"
               ariaLabel={t("sidebar.toggleSenior")}
               iconSize={iconSize}
-              showState={modoSenior}
+              showState
               style={{ ...s.sidebarAction, ...rowSenior }}
             />
           )}

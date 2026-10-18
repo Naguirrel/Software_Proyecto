@@ -6,6 +6,7 @@ import { setModoSenior } from "../utils/modoSenior";
 export default function SeniorModeToggle({
   className = "",
   label = "Modo senior",
+  labelClassName = "",
   ariaLabel,
   iconSize = 22,
   showState = false,
@@ -29,10 +30,13 @@ export default function SeniorModeToggle({
         onClick={toggle}
         aria-label={ariaLabel || `${enabled ? "Desactivar" : "Activar"} modo senior`}
         aria-pressed={enabled}
-        data-tooltip={label}
+        data-tooltip={`${label}: ${enabled ? "activado" : "desactivado"}`}
+        title={`${label}: ${enabled ? "activado" : "desactivado"}`}
       >
         <Accessibility size={iconSize} strokeWidth={2} aria-hidden="true" />
-        <span>{label}{showState ? ` · ${enabled ? "activado" : "desactivado"}` : ""}</span>
+        <span className={labelClassName || undefined}>
+          {label}{showState ? ` · ${enabled ? "activado" : "desactivado"}` : ""}
+        </span>
       </button>
       {announcement && (
         <span className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">

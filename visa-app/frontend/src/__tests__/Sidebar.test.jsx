@@ -194,8 +194,10 @@ describe("Sidebar", () => {
     );
 
     const senior = screen.getByRole("button", { name: "Alternar modo Senior" });
+    expect(screen.getByText("Modo Senior · desactivado")).toHaveClass("vg-sidebar-label");
     await user.click(senior);
     expect(senior).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Modo Senior · activado")).toHaveClass("vg-sidebar-label");
     expect(localStorage.getItem("modoSenior")).toBe("true");
     expect(document.documentElement).toHaveClass("modo-senior");
     expect(screen.getByText("Modo Senior activado")).toBeInTheDocument();
