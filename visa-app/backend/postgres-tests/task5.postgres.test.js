@@ -276,7 +276,9 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
     try {
       await ctx.pool.query(`UPDATE question_bank SET ${nullExamples} WHERE question = $1`, [emptySeed.question]);
       await ctx.pool.query(
-        `UPDATE question_bank SET ${nullExamples}, ejemplo_fuerte = 'Editado por admin' WHERE question = $1`,
+        `UPDATE question_bank
+         SET ejemplo_fuerte = 'Editado por admin', explicacion_fuerte = NULL, ejemplo_debil = NULL, explicacion_debil = NULL
+         WHERE question = $1`,
         [editedSeed.question]
       );
 
