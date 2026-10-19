@@ -2,6 +2,7 @@ const { issueSessionToken } = require("../auth");
 const { createSafeEmailSender } = require("../services/emailReminderService");
 const { accountLocked } = require("../templates/emailTemplates");
 const { sendErrorResponse } = require("../middleware/errorResponse");
+const { validatePassword } = require("../services/passwordPolicy");
 
 function getFrontendBaseUrl(env = process.env) {
   if (env.FRONTEND_URL) return env.FRONTEND_URL.replace(/\/+$/, "");
@@ -104,6 +105,11 @@ function createAuthController(authService, { activityLogService, testUsersReady,
 
     if (!emailPattern.test(normalizedEmail)) {
       return res.status(400).json({ error: "Correo inválido" });
+    }
+
+    const passwordError = validatePassword(contrasena);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     try {
@@ -260,8 +266,13 @@ function createAuthController(authService, { activityLogService, testUsersReady,
   async function resetPassword(req, res) {
     const { token, nuevaContrasena } = req.body;
 
-    if (!token || !nuevaContrasena || nuevaContrasena.length < 4) {
-      return res.status(400).json({ error: "Token y una nueva contraseña de al menos 4 caracteres son obligatorios" });
+    if (!token || !nuevaContrasena) {
+      return res.status(400).json({ error: "Token y nueva contraseña son obligatorios" });
+    }
+
+    const passwordError = validatePassword(nuevaContrasena);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     try {

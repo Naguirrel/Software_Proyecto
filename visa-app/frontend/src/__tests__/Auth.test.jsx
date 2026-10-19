@@ -215,7 +215,7 @@ describe("pantallas de autenticación", () => {
     await user.type(screen.getByLabelText("Correo electrónico"), "ana@example.com");
     await user.type(screen.getByLabelText("Contraseña"), "123");
     await user.click(screen.getByRole("button", { name: /Crear cuenta/i }));
-    expect(screen.getByRole("alert")).toHaveTextContent("al menos 4 caracteres");
+    expect(screen.getByRole("alert")).toHaveTextContent("al menos 8 caracteres");
 
     await user.clear(screen.getByLabelText("Contraseña"));
     await user.type(screen.getByLabelText("Contraseña"), "clave123");

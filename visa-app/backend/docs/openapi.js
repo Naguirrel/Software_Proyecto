@@ -29,7 +29,7 @@ const schemas = {
     properties: {
       nombre: { type: "string" },
       correo: { type: "string", format: "email" },
-      contrasena: { type: "string", format: "password", minLength: 6 },
+      contrasena: { type: "string", format: "password", minLength: 8, description: "Mínimo 8 caracteres, con letras y números." },
     },
   },
   LoginRequest: {
@@ -55,7 +55,7 @@ const schemas = {
     required: ["token", "nuevaContrasena"],
     properties: {
       token: { type: "string" },
-      nuevaContrasena: { type: "string", format: "password", minLength: 6 },
+      nuevaContrasena: { type: "string", format: "password", minLength: 8, description: "Mínimo 8 caracteres, con letras y números." },
     },
   },
   UserEmailRequest: {
