@@ -17,7 +17,7 @@
 }
 
 .admin-sidebar {
-  width: 280px;
+  width: var(--admin-sidebar-expanded-width);
   border-color: var(--admin-border);
   background: var(--admin-surface);
   color: var(--vg-text);
@@ -27,10 +27,10 @@
 
 .admin-sidebar__top {
   position: relative;
-  min-height: 112px;
+  min-height: 88px;
   place-content: center;
   border-bottom: 1px solid var(--admin-border);
-  padding: 20px 24px;
+  padding: 14px 17px;
 }
 
 .admin-sidebar__brand {
@@ -90,7 +90,10 @@
   flex-direction: column;
   gap: 4px;
   margin: 0;
-  padding: 26px 18px 20px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 20px 12px 16px;
   scrollbar-color: var(--vg-border-mid) transparent;
   scrollbar-gutter: stable;
 }
@@ -99,12 +102,12 @@
 .admin-sidebar__theme,
 .admin-sidebar__profile,
 .admin-sidebar__logout {
-  min-height: 50px;
-  gap: 13px;
-  border-radius: 12px;
+  min-height: 44px;
+  gap: 11px;
+  border-radius: 10px;
   color: var(--admin-muted);
-  padding: 0 16px;
-  font-size: 15px;
+  padding: 0 12px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -129,20 +132,20 @@
 }
 
 .admin-sidebar__footer {
-  grid-template-rows: repeat(3, 50px);
+  grid-template-rows: repeat(3, 44px);
   align-content: start;
-  gap: 3px;
-  margin: 0;
+  gap: 2px;
+  margin-top: auto;
   border-color: var(--admin-border);
-  padding: 18px;
+  padding: 10px 12px 12px;
 }
 
 .admin-sidebar__theme,
 .admin-sidebar__profile,
 .admin-sidebar__logout {
-  height: 50px;
-  max-height: 50px;
-  flex: 0 0 50px;
+  height: 44px;
+  max-height: 44px;
+  flex: 0 0 44px;
 }
 
 .admin-sidebar:not(.admin-sidebar--collapsed) .visaguide-logo__text,
@@ -153,9 +156,10 @@
   width: auto;
   max-width: none;
   opacity: 1;
-  overflow: visible;
+  overflow: hidden;
   pointer-events: auto;
-  white-space: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-sidebar__logout { margin-top: 4px; color: var(--admin-accent); }
@@ -169,9 +173,9 @@
 
   .admin-sidebar--collapsed:hover .admin-sidebar__top,
   .admin-sidebar--collapsed:focus-within .admin-sidebar__top {
-    min-height: 112px;
+    min-height: 88px;
     place-content: center;
-    padding: 20px 24px;
+    padding: 14px 17px;
   }
 
   .admin-sidebar--collapsed:hover .admin-sidebar__brand,
@@ -192,18 +196,18 @@
   .admin-sidebar--collapsed:focus-within .admin-sidebar__nav {
     gap: 4px;
     margin: 0;
-    padding: 26px 18px 20px;
+    padding: 20px 12px 16px;
   }
 
   .admin-sidebar--collapsed:hover .admin-sidebar__footer,
   .admin-sidebar--collapsed:focus-within .admin-sidebar__footer {
-    gap: 3px;
-    margin: 0;
-    padding: 18px;
+    gap: 2px;
+    margin-top: auto;
+    padding: 10px 12px 12px;
   }
 }
 
-.admin-workspace { width: calc(100% - 280px); min-width: 0; margin-left: 280px; }
+.admin-workspace { width: calc(100% - var(--admin-sidebar-expanded-width)); min-width: 0; margin-left: var(--admin-sidebar-expanded-width); }
 
 .admin-header {
   position: fixed;
@@ -443,8 +447,8 @@
 [data-theme="dark"] .admin-sidebar__profile.admin-sidebar__link--active { background: var(--vg-bg-alt); color: #fff; }
 
 @media (min-width: 761px) {
-  .admin-sidebar--collapsed { width: 72px; padding: 0; }
-  .admin-shell--sidebar-collapsed .admin-workspace { width: calc(100% - 72px); margin-left: 72px; }
+  .admin-sidebar--collapsed { width: var(--admin-sidebar-collapsed-width); padding: 0; }
+  .admin-shell--sidebar-collapsed .admin-workspace { width: calc(100% - var(--admin-sidebar-collapsed-width)); margin-left: var(--admin-sidebar-collapsed-width); }
   .admin-sidebar--collapsed .admin-sidebar__top { min-height: 90px; padding: 18px 14px; }
   .admin-sidebar--collapsed .admin-sidebar__brand { min-height: 0; padding: 0; }
   .admin-sidebar--collapsed .admin-sidebar__brand .visaguide-logo__mark { width: 42px; height: 42px; }
@@ -464,7 +468,14 @@
 
 @media (max-width: 760px) {
   .admin-shell { display: block; }
-  .admin-sidebar { width: min(300px, 88vw); }
+  .admin-sidebar {
+    width: min(var(--admin-sidebar-expanded-width), calc(100vw - 44px));
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
   .admin-workspace { width: 100%; margin-left: 0; }
   .admin-header { position: sticky; top: 0; right: auto; width: 100%; min-height: 76px; justify-content: space-between; border-width: 0 0 1px; border-radius: 0; padding: 12px 16px; box-shadow: none; }
   .admin-header__actions { gap: 8px; }

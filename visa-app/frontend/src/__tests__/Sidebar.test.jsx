@@ -182,16 +182,11 @@ describe("Sidebar", () => {
     await waitFor(() => expect(screen.queryByText("Verifica tu correo electrónico")).not.toBeInTheDocument());
   });
 
-  it("permite expandir la navegación y activar el modo Senior", async () => {
+  it("deja la expansión al hover y permite activar el modo Senior", async () => {
     const user = userEvent.setup();
     renderSidebar();
 
-    const expand = screen.getByRole("button", { name: "Expandir barra lateral" });
-    await user.click(expand);
-    expect(screen.getByRole("button", { name: "Contraer barra lateral" })).toHaveAttribute(
-      "aria-expanded",
-      "true"
-    );
+    expect(screen.queryByRole("button", { name: /barra lateral/i })).not.toBeInTheDocument();
 
     const senior = screen.getByRole("button", { name: "Alternar modo Senior" });
     expect(screen.getByText("Modo Senior · desactivado")).toHaveClass("vg-sidebar-label");

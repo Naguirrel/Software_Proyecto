@@ -45,7 +45,6 @@ function renderAdvisor(path = "/advisor") {
 
 describe("panel de asesor", () => {
   beforeEach(() => {
-    localStorage.removeItem("vg-advisor-sidebar-collapsed");
     advisorRequest.mockReset();
     advisorRequest.mockImplementation(async (path) => {
       if (path === "/dashboard") return dashboardData;
@@ -86,17 +85,13 @@ describe("panel de asesor", () => {
     }
   });
 
-  test("inicia con la navegación compacta y permite fijarla expandida", async () => {
-    const user = userEvent.setup();
+  test("mantiene la navegación compacta sin control de expansión", async () => {
     renderAdvisor();
 
     await screen.findByText("Solicitudes activas");
     const navigation = screen.getByRole("complementary", { name: "Navegación del panel de asesor" });
     expect(navigation).toHaveClass("admin-sidebar--collapsed");
-
-    await user.click(screen.getByRole("button", { name: "Expandir menú de asesor" }));
-    expect(navigation).not.toHaveClass("admin-sidebar--collapsed");
-    expect(localStorage.getItem("vg-advisor-sidebar-collapsed")).toBe("false");
+    expect(screen.queryByRole("button", { name: /menú de asesor/i })).not.toBeInTheDocument();
   });
 
   test("destaca el acceso al perfil cuando su ruta está activa", async () => {

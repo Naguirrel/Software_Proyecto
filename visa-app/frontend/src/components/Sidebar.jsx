@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  ChevronLeft,
-  ChevronRight,
   Clock3,
   CalendarDays,
   CreditCard,
@@ -49,7 +47,6 @@ export default function Sidebar({ currentPage }) {
   const iconSize = modoSenior ? 28 : 20;
   const rowSenior = modoSenior ? s.rowSenior : null;
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [autoExpandDisabled, setAutoExpandDisabled] = useState(false);
   const sidebarRef = useRef(null);
   const { isDark, toggleTheme } = useTheme();
@@ -136,7 +133,6 @@ export default function Sidebar({ currentPage }) {
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key !== "Escape") return;
-      setDesktopExpanded(false);
       setAutoExpandDisabled(true);
       setMobileOpen(false);
       if (sidebarRef.current?.contains(document.activeElement)) {
@@ -153,7 +149,6 @@ export default function Sidebar({ currentPage }) {
   };
 
   const collapseSidebar = () => {
-    setDesktopExpanded(false);
     setMobileOpen(false);
   };
 
@@ -205,7 +200,7 @@ export default function Sidebar({ currentPage }) {
       <aside
         id="vg-primary-sidebar"
         ref={sidebarRef}
-        className={`vg-sidebar${desktopExpanded ? " vg-sidebar--expanded" : ""}${mobileOpen ? " vg-sidebar--mobile-open" : ""}${autoExpandDisabled ? " vg-sidebar--auto-disabled" : ""}`}
+        className={`vg-sidebar${mobileOpen ? " vg-sidebar--mobile-open" : ""}${autoExpandDisabled ? " vg-sidebar--auto-disabled" : ""}`}
         style={s.sidebar}
         aria-label={t("sidebar.navLabel")}
         onMouseLeave={() => setAutoExpandDisabled(false)}
@@ -218,19 +213,6 @@ export default function Sidebar({ currentPage }) {
           textClassName="vg-sidebar-label"
           subtitle={t("sidebar.subtitle")}
         />
-
-        <button
-          type="button"
-          className="vg-sidebar-expand-button"
-          aria-expanded={desktopExpanded}
-          aria-controls="vg-sidebar-content"
-          aria-label={desktopExpanded ? t("sidebar.collapse") : t("sidebar.expand")}
-          onClick={() => setDesktopExpanded((expanded) => !expanded)}
-        >
-          {desktopExpanded
-            ? <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
-            : <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />}
-        </button>
 
         {/* Nav */}
         <div id="vg-sidebar-content" className="vg-sidebar-content">
@@ -275,7 +257,7 @@ export default function Sidebar({ currentPage }) {
                     to={item.path}
                     style={{ ...s.menuItem, ...rowSenior, ...(isActive ? s.menuItemActive : {}) }}
                     data-tooltip={label}
-                    title={!desktopExpanded ? label : undefined}
+                    title={label}
                     onClick={collapseSidebar}
                     onMouseEnter={() => preloadRoute(item.path)}
                     onFocus={() => preloadRoute(item.path)}

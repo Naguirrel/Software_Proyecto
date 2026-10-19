@@ -17,14 +17,14 @@
 
 @media (min-width: 761px) {
   .advisor-shell .advisor-sidebar {
-    width: 244px;
+    width: var(--admin-sidebar-expanded-width);
     overflow: visible;
     padding: 16px 12px 12px;
   }
 
   .advisor-shell .advisor-workspace {
-    width: calc(100% - 244px);
-    margin-left: 244px;
+    width: calc(100% - var(--admin-sidebar-expanded-width));
+    margin-left: var(--admin-sidebar-expanded-width);
   }
 
   .advisor-shell .admin-sidebar__top {
@@ -33,7 +33,7 @@
   }
 
   .advisor-shell .admin-sidebar__brand {
-    min-height: 76px;
+    min-height: 88px;
     gap: 10px;
     padding: 2px 8px 16px;
   }
@@ -60,11 +60,13 @@
   }
 
   .advisor-shell .admin-sidebar__nav {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     gap: 4px !important;
+    min-height: 0;
     margin-top: 16px;
-    overflow-y: visible;
-    padding-right: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 4px;
   }
 
   .advisor-shell .admin-sidebar__link,
@@ -89,17 +91,17 @@
 
   .advisor-shell .admin-sidebar__footer {
     gap: 2px;
-    margin-top: 8px;
+    margin-top: auto;
     padding-top: 10px;
   }
 
   .advisor-shell.admin-shell--sidebar-collapsed .advisor-workspace {
-    width: calc(100% - 76px);
-    margin-left: 76px;
+    width: calc(100% - var(--admin-sidebar-collapsed-width));
+    margin-left: var(--admin-sidebar-collapsed-width);
   }
 
   .advisor-shell .advisor-sidebar.admin-sidebar--collapsed {
-    width: 76px;
+    width: var(--admin-sidebar-collapsed-width);
     padding: 14px 10px 12px;
   }
 
@@ -140,13 +142,13 @@
 
   .advisor-shell .advisor-sidebar.admin-sidebar--collapsed:hover,
   .advisor-shell .advisor-sidebar.admin-sidebar--collapsed:focus-within {
-    width: 244px;
+    width: var(--admin-sidebar-expanded-width);
     padding: 16px 12px 12px;
   }
 
   .advisor-shell .advisor-sidebar.admin-sidebar--collapsed:hover .admin-sidebar__brand,
   .advisor-shell .advisor-sidebar.admin-sidebar--collapsed:focus-within .admin-sidebar__brand {
-    min-height: 76px;
+    min-height: 88px;
     padding: 2px 8px 16px;
   }
 

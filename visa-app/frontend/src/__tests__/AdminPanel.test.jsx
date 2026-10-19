@@ -475,29 +475,14 @@ describe("panel de administracion", () => {
     expect(screen.getByRole("button", { name: "Activar modo claro" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("permite colapsar el sidebar de escritorio y conserva el estado", async () => {
+  it("mantiene el sidebar compacto sin control de expansión", async () => {
     window.history.pushState({}, "", "/admin");
-    const user = userEvent.setup();
 
-    const { unmount } = render(<App />);
-
-    await screen.findByRole("heading", { name: "Panel de Administración Global" });
-    await user.click(screen.getByRole("button", { name: "Colapsar menu administrativo" }));
-
-    expect(localStorage.getItem("vg-admin-sidebar-collapsed")).toBe("true");
-    expect(document.querySelector(".admin-sidebar")).toHaveClass("admin-sidebar--collapsed");
-    expect(screen.getByRole("button", { name: "Expandir menu administrativo" })).toHaveAttribute("aria-expanded", "false");
-
-    unmount();
     render(<App />);
 
     await screen.findByRole("heading", { name: "Panel de Administración Global" });
     expect(document.querySelector(".admin-sidebar")).toHaveClass("admin-sidebar--collapsed");
-    await user.click(screen.getByRole("button", { name: "Expandir menu administrativo" }));
-
-    expect(localStorage.getItem("vg-admin-sidebar-collapsed")).toBe("false");
-    expect(document.querySelector(".admin-sidebar")).not.toHaveClass("admin-sidebar--collapsed");
-    expect(screen.getByRole("button", { name: "Colapsar menu administrativo" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByRole("button", { name: /^(Expandir|Colapsar) menu administrativo$/i })).not.toBeInTheDocument();
   });
 
   it("presenta la navegación administrativa en el orden del prototipo", async () => {
