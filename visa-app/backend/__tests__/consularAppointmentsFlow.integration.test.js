@@ -68,7 +68,7 @@ describe("integración: módulo de citas consulares", () => {
 
     expect(ctx.findTramite(1)).toMatchObject({ etapa_actual: "Entrevista", progreso: 67 });
     expect(ctx.notificaciones).toHaveLength(1);
-    expect(ctx.notificaciones[0]).toMatchObject({ userId: 1, titulo: "Cita consular registrada", tipo: "entrevista" });
+    expect(ctx.notificaciones[0]).toMatchObject({ userId: 1, titulo: "Cita consular registrada", tipo: "entrevista", prioridad: "normal" });
   });
 
   test("rechaza registrar la cita si el pago consular aún no está confirmado", async () => {
@@ -119,7 +119,7 @@ describe("integración: módulo de citas consulares", () => {
     expect(response.body.appointment).toMatchObject({ reschedule_count: 1, remaining_reschedules: 1 });
     expect(new Date(response.body.appointment.appointment_at).toISOString()).toBe(earlier);
     expect(ctx.state.appointments).toHaveLength(1);
-    expect(ctx.notificaciones[0].titulo).toBe("Cita consular acercada");
+    expect(ctx.notificaciones[0]).toMatchObject({ titulo: "Cita consular acercada", prioridad: "alta" });
   });
 
   test("rechaza mover la cita a una fecha posterior", async () => {
@@ -177,7 +177,7 @@ describe("integración: módulo de citas consulares", () => {
     const cancelled = await cancelAppointment(advisor.token, saved.body.appointment.id);
     expect(cancelled.status).toBe(200);
     expect(cancelled.body.appointment.status).toBe("cancelled");
-    expect(ctx.notificaciones[0].titulo).toBe("Cita consular cancelada");
+    expect(ctx.notificaciones[0]).toMatchObject({ titulo: "Cita consular cancelada", prioridad: "alta" });
 
     const replacement = await putAppointment(advisor.token).send(validBody({ confirmationCode: "SEGUNDA-2", appointmentAt: inDays(40) }));
     expect(replacement.status).toBe(200);

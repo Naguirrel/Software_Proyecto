@@ -1,3 +1,5 @@
+const { sendErrorResponse } = require("../middleware/errorResponse");
+
 function createAdminDocumentController(adminDocumentService, { notificacionService, activityLogService } = {}) {
   function hasOwn(body, key) {
     return Object.prototype.hasOwnProperty.call(body || {}, key);
@@ -17,6 +19,7 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
       return {
         titulo: "Documento aprobado",
         mensaje: `Tu ${documentName} fue aprobado.`,
+        prioridad: "normal",
       };
     }
 
@@ -26,6 +29,7 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
         mensaje: feedbackChanged
           ? `Tu ${documentName} requiere correcciones. Revisa las observaciones del administrador.`
           : `Tu ${documentName} requiere correcciones.`,
+        prioridad: "alta",
       };
     }
 
@@ -33,6 +37,7 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
       return {
         titulo: "Nuevas observaciones en documento",
         mensaje: "El administrador agrego observaciones a uno de tus documentos.",
+        prioridad: "alta",
       };
     }
 
@@ -50,6 +55,7 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
         userId: documento.usuario_id,
         titulo: notification.titulo,
         mensaje: notification.mensaje,
+        prioridad: notification.prioridad,
         tipo: "documento",
         etapaRelacionada: documento.documento_key || `documento-${documento.id}`,
       });
@@ -118,12 +124,10 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
         documento,
       });
     } catch (error) {
-      if (error.statusCode) {
-        return res.status(error.statusCode).json({ error: error.message });
-      }
-
-      console.error("ERROR ADMIN DOCUMENT STATUS:", error);
-      return res.status(500).json({ error: "No fue posible actualizar el documento" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible actualizar el documento",
+        context: "admin_documents.update",
+      });
     }
   }
 

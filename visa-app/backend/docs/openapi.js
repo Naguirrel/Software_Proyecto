@@ -11,7 +11,17 @@ const schemas = {
   Error: {
     type: "object",
     required: ["error"],
-    properties: { error: { type: "string" } },
+    properties: {
+      error: { type: "string" },
+      code: { type: "string", nullable: true },
+      requestId: {
+        type: "string",
+        nullable: true,
+        maxLength: 100,
+        pattern: "^[A-Za-z0-9._:-]+$",
+        description: "Identificador de correlación incluido en errores internos y límites de solicitudes.",
+      },
+    },
   },
   RegisterRequest: {
     type: "object",
@@ -19,7 +29,7 @@ const schemas = {
     properties: {
       nombre: { type: "string" },
       correo: { type: "string", format: "email" },
-      contrasena: { type: "string", format: "password", minLength: 6 },
+      contrasena: { type: "string", format: "password", minLength: 8, description: "Mínimo 8 caracteres, con letras y números." },
     },
   },
   LoginRequest: {
@@ -45,7 +55,7 @@ const schemas = {
     required: ["token", "nuevaContrasena"],
     properties: {
       token: { type: "string" },
-      nuevaContrasena: { type: "string", format: "password", minLength: 6 },
+      nuevaContrasena: { type: "string", format: "password", minLength: 8, description: "Mínimo 8 caracteres, con letras y números." },
     },
   },
   UserEmailRequest: {
@@ -98,6 +108,7 @@ const schemas = {
       mensaje: { type: "string" },
       tipo: { type: "string" },
       etapaRelacionada: { type: "string" },
+      prioridad: { type: "string", enum: ["baja", "normal", "alta"], default: "normal" },
     },
   },
   DocumentStatusRequest: {
@@ -587,6 +598,7 @@ Object.assign(schemas, {
       entity_type: { type: "string", nullable: true },
       entity_id: { type: "integer", nullable: true },
       dedupe_key: { type: "string", nullable: true },
+      prioridad: { type: "string", enum: ["baja", "normal", "alta"], description: "Prioridad visual: alta pide atención o una acción; baja es solo informativa." },
       created_at: { type: "string", format: "date-time" },
       updated_at: { type: "string", format: "date-time" },
     },
@@ -768,6 +780,7 @@ function buildOperation(method, path, tag, summary, auth, body, successStatus = 
         ? { description: "Respuesta correcta", content: { "application/octet-stream": { schema: { type: "string", format: "binary" } } } }
         : { description: "Respuesta correcta", content: { "application/json": { schema: objectSchema } } },
       400: { $ref: "#/components/responses/BadRequest" },
+      429: { $ref: "#/components/responses/TooManyRequests" },
       500: { $ref: "#/components/responses/InternalError" },
     },
   };
@@ -1092,6 +1105,7 @@ module.exports = {
       Unauthorized: { description: "Sesión ausente o inválida", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       Forbidden: { description: "Permisos insuficientes", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       NotFound: { description: "Recurso no encontrado o no asignado al asesor autenticado", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      TooManyRequests: { description: "Límite temporal de solicitudes excedido", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       InternalError: { description: "Error interno", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
     },
   },

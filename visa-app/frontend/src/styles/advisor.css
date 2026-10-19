@@ -273,6 +273,9 @@
 .advisor-notification-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 11px; background: #edf4ff; color: #1d4ed8; }
 .advisor-notification-icon--chat { background: #ecfdf5; color: #047857; }
 .advisor-notification-icon--task, .advisor-notification-icon--alerta { background: #fff1f2; color: #be123c; }
+.advisor-notification-body li.is-priority-alta { border-left: 4px solid var(--vg-danger-text); background: var(--vg-danger-bg); }
+.advisor-notification-body li.is-priority-baja strong { color: var(--vg-text-muted); font-weight: 600; }
+.advisor-notification-content .vg-priority-badge { margin-bottom: 4px; }
 .advisor-notification-content strong, .advisor-notification-content small, .advisor-notification-content time { display: block; }
 .advisor-notification-content small { margin-top: 4px; color: var(--vg-text-muted); line-height: 1.35; }
 .advisor-notification-content time { margin-top: 7px; color: var(--vg-text-muted); font-size: 11px; }

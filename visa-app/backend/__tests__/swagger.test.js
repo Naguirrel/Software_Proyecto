@@ -12,6 +12,14 @@ describe("documentación de la API", () => {
     expect(response.body.openapi).toBe("3.0.3");
     expect(response.body.paths["/login"].post).toBeDefined();
     expect(response.body.paths["/validar-sesion"].get.security).toEqual([{ bearerAuth: [] }]);
+    expect(response.body.paths["/login"].post.responses[429]).toEqual({
+      $ref: "#/components/responses/TooManyRequests",
+    });
+    expect(response.body.components.schemas.Error.properties.requestId).toMatchObject({
+      type: "string",
+      maxLength: 100,
+      pattern: "^[A-Za-z0-9._:-]+$",
+    });
   });
 
   test("sirve Swagger UI", async () => {

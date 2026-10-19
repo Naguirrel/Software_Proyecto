@@ -65,7 +65,7 @@ describe("integración: revisión de documentos por el administrador", () => {
     await request(ctx.app).put(`/admin/documents/${id}/status`).set("Authorization", `Bearer ${admin.token}`).send({ estado: "approved" });
 
     expect(ctx.notificaciones).toHaveLength(1);
-    expect(ctx.notificaciones[0]).toMatchObject({ userId: 1, titulo: "Documento aprobado", tipo: "documento", etapaRelacionada: "pasaporte" });
+    expect(ctx.notificaciones[0]).toMatchObject({ userId: 1, titulo: "Documento aprobado", tipo: "documento", etapaRelacionada: "pasaporte", prioridad: "normal" });
     expect(ctx.activityLogService.logActivity).toHaveBeenCalledWith(expect.objectContaining({
       action: "document.status_updated",
       adminId: 9,
@@ -82,7 +82,7 @@ describe("integración: revisión de documentos por el administrador", () => {
       .put(`/admin/documents/${id}/status`).set("Authorization", `Bearer ${admin.token}`)
       .send({ status: "correction", feedback: "  La foto está borrosa  " });
     expect(correction.status).toBe(200);
-    expect(ctx.notificaciones[0].titulo).toBe("Documento requiere correcciones");
+    expect(ctx.notificaciones[0]).toMatchObject({ titulo: "Documento requiere correcciones", prioridad: "alta" });
     expect(ctx.notificaciones[0].mensaje).toContain("observaciones");
 
     const seenByClient = await request(ctx.app).get("/documentos/1").set("Authorization", `Bearer ${ana.token}`);

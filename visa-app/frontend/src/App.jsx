@@ -3,6 +3,7 @@ import { BrowserRouter, Link, Navigate, Routes, Route, useNavigate, useSearchPar
 import { AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { buildApiUrl } from "./config/api";
 import { setIdiomaPreferido } from "./i18n/translations";
+import { getPasswordError, PASSWORD_HINT } from "./utils/passwordPolicy";
 import AuthLayout from "./components/auth/AuthLayout";
 import RequireAdmin from "./components/admin/RequireAdmin";
 import RequireStaff from "./components/RequireStaff";
@@ -362,7 +363,8 @@ function ResetPassword() {
 
   const validate = () => {
     if (!token) { setError("El enlace de recuperación no es válido"); return false; }
-    if (!nuevaContrasena.trim() || nuevaContrasena.length < 4) { setError("La contraseña debe tener al menos 4 caracteres"); return false; }
+    const passwordError = getPasswordError(nuevaContrasena);
+    if (passwordError) { setError(passwordError); return false; }
     if (nuevaContrasena !== confirmarContrasena) { setError("Las contraseñas no coinciden"); return false; }
     return true;
   };
@@ -398,7 +400,7 @@ function ResetPassword() {
       {success && <div className="auth-message auth-message--success" role="status" aria-live="polite"><CheckCircle2 aria-hidden="true" /><span>{success}</span></div>}
 
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
-        <PasswordField id="reset-contrasena" label="Nueva contraseña" value={nuevaContrasena} onChange={setNuevaContrasena} visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} disabled={isLoading} />
+        <PasswordField id="reset-contrasena" label="Nueva contraseña" hint={PASSWORD_HINT} value={nuevaContrasena} onChange={setNuevaContrasena} visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} disabled={isLoading} />
         <PasswordField id="reset-confirmacion" label="Confirmar contraseña" value={confirmarContrasena} onChange={setConfirmarContrasena} visible={showConfirmation} onToggle={() => setShowConfirmation((visible) => !visible)} disabled={isLoading} />
         <button className="auth-submit" type="submit" disabled={isLoading}>
           {isLoading ? <><Loader2 className="auth-spinner" aria-hidden="true" /> Guardando...</> : <>Guardar contraseña <ArrowRight aria-hidden="true" /></>}
@@ -444,7 +446,8 @@ function Registro() {
   const validate = () => {
     if (!nombre.trim()) { setError("El nombre es obligatorio"); return false; }
     if (!correo.trim() || !correo.includes("@") || !correo.includes(".")) { setError("Ingresa un correo válido"); return false; }
-    if (!contrasena.trim() || contrasena.length < 4) { setError("La contraseña debe tener al menos 4 caracteres"); return false; }
+    const passwordError = getPasswordError(contrasena);
+    if (passwordError) { setError(passwordError); return false; }
     if (contrasena !== confirmarContrasena) { setError("Las contraseñas no coinciden"); return false; }
     return true;
   };
@@ -484,7 +487,7 @@ function Registro() {
       <form className="auth-form auth-form--register" onSubmit={handleRegister} noValidate>
         <div className="auth-field"><label htmlFor="registro-nombre">Nombre completo</label><input id="registro-nombre" type="text" autoComplete="name" placeholder="Juan Pérez" value={nombre} onChange={(e) => setNombre(e.target.value)} disabled={isLoading} /></div>
         <div className="auth-field"><label htmlFor="registro-correo">Correo electrónico</label><input id="registro-correo" type="email" autoComplete="email" placeholder="tu@correo.com" value={correo} onChange={(e) => setCorreo(e.target.value)} disabled={isLoading} /></div>
-        <PasswordField id="registro-contrasena" label="Contraseña" value={contrasena} onChange={setContrasena} visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} disabled={isLoading} />
+        <PasswordField id="registro-contrasena" label="Contraseña" hint={PASSWORD_HINT} value={contrasena} onChange={setContrasena} visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} disabled={isLoading} />
         <PasswordField id="registro-confirmacion" label="Confirmar contraseña" value={confirmarContrasena} onChange={setConfirmarContrasena} visible={showConfirmation} onToggle={() => setShowConfirmation((visible) => !visible)} disabled={isLoading} />
         <button className="auth-submit" type="submit" disabled={isLoading}>
           {isLoading ? <><Loader2 className="auth-spinner" aria-hidden="true" /> Creando cuenta...</> : <>Crear cuenta <ArrowRight aria-hidden="true" /></>}
@@ -631,16 +634,17 @@ function UnlockAccount() {
   );
 }
 
-function PasswordField({ id, label, value, onChange, visible, onToggle, disabled }) {
+function PasswordField({ id, label, value, onChange, visible, onToggle, disabled, hint }) {
   return (
     <div className="auth-field">
       <label htmlFor={id}>{label}</label>
       <div className="auth-password">
-        <input id={id} type={visible ? "text" : "password"} autoComplete="new-password" placeholder="••••••••" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} />
+        <input id={id} type={visible ? "text" : "password"} autoComplete="new-password" placeholder="••••••••" aria-describedby={hint ? `${id}-hint` : undefined} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} />
         <button type="button" onClick={onToggle} aria-label={visible ? `Ocultar ${label.toLowerCase()}` : `Mostrar ${label.toLowerCase()}`} aria-pressed={visible} disabled={disabled}>
           {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
         </button>
       </div>
+      {hint && <p id={`${id}-hint`} className="auth-hint">{hint}</p>}
     </div>
   );
 }

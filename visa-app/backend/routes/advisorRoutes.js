@@ -4,6 +4,7 @@ const createInterviewSessionService = require("../services/interviewSessionServi
 const { createQuestionBankService } = require("../services/questionBankService");
 const createAdvisorCommunicationService = require("../services/advisorCommunicationService");
 const createProcessChangeHistoryService = require("../services/processChangeHistoryService");
+const { sendErrorResponse } = require("../middleware/errorResponse");
 
 const VALID_PROCESS_STATES = new Set(["En proceso", "Pendiente", "Aprobado", "Inactivo", "Completado"]);
 const PROCESS_STAGES = {
@@ -19,8 +20,10 @@ const PROCESS_STAGES = {
 const VALID_DS160_STATES = new Set(["en_progreso", "por_revisar", "correccion", "aprobado"]);
 
 function handleError(res, error, fallback = "No fue posible procesar la solicitud") {
-  if (!error.statusCode || error.statusCode >= 500) console.error("ADVISOR MODULE ERROR:", error);
-  return res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : fallback });
+  return sendErrorResponse(null, res, error, {
+    fallback,
+    context: "advisor.request",
+  });
 }
 
 function presentProcess(row) {
@@ -320,12 +323,14 @@ module.exports = function createAdvisorRoutes(pool, {
           mensaje: `Tu trámite cambió a ${updated.estado}.`,
           tipo: "info",
           etapaRelacionada: `tramite-${processId}-estado`,
+          prioridad: "baja",
         });
       }
       if (current.etapa_actual !== updated.etapa_actual) {
         await notificacionService?.notificarCambioEtapa(
           updated.id_usuario, updated.etapa_actual, `Nueva etapa: ${updated.etapa_actual}`,
-          `Tu trámite avanzó a la etapa: ${updated.etapa_actual}.`
+          `Tu trámite avanzó a la etapa: ${updated.etapa_actual}.`,
+          "baja"
         );
       }
       await logAdvisorAction(req, { userId: updated.id_usuario, action: "advisor.process_updated", entityType: "tramite", entityId: processId, description: `Solicitud actualizada: ${estado} · ${etapaActual}` });
@@ -354,6 +359,7 @@ module.exports = function createAdvisorRoutes(pool, {
         mensaje: approved ? `Tu ${document.nombre} fue aprobado.` : `Tu ${document.nombre} requiere correcciones. Revisa las observaciones de tu asesor.`,
         tipo: "documento",
         etapaRelacionada: document.documento_key || `documento-${document.id}`,
+        prioridad: approved ? "normal" : "alta",
       });
       await logAdvisorAction(req, { userId: document.usuario_id, action: "advisor.document_reviewed", entityType: "documento", entityId: document.id, description: `${document.nombre}: ${document.estado}` });
       return res.json({ document });
@@ -388,6 +394,7 @@ module.exports = function createAdvisorRoutes(pool, {
         titulo: status === "aprobado" ? "Formulario DS-160 aprobado" : "Revisión de formulario DS-160",
         mensaje: status === "aprobado" ? "Tu formulario DS-160 fue aprobado por tu asesor." : "Tu asesor actualizó la revisión de tu formulario DS-160.",
         tipo: "info", etapaRelacionada: `ds160-${formId}`,
+        prioridad: status === "aprobado" ? "normal" : "alta",
       });
       await logAdvisorAction(req, { userId: result.rows[0].id_usuario, action: "advisor.ds160_reviewed", entityType: "formulario_ds160", entityId: formId, description: `DS-160 actualizado: ${status}` });
       return res.json({ message: "Formulario actualizado correctamente" });

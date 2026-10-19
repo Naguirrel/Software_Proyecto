@@ -1,14 +1,11 @@
+const { sendErrorResponse } = require("../middleware/errorResponse");
+
 function createQuestionBankController(questionBankService) {
   function handleError(res, error) {
-    const status = error.statusCode || 500;
-    const message =
-      status === 500 ? "Error interno al procesar preguntas" : error.message;
-
-    if (status === 500) {
-      console.error("QUESTION BANK ERROR:", error);
-    }
-
-    return res.status(status).json({ error: message });
+    return sendErrorResponse(null, res, error, {
+      fallback: "Error interno al procesar preguntas",
+      context: "question_bank.request",
+    });
   }
 
   async function listQuestions(req, res) {

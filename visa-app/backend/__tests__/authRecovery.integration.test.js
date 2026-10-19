@@ -151,6 +151,24 @@ describe("integración: recuperación de contraseña", () => {
     const actions = activityLogService.logActivity.mock.calls.map(([entry]) => entry.action);
     expect(actions).toContain("user.password_reset_requested");
   });
+  test("una contraseña nueva que no cumple la política se rechaza sin gastar el token ni cambiar la clave (SP10-05)", async () => {
+    const { mailbox } = context;
+    await registerUser(api);
+    mailbox.length = 0;
+    await api.post("/forgot-password").send({ correo: USER.correo });
+    const token = extractTokenFromMail(mailbox[0]);
+
+    for (const nuevaContrasena of ["abcdef1", "12345678", "abcdefgh"]) {
+      const weak = await api.post("/reset-password").send({ token, nuevaContrasena });
+      expect([nuevaContrasena, weak.status]).toEqual([nuevaContrasena, 400]);
+      expect(weak.body.error).toBe("La contraseña debe tener al menos 8 caracteres e incluir letras y números");
+    }
+    const stillOriginal = await api.post("/login").send({ correo: USER.correo, contrasena: USER.contrasena });
+    expect(stillOriginal.status).toBe(200);
+
+    const valid = await api.post("/reset-password").send({ token, nuevaContrasena: "clave-nueva-2" });
+    expect(valid.status).toBe(200);
+  });
 });
 
 describe("integración: verificación de correo", () => {
@@ -262,4 +280,5 @@ describe("integración: verificación de correo", () => {
       await customServer.close();
     }
   });
+
 });

@@ -337,6 +337,7 @@ CREATE TABLE IF NOT EXISTS notificaciones (
   entity_type VARCHAR(80),
   entity_id BIGINT,
   dedupe_key VARCHAR(240),
+  prioridad VARCHAR(10) NOT NULL DEFAULT 'normal' CHECK (prioridad IN ('baja', 'normal', 'alta')),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -3,6 +3,9 @@ import { buildApiUrl } from "../config/api";
 import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
+import useIdioma from "../hooks/useIdioma";
+import NotificationPriorityBadge from "../components/NotificationPriorityBadge";
+import { getNotificationPriority } from "../utils/notificationPriority";
 import { buildSessionHeaders } from "../utils/sessionAuth";
 
 const TIPO_CONFIG = {
@@ -27,6 +30,7 @@ function formatFecha(dateStr) {
 export default function Notificaciones() {
   const { isValidating, session } = useRequireAuth();
   const modoSenior = useModoSenior();
+  const { t } = useIdioma();
 
   const [notificaciones, setNotificaciones] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -207,20 +211,27 @@ export default function Notificaciones() {
           <div style={s.lista}>
             {notificaciones.map((n) => {
               const cfg = TIPO_CONFIG[n.tipo] || TIPO_CONFIG.info;
+              const prioridad = getNotificationPriority(n);
+              const esAlta = prioridad === "alta";
               return (
                 <div
                   key={n.id}
                   className="client-notification-card"
+                  data-priority={prioridad}
                   style={{
                     ...s.card,
-                    backgroundColor: n.leido ? "var(--vg-card)" : "var(--vg-info-bg)",
-                    borderLeft: n.leido ? "4px solid var(--vg-border-mid)" : "4px solid var(--vg-red)",
+                    backgroundColor: esAlta ? "var(--vg-danger-bg)" : n.leido ? "var(--vg-card)" : "var(--vg-info-bg)",
+                    borderLeft: esAlta
+                      ? "4px solid var(--vg-danger-text)"
+                      : n.leido ? "4px solid var(--vg-border-mid)" : "4px solid var(--vg-red)",
+                    opacity: prioridad === "baja" && n.leido ? 0.8 : 1,
                   }}
                 >
                   {!n.leido && <span style={s.puntoPendiente} />}
 
                   <div style={s.cardBody}>
                     <div style={s.cardTop} data-senior-priority="secondary">
+                      <NotificationPriorityBadge priority={prioridad} label={t(`notifications.priority.${prioridad}`)} />
                       <span style={{ ...s.tipoBadge, background: cfg.bg, color: cfg.color, fontSize: fs(11) }}>
                         {cfg.label}
                       </span>

@@ -4,6 +4,10 @@ const VALID_NOTIFICATION_TYPES = new Set([
   "info", "etapa", "documento", "entrevista", "alerta", "chat", "assignment", "ds160", "task",
 ]);
 
+// Prioridad visual (RF-16): "alta" pide atención o una acción del usuario, "baja" es solo informativa.
+const VALID_NOTIFICATION_PRIORITIES = new Set(["baja", "normal", "alta"]);
+const DEFAULT_NOTIFICATION_PRIORITY = "normal";
+
 function normalizeOptionalText(value, maxLength) {
   const normalized = String(value || "").trim();
   return normalized ? normalized.slice(0, maxLength) : null;
@@ -36,6 +40,7 @@ function createNotificacionService(pool) {
         entity_type VARCHAR(80),
         entity_id BIGINT,
         dedupe_key VARCHAR(240),
+        prioridad VARCHAR(10) NOT NULL DEFAULT 'normal' CHECK (prioridad IN ('baja', 'normal', 'alta')),
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
@@ -47,7 +52,21 @@ function createNotificacionService(pool) {
         ADD COLUMN IF NOT EXISTS action_url VARCHAR(500),
         ADD COLUMN IF NOT EXISTS entity_type VARCHAR(80),
         ADD COLUMN IF NOT EXISTS entity_id BIGINT,
-        ADD COLUMN IF NOT EXISTS dedupe_key VARCHAR(240)
+        ADD COLUMN IF NOT EXISTS dedupe_key VARCHAR(240),
+        ADD COLUMN IF NOT EXISTS prioridad VARCHAR(10) NOT NULL DEFAULT 'normal'
+    `);
+
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'notificaciones_prioridad_check' AND conrelid = 'notificaciones'::regclass
+        ) THEN
+          ALTER TABLE notificaciones
+            ADD CONSTRAINT notificaciones_prioridad_check CHECK (prioridad IN ('baja', 'normal', 'alta'));
+        END IF;
+      END $$
     `);
 
     await pool.query(`
@@ -140,7 +159,7 @@ function createNotificacionService(pool) {
 
     const result = await pool.query(
       `SELECT id, id_usuario, titulo, mensaje, tipo, leido, archivado, etapa_relacionada,
-              action_url, entity_type, entity_id, dedupe_key,
+              action_url, entity_type, entity_id, dedupe_key, prioridad,
               created_at, updated_at
        FROM notificaciones
        WHERE ${where.join(" AND ")}
@@ -183,7 +202,7 @@ function createNotificacionService(pool) {
        SET leido = TRUE, updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND id_usuario = $2
        RETURNING id, id_usuario, titulo, mensaje, tipo, leido, archivado, etapa_relacionada,
-                 action_url, entity_type, entity_id, dedupe_key,
+                 action_url, entity_type, entity_id, dedupe_key, prioridad,
                  created_at, updated_at`,
       [nid, uid]
     );
@@ -204,7 +223,7 @@ function createNotificacionService(pool) {
        SET archivado = TRUE, leido = TRUE, updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND id_usuario = $2
        RETURNING id, id_usuario, titulo, mensaje, tipo, leido, archivado, etapa_relacionada,
-                 action_url, entity_type, entity_id, dedupe_key, created_at, updated_at`,
+                 action_url, entity_type, entity_id, dedupe_key, prioridad, created_at, updated_at`,
       [parseId(id), parseUserId(userId)]
     );
     if (!result.rows.length) {
@@ -281,6 +300,7 @@ function createNotificacionService(pool) {
     entityType = null,
     entityId = null,
     dedupeKey = null,
+    prioridad = DEFAULT_NOTIFICATION_PRIORITY,
   }) {
     await ensureSchema();
     const uid = parseUserId(userId);
@@ -300,6 +320,7 @@ function createNotificacionService(pool) {
     }
 
     const tipoFinal = VALID_NOTIFICATION_TYPES.has(tipo) ? tipo : "info";
+    const prioridadFinal = VALID_NOTIFICATION_PRIORITIES.has(prioridad) ? prioridad : DEFAULT_NOTIFICATION_PRIORITY;
     const normalizedEntityId = entityId === null || entityId === undefined || entityId === ""
       ? null
       : parseId(entityId);
@@ -312,12 +333,12 @@ function createNotificacionService(pool) {
     const result = hasRealtimeMetadata
       ? await pool.query(
         `INSERT INTO notificaciones AS existing
-           (id_usuario, titulo, mensaje, tipo, etapa_relacionada, action_url, entity_type, entity_id, dedupe_key)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           (id_usuario, titulo, mensaje, tipo, etapa_relacionada, action_url, entity_type, entity_id, dedupe_key, prioridad)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id_usuario, dedupe_key) WHERE dedupe_key IS NOT NULL
          DO UPDATE SET titulo = EXCLUDED.titulo, mensaje = EXCLUDED.mensaje, tipo = EXCLUDED.tipo,
            etapa_relacionada = EXCLUDED.etapa_relacionada, action_url = EXCLUDED.action_url,
-           entity_type = EXCLUDED.entity_type, entity_id = EXCLUDED.entity_id,
+           entity_type = EXCLUDED.entity_type, entity_id = EXCLUDED.entity_id, prioridad = EXCLUDED.prioridad,
            leido = FALSE, archivado = FALSE, created_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
          WHERE existing.titulo IS DISTINCT FROM EXCLUDED.titulo
             OR existing.mensaje IS DISTINCT FROM EXCLUDED.mensaje
@@ -326,20 +347,21 @@ function createNotificacionService(pool) {
             OR existing.action_url IS DISTINCT FROM EXCLUDED.action_url
             OR existing.entity_type IS DISTINCT FROM EXCLUDED.entity_type
             OR existing.entity_id IS DISTINCT FROM EXCLUDED.entity_id
+            OR existing.prioridad IS DISTINCT FROM EXCLUDED.prioridad
          RETURNING id, id_usuario, titulo, mensaje, tipo, leido, archivado, etapa_relacionada,
-                   action_url, entity_type, entity_id, dedupe_key,
+                   action_url, entity_type, entity_id, dedupe_key, prioridad,
                    created_at, updated_at`,
         [
           uid, titulo.trim(), mensaje.trim(), tipoFinal, normalizedStage,
-          normalizedActionUrl, normalizedEntityType, normalizedEntityId, normalizedDedupeKey,
+          normalizedActionUrl, normalizedEntityType, normalizedEntityId, normalizedDedupeKey, prioridadFinal,
         ]
       )
       : await pool.query(
-        `INSERT INTO notificaciones (id_usuario, titulo, mensaje, tipo, etapa_relacionada)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO notificaciones (id_usuario, titulo, mensaje, tipo, etapa_relacionada, prioridad)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, id_usuario, titulo, mensaje, tipo, leido, archivado, etapa_relacionada,
-                   action_url, entity_type, entity_id, dedupe_key, created_at, updated_at`,
-        [uid, titulo.trim(), mensaje.trim(), tipoFinal, normalizedStage]
+                   action_url, entity_type, entity_id, dedupe_key, prioridad, created_at, updated_at`,
+        [uid, titulo.trim(), mensaje.trim(), tipoFinal, normalizedStage, prioridadFinal]
       );
 
     const notification = result.rows[0] || null;
@@ -432,6 +454,7 @@ function createNotificacionService(pool) {
         entityType: "advisor_task",
         entityId: task.id,
         dedupeKey: `advisor:${normalizedAdvisorId}:task:${task.id}:deadline`,
+        prioridad: overdue ? "alta" : "normal",
       });
       if (reminder) reminders.push(reminder);
     }
@@ -455,7 +478,7 @@ function createNotificacionService(pool) {
     return result.rows.length > 0;
   }
 
-  async function notificarCambioEtapa(userId, etapaRelacionada, titulo, mensaje) {
+  async function notificarCambioEtapa(userId, etapaRelacionada, titulo, mensaje, prioridad = DEFAULT_NOTIFICATION_PRIORITY) {
     const yaExiste = await existeNotificacionEtapa(userId, etapaRelacionada);
     if (yaExiste) return null;
 
@@ -465,6 +488,7 @@ function createNotificacionService(pool) {
       mensaje,
       tipo: "etapa",
       etapaRelacionada,
+      prioridad,
     });
   }
 
@@ -490,3 +514,4 @@ function createNotificacionService(pool) {
 
 module.exports = createNotificacionService;
 module.exports.VALID_NOTIFICATION_TYPES = VALID_NOTIFICATION_TYPES;
+module.exports.VALID_NOTIFICATION_PRIORITIES = VALID_NOTIFICATION_PRIORITIES;

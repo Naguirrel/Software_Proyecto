@@ -1,14 +1,11 @@
+const { sendErrorResponse } = require("../middleware/errorResponse");
+
 function createNotificacionController(notificacionService) {
   function handleError(res, error) {
-    const status = error.statusCode || 500;
-    const message =
-      status === 500 ? "Error interno al procesar notificaciones" : error.message;
-
-    if (status === 500) {
-      console.error("NOTIFICACION ERROR:", error);
-    }
-
-    return res.status(status).json({ error: message });
+    return sendErrorResponse(null, res, error, {
+      fallback: "Error interno al procesar notificaciones",
+      context: "notifications.request",
+    });
   }
 
   async function listar(req, res) {
@@ -86,7 +83,7 @@ function createNotificacionController(notificacionService) {
 
   async function crear(req, res) {
     try {
-      const { userId, titulo, mensaje, tipo, etapaRelacionada } = req.body;
+      const { userId, titulo, mensaje, tipo, etapaRelacionada, prioridad } = req.body;
       if (!userId) {
         return res.status(400).json({ error: "userId requerido" });
       }
@@ -96,6 +93,7 @@ function createNotificacionController(notificacionService) {
         mensaje,
         tipo,
         etapaRelacionada,
+        prioridad,
       });
       return res.status(201).json({
         message: "Notificación creada correctamente",

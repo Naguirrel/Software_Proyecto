@@ -821,6 +821,43 @@ img, video, canvas, svg {
   opacity: .68;
 }
 
+.vg-notification-list .vg-priority-badge {
+  margin-bottom: 6px;
+}
+
+.vg-notification-list li.is-priority-alta {
+  border-left: 4px solid var(--vg-danger-text);
+  background: var(--vg-danger-bg);
+}
+
+.vg-notification-list li.is-priority-baja strong {
+  color: var(--vg-text-muted);
+  font-weight: 600;
+}
+
+.vg-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.vg-priority-badge--alta {
+  background: var(--vg-danger-bg);
+  color: var(--vg-danger-text);
+  border: 1px solid var(--vg-danger-text);
+}
+
+.vg-priority-badge--baja {
+  background: var(--vg-bg-alt);
+  color: var(--vg-text-muted);
+  border: 1px solid var(--vg-border);
+}
+
 .vg-notification-list strong {
   display: block;
   margin-bottom: 4px;

@@ -26,8 +26,39 @@ describe("question bank seed catalog", () => {
     expect(seedCall[0]).toContain("WHERE NOT EXISTS");
     expect(seedCall[0]).toContain("LOWER(TRIM(existing.question))");
     expect(seedCall[0]).toContain("::boolean");
-    expect(seedCall[1]).toHaveLength(SEED_QUESTIONS.length * 4);
+    expect(seedCall[1]).toHaveLength(SEED_QUESTIONS.length * (4 + EXAMPLE_FIELDS.length));
     expect(pool.query.mock.calls.some(([sql]) => String(sql).includes("DELETE FROM question_bank"))).toBe(false);
+  });
+
+  test("gives every seed question non-empty strong and weak examples within the length limit", () => {
+    for (const item of SEED_QUESTIONS) {
+      for (const field of EXAMPLE_FIELDS) {
+        expect({ question: item.question, field, ok: typeof item[field] === "string" && item[field].trim().length > 0 })
+          .toEqual({ question: item.question, field, ok: true });
+        expect(item[field].length).toBeLessThanOrEqual(2000);
+      }
+      expect(item.ejemplo_fuerte).not.toBe(item.ejemplo_debil);
+    }
+  });
+
+  test("sends the examples with each seed question and only fills existing questions without examples", async () => {
+    const pool = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+    await createQuestionBankService(pool).seedInitialQuestions();
+
+    const [sql, values] = pool.query.mock.calls.find(([query]) => String(query).includes("WITH seed_questions"));
+    const firstRow = values.slice(0, 4 + EXAMPLE_FIELDS.length);
+    expect(firstRow).toEqual([
+      SEED_QUESTIONS[0].question,
+      SEED_QUESTIONS[0].category,
+      SEED_QUESTIONS[0].difficulty,
+      SEED_QUESTIONS[0].is_required,
+      ...EXAMPLE_FIELDS.map((field) => SEED_QUESTIONS[0][field]),
+    ]);
+    expect(sql).toContain("UPDATE question_bank existing");
+    for (const field of EXAMPLE_FIELDS) {
+      expect(sql).toContain(`existing.${field} IS NULL`);
+    }
+    expect(sql).toContain("INSERT INTO question_bank (question, category, difficulty, is_required, ejemplo_fuerte");
   });
 });
 

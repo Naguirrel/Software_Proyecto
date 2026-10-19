@@ -144,7 +144,7 @@ describe("integración: módulo de pagos consulares", () => {
         amount_cents: PACKAGE_GTQ_MINOR, currency: "gtq", included_consular_fee_usd_cents: CONSULAR_FEE_USD_CENTS,
         visa_profile_key: "turismo_negocios", visa_profile_label: "Turismo y negocios B1/B2", transfer_reference: "TRX-1001" });
       expect(fakeStorage.files.size).toBe(1);
-      expect(ctx.notificaciones).toEqual([expect.objectContaining({ userId: 10, titulo: "Transferencia pendiente de validación" })]);
+      expect(ctx.notificaciones).toEqual([expect.objectContaining({ userId: 10, titulo: "Transferencia pendiente de validación", prioridad: "alta" })]);
 
       const summary = await auth(request(ctx.app).get("/payments/me"), ana.token);
       expect(summary.body).toMatchObject({ transferPending: true, paid: false, customerPaid: false, consularPaid: false });
@@ -215,7 +215,7 @@ describe("integración: módulo de pagos consulares", () => {
       expect(rechazo.status).toBe(200);
       expect(rechazo.body.payment).toMatchObject({ status: "transfer_rejected", transfer_rejection_reason: "Comprobante ilegible",
         transfer_reviewed_by: 10, paid_at: null });
-      expect(ctx.notificaciones).toContainEqual(expect.objectContaining({ userId: 1, titulo: "Comprobante rechazado",
+      expect(ctx.notificaciones).toContainEqual(expect.objectContaining({ userId: 1, titulo: "Comprobante rechazado", prioridad: "alta",
         mensaje: expect.stringContaining("Comprobante ilegible") }));
       expect(ctx.findTramite(1)).toMatchObject({ etapa_actual: "Documentos", progreso: 34 });
 

@@ -1,5 +1,6 @@
 const multer = require("multer");
 const path = require("path");
+const { sendErrorResponse } = require("./middleware/errorResponse");
 
 const FILE_SIZE_LIMIT_MB = 5;
 const FILE_SIZE_LIMIT_BYTES = FILE_SIZE_LIMIT_MB * 1024 * 1024;
@@ -108,7 +109,10 @@ function handleUploadError(error, _req, res, next) {
   }
 
   if (error.statusCode) {
-    return res.status(error.statusCode).json({ error: error.message });
+    return sendErrorResponse(_req, res, error, {
+      fallback: "No se pudo procesar el archivo adjunto",
+      context: "upload.middleware",
+    });
   }
 
   return next(error);

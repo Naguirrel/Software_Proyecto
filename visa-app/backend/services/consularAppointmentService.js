@@ -91,7 +91,8 @@ function createConsularAppointmentService(pool, { notificacionService, paymentSe
       await advanceProcess(parsedUserId);
       const wasRescheduled = Boolean(current && new Date(current.appointment_at).getTime() !== date.getTime());
       await notify(parsedUserId, wasRescheduled ? "Cita consular acercada" : "Cita consular registrada",
-        `Tu asesor registró tu cita para ${date.toLocaleString("es-GT", { timeZone: "America/Guatemala" })}.`);
+        `Tu asesor registró tu cita para ${date.toLocaleString("es-GT", { timeZone: "America/Guatemala" })}.`,
+        wasRescheduled ? "alta" : "normal");
       return result.rows[0];
     } catch (error) {
       if (error.code === "23505") throw httpError("Ese número de confirmación ya está registrado", 409);
@@ -108,7 +109,7 @@ function createConsularAppointmentService(pool, { notificacionService, paymentSe
       updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND user_id=$2 AND status='scheduled'
       RETURNING id,consulate,appointment_at,status,confirmation_code,notes,created_at,updated_at,cancelled_at`, [parsedId, parsedUserId]);
     if (!result.rows.length) throw httpError("Cita activa no encontrada", 404);
-    await notify(parsedUserId, "Cita consular cancelada", "Tu asesor registró la cancelación de la cita consular.");
+    await notify(parsedUserId, "Cita consular cancelada", "Tu asesor registró la cancelación de la cita consular.", "alta");
     return result.rows[0];
   }
 
@@ -120,8 +121,8 @@ function createConsularAppointmentService(pool, { notificacionService, paymentSe
       WHERE tramite.progreso<67`, [userId]);
   }
 
-  async function notify(userId, title, message) {
-    try { await notificacionService?.crearNotificacion({ userId, titulo: title, mensaje: message, tipo: "entrevista" }); }
+  async function notify(userId, title, message, prioridad = "normal") {
+    try { await notificacionService?.crearNotificacion({ userId, titulo: title, mensaje: message, tipo: "entrevista", prioridad }); }
     catch (error) { console.error("CONSULAR APPOINTMENT NOTIFICATION ERROR:", error); }
   }
 

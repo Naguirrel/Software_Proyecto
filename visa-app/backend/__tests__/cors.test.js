@@ -52,11 +52,17 @@ describe("CORS configuration", () => {
     expect(callback).toHaveBeenCalledWith(null, false);
   });
 
-  test("supports PATCH and authorization preflights", () => {
+  test("supports PATCH, authorization and observable diagnostic headers", () => {
     const options = createCorsOptions({ NODE_ENV: "development" });
 
     expect(options.methods).toContain("PATCH");
-    expect(options.allowedHeaders).toEqual(["Authorization", "Content-Type"]);
+    expect(options.allowedHeaders).toEqual(["Authorization", "Content-Type", "X-Request-Id"]);
+    expect(options.exposedHeaders).toEqual([
+      "X-Request-Id",
+      "RateLimit",
+      "RateLimit-Policy",
+      "Retry-After",
+    ]);
     expect(options.credentials).toBe(false);
   });
 });

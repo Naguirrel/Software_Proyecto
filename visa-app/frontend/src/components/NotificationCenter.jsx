@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
 import useIdioma from "../hooks/useIdioma";
+import NotificationPriorityBadge from "./NotificationPriorityBadge";
+import { getNotificationPriority } from "../utils/notificationPriority";
 
 export default function NotificationCenter({ userId, unreadCount = 0 }) {
   const { t } = useIdioma();
@@ -163,23 +165,27 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
               <p className="vg-notification-empty">{t("notifications.empty")}</p>
             ) : (
               <ul className="vg-notification-list">
-                {notifications.map((notification) => (
-                  <li key={notification.id} className={notification.leido ? "" : "is-unread"}>
-                    <button
-                      type="button"
-                      className="vg-notification-item"
-                      disabled={busyId === notification.id}
-                      onClick={() => openNotification(notification)}
-                      aria-label={`${notification.leido ? "Abrir" : "Leer"}: ${notification.titulo}`}
-                    >
-                      <strong>{notification.titulo}</strong>
-                      {notification.mensaje && <p>{notification.mensaje}</p>}
-                      {!notification.action_url && (
-                        <small>{busyId === notification.id ? "Actualizando…" : "Pulsa para quitar este aviso pendiente"}</small>
-                      )}
-                    </button>
-                  </li>
-                ))}
+                {notifications.map((notification) => {
+                  const priority = getNotificationPriority(notification);
+                  return (
+                    <li key={notification.id} className={[notification.leido ? "" : "is-unread", `is-priority-${priority}`].filter(Boolean).join(" ")}>
+                      <button
+                        type="button"
+                        className="vg-notification-item"
+                        disabled={busyId === notification.id}
+                        onClick={() => openNotification(notification)}
+                        aria-label={`${notification.leido ? "Abrir" : "Leer"}: ${notification.titulo}`}
+                      >
+                        <NotificationPriorityBadge priority={priority} label={t(`notifications.priority.${priority}`)} />
+                        <strong>{notification.titulo}</strong>
+                        {notification.mensaje && <p>{notification.mensaje}</p>}
+                        {!notification.action_url && (
+                          <small>{busyId === notification.id ? "Actualizando…" : "Pulsa para quitar este aviso pendiente"}</small>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

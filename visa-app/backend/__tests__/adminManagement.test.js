@@ -363,6 +363,7 @@ describe("admin management integration", () => {
         "Se te asigno un asesor para acompanar tu tramite.",
         "info",
         "tramite-22-asesor",
+        "normal",
       ]
     );
   });

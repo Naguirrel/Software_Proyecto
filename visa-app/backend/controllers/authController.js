@@ -1,6 +1,8 @@
 const { issueSessionToken } = require("../auth");
 const { createSafeEmailSender } = require("../services/emailReminderService");
 const { accountLocked } = require("../templates/emailTemplates");
+const { sendErrorResponse } = require("../middleware/errorResponse");
+const { validatePassword } = require("../services/passwordPolicy");
 
 function getFrontendBaseUrl(env = process.env) {
   if (env.FRONTEND_URL) return env.FRONTEND_URL.replace(/\/+$/, "");
@@ -105,6 +107,11 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       return res.status(400).json({ error: "Correo inválido" });
     }
 
+    const passwordError = validatePassword(contrasena);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+
     try {
       const usuarioRow = await authService.createUser({
         nombre: String(nombre).trim(),
@@ -139,11 +146,10 @@ function createAuthController(authService, { activityLogService, testUsersReady,
         token: issueSessionToken(usuario),
       });
     } catch (error) {
-      if (error.statusCode === 409) {
-        return res.status(409).json({ error: error.message });
-      }
-      console.error("ERROR REGISTER:", error);
-      return res.status(500).json({ error: "No fue posible registrar el usuario" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible registrar el usuario",
+        context: "auth.register",
+      });
     }
   }
 
@@ -203,8 +209,10 @@ function createAuthController(authService, { activityLogService, testUsersReady,
         token: issueSessionToken(usuario),
       });
     } catch (error) {
-      console.error("ERROR LOGIN:", error);
-      res.status(500).json({ error: error.message });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible iniciar sesión",
+        context: "auth.login",
+      });
     }
   }
 
@@ -248,16 +256,23 @@ function createAuthController(authService, { activityLogService, testUsersReady,
 
       res.json({ message: genericMessage });
     } catch (error) {
-      console.error("ERROR FORGOT PASSWORD:", error);
-      res.status(500).json({ error: "No fue posible procesar la solicitud" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible procesar la solicitud",
+        context: "auth.forgot_password",
+      });
     }
   }
 
   async function resetPassword(req, res) {
     const { token, nuevaContrasena } = req.body;
 
-    if (!token || !nuevaContrasena || nuevaContrasena.length < 4) {
-      return res.status(400).json({ error: "Token y una nueva contraseña de al menos 4 caracteres son obligatorios" });
+    if (!token || !nuevaContrasena) {
+      return res.status(400).json({ error: "Token y nueva contraseña son obligatorios" });
+    }
+
+    const passwordError = validatePassword(nuevaContrasena);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     try {
@@ -267,8 +282,10 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       }
       res.json({ message: "Contraseña actualizada correctamente" });
     } catch (error) {
-      console.error("ERROR RESET PASSWORD:", error);
-      res.status(500).json({ error: "No fue posible restablecer la contraseña" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible restablecer la contraseña",
+        context: "auth.reset_password",
+      });
     }
   }
 
@@ -298,8 +315,10 @@ function createAuthController(authService, { activityLogService, testUsersReady,
 
       res.json({ message: "Correo verificado correctamente", usuario: presentLoginUser(usuarioRow) });
     } catch (error) {
-      console.error("ERROR VERIFY EMAIL:", error);
-      res.status(500).json({ error: "No fue posible verificar el correo" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible verificar el correo",
+        context: "auth.verify_email",
+      });
     }
   }
 
@@ -314,8 +333,10 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       }
       res.json({ message: genericMessage });
     } catch (error) {
-      console.error("ERROR RESEND VERIFICATION:", error);
-      res.status(500).json({ error: "No fue posible procesar la solicitud" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible procesar la solicitud",
+        context: "auth.resend_verification",
+      });
     }
   }
 
@@ -345,8 +366,10 @@ function createAuthController(authService, { activityLogService, testUsersReady,
 
       res.json({ message: "Tu cuenta fue desbloqueada. Ya puedes iniciar sesión." });
     } catch (error) {
-      console.error("ERROR UNLOCK ACCOUNT:", error);
-      res.status(500).json({ error: "No fue posible desbloquear la cuenta" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible desbloquear la cuenta",
+        context: "auth.unlock_account",
+      });
     }
   }
 

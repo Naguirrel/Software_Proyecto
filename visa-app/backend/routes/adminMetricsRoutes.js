@@ -1,6 +1,7 @@
 const express = require("express");
 const { parseAdminSearch, buildAdminCohort } = require("../services/adminSearchFilter");
 const { buildAdminProcessWorkbook } = require("../services/adminExcelReport");
+const { sendErrorResponse } = require("../middleware/errorResponse");
 
 const ALLOWED_PERIODS = new Set([30, 90, 365]);
 
@@ -202,9 +203,10 @@ module.exports = function createAdminMetricsRoutes(pool, { requireAdmin }) {
         })),
       });
     } catch (error) {
-      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
-      console.error("ERROR ADMIN PROCESS METRICS:", error);
-      res.status(500).json({ error: "No fue posible cargar los reportes" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible cargar los reportes",
+        context: "admin_metrics.processes",
+      });
     }
   });
 
@@ -217,9 +219,10 @@ module.exports = function createAdminMetricsRoutes(pool, { requireAdmin }) {
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       return res.send(buildProcessCsv(rows));
     } catch (error) {
-      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
-      console.error("ERROR ADMIN PROCESS CSV:", error);
-      return res.status(500).json({ error: "No fue posible exportar el reporte" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible exportar el reporte",
+        context: "admin_metrics.csv",
+      });
     }
   });
 
@@ -240,9 +243,10 @@ module.exports = function createAdminMetricsRoutes(pool, { requireAdmin }) {
       res.setHeader("Content-Length", workbook.length);
       return res.send(workbook);
     } catch (error) {
-      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
-      console.error("ERROR ADMIN PROCESS XLSX:", error);
-      return res.status(500).json({ error: "No fue posible exportar el reporte de Excel" });
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible exportar el reporte de Excel",
+        context: "admin_metrics.xlsx",
+      });
     }
   });
 
