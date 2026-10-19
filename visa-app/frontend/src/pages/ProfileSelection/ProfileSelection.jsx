@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./ProfileSelection.css";
 import useModoSenior from "../../hooks/useModoSenior";
+import SeniorModeToggle from "../../components/SeniorModeToggle";
 import useRequireAuth from "../../hooks/useRequireAuth";
 import { apiRequest } from "../../utils/apiClient";
 import { buildSessionHeaders } from "../../utils/sessionAuth";
@@ -120,18 +121,20 @@ function ProfileSelection() {
           <span className="brand-badge" aria-hidden="true">VG</span>
           <span className="brand-name">VisaGuide</span>
         </div>
-        <span className="onboarding-step">Configuración de cuenta</span>
+        <div className="profile-header__actions">
+          <span className="onboarding-step" data-senior-priority="secondary">Configuración de cuenta</span>
+          <SeniorModeToggle showState />
+        </div>
       </header>
       <main id="main-content" tabIndex="-1" className="profile-main">
         <h1 id="profile-selection-title" className="profile-title">
-          Prepara tu solicitud de visa
-          <span>sin estrés</span>
+          {modoSenior ? "Selecciona tu perfil" : <>Prepara tu solicitud de visa<span>sin estrés</span></>}
         </h1>
 
         <p className="profile-subtitle">
-          Te guiamos paso a paso, evitamos errores comunes y te preparamos para
-          tu entrevista consular. Selecciona tu perfil para personalizar tu
-          experiencia.
+          {modoSenior
+            ? "Elige la opción que mejor describe tu solicitud."
+            : "Te guiamos paso a paso, evitamos errores comunes y te preparamos para tu entrevista consular. Selecciona tu perfil para personalizar tu experiencia."}
         </p>
 
         <div className="profile-announcements" aria-live="polite" aria-atomic="true">

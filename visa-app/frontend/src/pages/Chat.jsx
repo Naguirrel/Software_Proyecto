@@ -182,7 +182,7 @@ export default function Chat() {
                   <h2 className="chat-header__name">{assignment?.advisor_name || "Asesor pendiente"}</h2>
                   <p className="chat-header__role">{assignment?.advisor_name ? "Asesor consular asignado · actualización automática" : "Aún no tienes asesor asignado"}</p>
                 </div>
-                <div className="chat-header__badge">
+                <div className="chat-header__badge" data-senior-priority="secondary">
                   <ShieldIcon />
                   CHAT SEGURO
                 </div>
@@ -242,7 +242,7 @@ export default function Chat() {
             </section>
 
             {/* ─── Panel: Resumen del caso ─── */}
-            <aside className="chat-summary">
+            <aside className="chat-summary" data-senior-priority="secondary">
               <h3 className="chat-summary__heading">RESUMEN DEL CASO</h3>
 
               <div className="chat-summary__section">

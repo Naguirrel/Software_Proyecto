@@ -102,32 +102,40 @@
    DARK MODE
    ══════════════════════════════ */
 [data-theme="dark"] {
-  --vg-bg:           #0b1120;
-  --vg-bg-alt:       #111827;
-  --vg-white:        #1e293b;
-  --vg-card:         #1e293b;
-  --vg-input:        #111827;
-  --vg-overlay:      rgba(30,41,59,0.86);
-  --vg-border:       #334155;
-  --vg-border-mid:   #475569;
-  --vg-text:         #f1f5f9;
-  --vg-text-muted:   #94a3b8;
-  --vg-text-light:   #cbd5e1;
-  --vg-red-light:    #4c0519;
-  --vg-success:      #6ee7b7;
-  --vg-warning:      #fcd34d;
-  --vg-warning-solid:#b45309;
-  --vg-amber-bg:     #1c1a0f;
-  --vg-amber-border: #92400e;
-  --vg-amber-text:   #fde68a;
-  --vg-info-bg:      #172554;
-  --vg-info-text:    #bfdbfe;
-  --vg-success-bg:   #052e2b;
-  --vg-danger-bg:    #4c0519;
-  --vg-danger-text:  #fda4af;
-  --vg-shadow-sm:    0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
-  --vg-shadow:       0 4px 12px rgba(0,0,0,0.5);
-  --vg-shadow-lg:    0 8px 24px rgba(0,0,0,0.6);
+  --vg-bg:           #000000;
+  --vg-bg-alt:       #1c1c1e;
+  --vg-white:        #121212;
+  --vg-card:         #121212;
+  --vg-input:        #1c1c1e;
+  --vg-overlay:      rgba(18,18,18,0.9);
+  --vg-border:       #2f2f2f;
+  --vg-border-mid:   #484848;
+  --vg-text:         #f5f5f5;
+  --vg-text-muted:   #a8a8a8;
+  --vg-text-light:   #d0d0d0;
+  --vg-navy:         #121212;
+  --vg-navy-mid:     #242424;
+  --vg-navy-blue:    #2c2c2e;
+  --vg-slate:        #3a3a3c;
+  --vg-red:          #ff3b67;
+  --vg-red-dark:     #ff6685;
+  --vg-red-light:    #351018;
+  --vg-success:      #72d6a0;
+  --vg-warning:      #ffd166;
+  --vg-warning-solid:#e7a83e;
+  --vg-amber-bg:     #292113;
+  --vg-amber-border: #6e5420;
+  --vg-amber-text:   #ffdd8a;
+  --vg-info-bg:      #18212c;
+  --vg-info-text:    #b9dcff;
+  --vg-success-bg:   #14251d;
+  --vg-danger-bg:    #30151b;
+  --vg-danger-text:  #ff9bb0;
+  --vg-strong-surface:#121212;
+  --vg-strong-muted: #bdbdbd;
+  --vg-shadow-sm:    0 1px 0 rgba(255,255,255,0.04), 0 6px 18px rgba(0,0,0,0.28);
+  --vg-shadow:       0 10px 30px rgba(0,0,0,0.38);
+  --vg-shadow-lg:    0 18px 48px rgba(0,0,0,0.55);
 
   color-scheme: dark;
 }
@@ -778,7 +786,7 @@ img, video, canvas, svg {
 }
 
 .vg-notification-list li {
-  padding: 14px 18px;
+  padding: 0;
   border-bottom: 1px solid var(--vg-border);
   background: var(--vg-card);
 }
@@ -790,6 +798,27 @@ img, video, canvas, svg {
 .vg-notification-list li.is-unread {
   border-left: 4px solid var(--vg-red);
   background: var(--vg-info-bg);
+}
+
+.vg-notification-item {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.vg-notification-item:hover {
+  background: color-mix(in srgb, var(--vg-text) 6%, transparent);
+}
+
+.vg-notification-item:disabled {
+  cursor: wait;
+  opacity: .68;
 }
 
 .vg-notification-list .vg-priority-badge {
@@ -839,6 +868,25 @@ img, video, canvas, svg {
   color: var(--vg-text-muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.vg-notification-list small {
+  display: block;
+  margin-top: 7px;
+  color: var(--vg-info-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vg-notification-error {
+  margin: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--vg-danger-text);
+  border-radius: 10px;
+  background: var(--vg-danger-bg);
+  color: var(--vg-danger-text);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 body.vg-has-top-actions main#main-content {
@@ -1107,7 +1155,7 @@ body.vg-has-top-actions main#main-content {
 
 /* Documents page dark */
 [data-theme="dark"] .documents-shell {
-  background: linear-gradient(180deg, rgba(11,17,32,0.98), rgba(17,24,39,0.99)), #0b1120;
+  background: var(--vg-bg);
   color: var(--vg-text);
 }
 [data-theme="dark"] .document-card {
@@ -1216,19 +1264,19 @@ body.vg-has-top-actions main#main-content {
    ══════════════════════════════ */
 html.modo-senior {
   /* Tipografía */
-  --vg-body-size: 18px;
-  --vg-small-size: 16px;
-  --vg-control-size: 18px;
-  --vg-page-title: clamp(48px, 4.5vw, 52px);
-  --vg-section-title: clamp(32px, 3vw, 36px);
-  --vg-card-title: 24px;
-  --vg-line-body: 1.7;
+  --vg-body-size: 24px;
+  --vg-small-size: 20px;
+  --vg-control-size: 22px;
+  --vg-page-title: clamp(52px, 5vw, 60px);
+  --vg-section-title: clamp(36px, 3.5vw, 42px);
+  --vg-card-title: 30px;
+  --vg-line-body: 1.72;
   --vg-line-heading: 1.25;
 
   /* Controles, iconos y foco */
   --vg-spacing-base: 24px;
-  --vg-button-min-height: 52px;
-  --vg-icon-size: 28px;
+  --vg-button-min-height: 64px;
+  --vg-icon-size: 32px;
   --vg-focus-width: 4px;
   --vg-focus-color: #000000;
   --vg-focus-halo: #ffffff;
@@ -1247,8 +1295,8 @@ html.modo-senior {
   --vg-page-pad-bottom: 96px;
 
   /* Sidebar más ancho para iconos y textos grandes */
-  --vg-sidebar-w: 92px;
-  --vg-sidebar-expanded-w: 300px;
+  --vg-sidebar-w: 340px;
+  --vg-sidebar-expanded-w: 340px;
 
   /* Contraste AAA (7:1 mínimo sobre fondos claros) */
   --vg-text-muted: #334155;
@@ -1265,7 +1313,9 @@ html.modo-senior {
 
 /* Contraste AAA en modo oscuro (7:1 mínimo sobre fondos oscuros) */
 html.modo-senior[data-theme="dark"] {
-  --vg-text-muted: #cbd5e1;
+  --vg-text-muted: #d0d0d0;
+  --vg-red: #ff5c7c;
+  --vg-red-dark: #ff829a;
   --vg-success: #6ee7b7;
   --vg-warning: #fcd34d;
   --vg-amber-text: #fde68a;
@@ -1279,8 +1329,8 @@ html.modo-senior[data-theme="dark"] {
 @media (max-width: 768px) {
   html.modo-senior {
     --vg-sidebar-w: 0px;
-    --vg-page-title: 36px;
-    --vg-section-title: 28px;
+    --vg-page-title: 44px;
+    --vg-section-title: 34px;
     --vg-page-pad-x: 18px;
     --vg-page-pad-top: 28px;
     --vg-card-padding: 24px;
@@ -1315,23 +1365,23 @@ html.modo-senior :where(a, input:not([type="checkbox"], [type="radio"]), select,
 }
 
 html.modo-senior :where(button, [role="button"]) {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 52px;
+  min-height: 52px;
 }
 
 /* Botones con texto: más altos y con más relleno (los de solo icono llevan aria-label).
    Especificidad baja (0,1,1) para que cada pantalla pueda ajustar los suyos con html.modo-senior .clase */
 html.modo-senior :where(main button:not([aria-label], [role="tab"]), .btn) {
   min-height: var(--vg-button-min-height);
-  padding: 16px 24px;
-  font-size: 18px;
+  padding: 18px 28px;
+  font-size: 22px;
 }
 
 /* Campos: el padding lateral se respeta para no tapar iconos dentro del campo */
 html.modo-senior :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]), select, textarea) {
-  min-height: 52px;
-  padding-block: 14px;
-  font-size: 18px;
+  min-height: 64px;
+  padding-block: 16px;
+  font-size: 22px;
 }
 
 html.modo-senior :where(input[type="checkbox"], input[type="radio"]) {
@@ -1402,7 +1452,7 @@ html.modo-senior .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--exp
 html.modo-senior .vg-sidebar-workflow-note,
 html.modo-senior .vg-email-verify-notice__text,
 html.modo-senior .vg-email-verify-notice__resend {
-  font-size: 15px;
+  font-size: 20px;
 }
 
 html.modo-senior :is(.vg-notification-trigger, .vg-top-action-button) {
@@ -1424,22 +1474,19 @@ html.modo-senior .vg-notification-count {
 }
 
 html.modo-senior .vg-notification-list p {
-  font-size: 16px;
+  font-size: 20px;
 }
 
 html.modo-senior body.vg-has-top-actions main#main-content {
-  padding-top: 96px !important;
+  padding-top: 190px !important;
 }
 
 html.modo-senior :is(
   [style*="font-size: 9px"], [style*="font-size: 10px"], [style*="font-size: 11px"],
-  [style*="font-size: 12px"], [style*="font-size: 13px"]
+  [style*="font-size: 12px"], [style*="font-size: 13px"], [style*="font-size: 14px"],
+  [style*="font-size: 15px"], [style*="font-size: 16px"]
 ) {
-  font-size: 16px !important;
-}
-
-html.modo-senior [style*="font-size: 14px"] {
-  font-size: 17px !important;
+  font-size: 21px !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

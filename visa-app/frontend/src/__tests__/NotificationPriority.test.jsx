@@ -104,7 +104,11 @@ describe("centro de notificaciones del cliente", () => {
 
   async function openPanel() {
     const user = userEvent.setup();
-    render(<NotificationCenter userId={7} unreadCount={2} />);
+    render(
+      <MemoryRouter>
+        <NotificationCenter userId={7} unreadCount={2} />
+      </MemoryRouter>,
+    );
     await user.click(screen.getByRole("button", { name: /Abrir notificaciones/ }));
     await screen.findByText("Documento requiere correcciones");
   }

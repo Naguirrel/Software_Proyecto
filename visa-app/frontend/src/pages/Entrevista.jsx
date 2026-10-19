@@ -190,7 +190,7 @@ export default function Entrevista() {
       <main id="main-content" tabIndex="-1" className={`interview-main${modoSenior ? " interview-main--senior" : ""}`}>
         <header className="interview-header">
           <h1>Entrevista Consular</h1>
-          <p>
+          <p data-senior-priority="secondary">
             Prepárate mental, emocional y prácticamente para tu encuentro con el
             oficial consular.
           </p>
@@ -200,7 +200,7 @@ export default function Entrevista() {
           <div className="interview-hero__copy">
             <span className="interview-pill">Herramienta principal</span>
             <h2>Simulador de Entrevista</h2>
-            <p>
+            <p data-senior-priority="secondary">
               Practica con preguntas reales basadas en tu perfil. Graba tus
               respuestas y aprende a comunicarte de manera clara, concisa y
               segura.
@@ -217,7 +217,7 @@ export default function Entrevista() {
             </button>
           </div>
 
-          <div className="interview-hero__art" aria-hidden="true">
+          <div className="interview-hero__art" aria-hidden="true" data-senior-priority="secondary">
             <ChatIcon />
             <span />
           </div>
@@ -229,7 +229,7 @@ export default function Entrevista() {
               Retroalimentación
             </span>
             <h2>Resultado de tu práctica</h2>
-            <p>
+            <p data-senior-priority="secondary">
               Revisa el estado de tu última entrevista enviada y consulta las
               observaciones cuando estén listas.
             </p>
@@ -286,7 +286,7 @@ export default function Entrevista() {
           </article>
         </section>
 
-        <section className="emotional-section">
+        <section className="emotional-section" data-senior-priority="secondary">
           <div className="emotional-heading">
             <HeartIcon />
             <h2>Preparación Emocional</h2>

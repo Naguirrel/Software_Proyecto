@@ -1,13 +1,13 @@
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 export function AdminPageHeader({ title, description, action }) {
-  return <header className={`admin-page-heading${title ? "" : " admin-page-heading--description-only"}`}><div>{title && <h1>{title}</h1>}<p>{description}</p></div>{action}</header>;
+  return <header className={`admin-page-heading${title ? "" : " admin-page-heading--description-only"}`}><div>{title && <h1>{title}</h1>}<p data-senior-priority="secondary">{description}</p></div>{action}</header>;
 }
 
 export function AdminResourceState({ isLoading, error, isEmpty, empty, retry }) {
   if (isLoading) return <div className="admin-resource-state" role="status"><span className="route-loading__spinner" aria-hidden="true" />Cargando información…</div>;
   if (error) return <div className="admin-resource-state admin-resource-state--error" role="alert"><strong>No se pudo cargar la información</strong><span>{error}</span><button type="button" onClick={retry}>Reintentar</button></div>;
-  if (isEmpty) return <div className="admin-resource-state"><strong>{empty}</strong><span>Los registros aparecerán aquí cuando existan datos.</span></div>;
+  if (isEmpty) return <div className="admin-resource-state"><strong>{empty}</strong><span data-senior-priority="secondary">Los registros aparecerán aquí cuando existan datos.</span></div>;
   return null;
 }
 

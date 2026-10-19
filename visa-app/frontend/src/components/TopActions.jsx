@@ -15,7 +15,7 @@ export default function TopActions({ userId, unreadCount = 0 }) {
   return (
     <div className="vg-top-actions" role="group" aria-label={t("topActions.label")}>
       <Link
-        className="vg-top-action-button"
+        className="vg-top-action-button vg-top-action-button--information"
         to="/dashboard#informacion"
         aria-label={t("topActions.info")}
         onClick={handleInformationClick}

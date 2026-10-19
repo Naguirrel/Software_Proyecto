@@ -14,6 +14,21 @@ vi.mock("../components/TopActions", () => ({
   ),
 }));
 
+vi.mock("../hooks/useClientWorkflow", () => ({
+  default: () => ({
+    workflow: {
+      assigned: true,
+      gates: {
+        ds160: { allowed: true },
+        payment: { allowed: true },
+        appointment: { allowed: true },
+        interview: { allowed: true },
+        chat: { allowed: true },
+      },
+    },
+  }),
+}));
+
 const renderSidebar = (currentPage = "inicio") =>
   render(
     <MemoryRouter>
@@ -28,6 +43,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       perfil: "turismo_negocios",
+      rol: "cliente",
     }));
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
@@ -79,6 +95,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       perfil: "turismo_negocios",
+      rol: "cliente",
       emailVerificado: false,
     }));
     const user = userEvent.setup();
@@ -107,6 +124,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       emailVerificado: false,
+      rol: "cliente",
     }));
     const user = userEvent.setup();
 
@@ -123,6 +141,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       emailVerificado: false,
+      rol: "cliente",
     }));
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
@@ -145,6 +164,7 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       emailVerificado: false,
+      rol: "cliente",
     }));
 
     renderSidebar();
@@ -155,26 +175,24 @@ describe("Sidebar", () => {
       nombre: "Ana López",
       correo: "ana@example.com",
       emailVerificado: true,
+      rol: "cliente",
     }));
     window.dispatchEvent(new StorageEvent("storage", { key: "visaguide_session" }));
 
     await waitFor(() => expect(screen.queryByText("Verifica tu correo electrónico")).not.toBeInTheDocument());
   });
 
-  it("permite expandir la navegación y activar el modo Senior", async () => {
+  it("deja la expansión al hover y permite activar el modo Senior", async () => {
     const user = userEvent.setup();
     renderSidebar();
 
-    const expand = screen.getByRole("button", { name: "Expandir barra lateral" });
-    await user.click(expand);
-    expect(screen.getByRole("button", { name: "Contraer barra lateral" })).toHaveAttribute(
-      "aria-expanded",
-      "true"
-    );
+    expect(screen.queryByRole("button", { name: /barra lateral/i })).not.toBeInTheDocument();
 
     const senior = screen.getByRole("button", { name: "Alternar modo Senior" });
+    expect(screen.getByText("Modo Senior · desactivado")).toHaveClass("vg-sidebar-label");
     await user.click(senior);
     expect(senior).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Modo Senior · activado")).toHaveClass("vg-sidebar-label");
     expect(localStorage.getItem("modoSenior")).toBe("true");
     expect(document.documentElement).toHaveClass("modo-senior");
     expect(screen.getByText("Modo Senior activado")).toBeInTheDocument();

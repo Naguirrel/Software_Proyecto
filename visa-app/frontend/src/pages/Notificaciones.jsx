@@ -216,20 +216,21 @@ export default function Notificaciones() {
               return (
                 <div
                   key={n.id}
+                  className="client-notification-card"
                   data-priority={prioridad}
                   style={{
                     ...s.card,
-                    backgroundColor: esAlta ? "var(--vg-danger-bg)" : n.leido ? "#ffffff" : "#f0f9ff",
+                    backgroundColor: esAlta ? "var(--vg-danger-bg)" : n.leido ? "var(--vg-card)" : "var(--vg-info-bg)",
                     borderLeft: esAlta
                       ? "4px solid var(--vg-danger-text)"
-                      : n.leido ? "4px solid #e2e8f0" : "4px solid #dc2649",
+                      : n.leido ? "4px solid var(--vg-border-mid)" : "4px solid var(--vg-red)",
                     opacity: prioridad === "baja" && n.leido ? 0.8 : 1,
                   }}
                 >
                   {!n.leido && <span style={s.puntoPendiente} />}
 
                   <div style={s.cardBody}>
-                    <div style={s.cardTop}>
+                    <div style={s.cardTop} data-senior-priority="secondary">
                       <NotificationPriorityBadge priority={prioridad} label={t(`notifications.priority.${prioridad}`)} />
                       <span style={{ ...s.tipoBadge, background: cfg.bg, color: cfg.color, fontSize: fs(11) }}>
                         {cfg.label}

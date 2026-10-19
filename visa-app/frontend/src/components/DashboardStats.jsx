@@ -6,7 +6,7 @@ export default function DashboardStats({ loading, error, stats }) {
 
   if (loading) {
     return (
-      <section className="dash-stats" aria-labelledby="dash-stats-title">
+      <section className="dash-stats" aria-labelledby="dash-stats-title" data-senior-priority="secondary">
         <h2 id="dash-stats-title">{t("stats.title")}</h2>
         <p className="dash-stats__status" role="status">{t("stats.loading")}</p>
       </section>
@@ -18,7 +18,7 @@ export default function DashboardStats({ loading, error, stats }) {
   const currentStage = stats?.currentStage || t("stats.notStarted");
 
   return (
-    <section className="dash-stats" aria-labelledby="dash-stats-title">
+    <section className="dash-stats" aria-labelledby="dash-stats-title" data-senior-priority="secondary">
       <div className="dash-stats__heading">
         <div>
           <h2 id="dash-stats-title">{t("stats.title")}</h2>

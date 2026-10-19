@@ -14,6 +14,7 @@ export default function AuthLayout({ children }) {
       <div className="auth-shell">
         <section
           className="auth-photo"
+          data-senior-priority="secondary"
           aria-label="Beneficios de VisaGuide"
           style={{ "--auth-photo-image": `url(${authConsultation})` }}
         >
@@ -39,7 +40,7 @@ export default function AuthLayout({ children }) {
             </div>
             {children}
           </div>
-          <p className="auth-tagline">Proceso seguro, claro y profesional</p>
+          <p className="auth-tagline" data-senior-priority="secondary">Proceso seguro, claro y profesional</p>
         </section>
       </div>
     </main>

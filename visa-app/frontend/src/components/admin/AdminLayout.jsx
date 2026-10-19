@@ -6,8 +6,6 @@ import {
   BarChart3,
   Bell,
   BriefcaseBusiness,
-  ChevronLeft,
-  ChevronRight,
   CheckSquare,
   ClipboardList,
   FileText,
@@ -50,16 +48,6 @@ const adminNavItems = [
   { label: "Recordatorios", path: "/admin/email-reminders", icon: <MailCheck size={20} strokeWidth={2} aria-hidden="true" /> },
 ];
 
-const ADMIN_SIDEBAR_COLLAPSED_KEY = "vg-admin-sidebar-collapsed";
-
-function getInitialSidebarCollapsed() {
-  try {
-    return localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
 export default function AdminLayout({ children }) {
   const session = useAdminSession();
   const navigate = useNavigate();
@@ -70,10 +58,10 @@ export default function AdminLayout({ children }) {
   const [notificationsError, setNotificationsError] = useState("");
   const [notifications, setNotifications] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarCollapsed);
   const notificationRef = useRef(null);
   const notificationTriggerRef = useRef(null);
   const menuTriggerRef = useRef(null);
+
   const loadAdminNotifications = async () => {
     const userId = session.id_usuario || session.id;
     if (!userId) return;
@@ -134,38 +122,15 @@ export default function AdminLayout({ children }) {
     navigate("/login", { replace: true });
   };
 
-  const handleDesktopSidebarToggle = () => {
-    setSidebarCollapsed((isCollapsed) => {
-      const nextValue = !isCollapsed;
-      try {
-        localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, String(nextValue));
-      } catch {
-        // Ignore storage failures; the visual state can still update for this session.
-      }
-      return nextValue;
-    });
-  };
-
   return (
-    <div className={`admin-shell${sidebarCollapsed ? " admin-shell--sidebar-collapsed" : ""}`}>
-      <aside id="admin-navigation" className={`admin-sidebar${sidebarOpen ? " admin-sidebar--open" : ""}${sidebarCollapsed ? " admin-sidebar--collapsed" : ""}`} aria-label="Navegacion del panel administrador">
+    <div className="admin-shell admin-shell--sidebar-collapsed">
+      <aside id="admin-navigation" className={`admin-sidebar admin-sidebar--collapsed${sidebarOpen ? " admin-sidebar--open" : ""}`} aria-label="Navegacion del panel administrador">
         <div className="admin-sidebar__top">
           <VisaGuideLogo
             variant="full"
             className="admin-sidebar__brand"
             subtitle="Administrador"
           />
-          <button
-            type="button"
-            className="admin-sidebar__collapse"
-            aria-label={sidebarCollapsed ? "Expandir menu administrativo" : "Colapsar menu administrativo"}
-            aria-controls="admin-navigation"
-            aria-expanded={!sidebarCollapsed}
-            data-tooltip={sidebarCollapsed ? "Expandir" : "Colapsar"}
-            onClick={handleDesktopSidebarToggle}
-          >
-            {sidebarCollapsed ? <ChevronRight size={20} strokeWidth={2.4} aria-hidden="true" /> : <ChevronLeft size={20} strokeWidth={2.4} aria-hidden="true" />}
-          </button>
         </div>
 
         <nav className="admin-sidebar__nav" aria-label="Modulos de administracion">
@@ -178,7 +143,7 @@ export default function AdminLayout({ children }) {
                 `admin-sidebar__link${isActive ? " admin-sidebar__link--active" : ""}`
               }
               data-tooltip={label}
-              title={sidebarCollapsed ? label : undefined}
+              title={label}
               onClick={() => setSidebarOpen(false)}
               onMouseEnter={() => preloadRoute(path)}
               onFocus={() => preloadRoute(path)}
@@ -193,7 +158,7 @@ export default function AdminLayout({ children }) {
             }
             to="/admin/settings"
             data-tooltip="Configuración"
-            title={sidebarCollapsed ? "Configuración" : undefined}
+            title="Configuración"
             onClick={() => setSidebarOpen(false)}
             onMouseEnter={() => preloadRoute("/admin/settings")}
             onFocus={() => preloadRoute("/admin/settings")}
@@ -211,7 +176,7 @@ export default function AdminLayout({ children }) {
             aria-pressed={isDark}
             aria-label={isDark ? "Activar modo claro" : "Activar modo oscuro"}
             data-tooltip={isDark ? "Modo claro" : "Modo oscuro"}
-            title={sidebarCollapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined}
+            title={isDark ? "Modo claro" : "Modo oscuro"}
           >
             {isDark ? <Sun size={20} strokeWidth={2} aria-hidden="true" /> : <Moon size={20} strokeWidth={2} aria-hidden="true" />}
             <span>{isDark ? "Modo claro" : "Modo oscuro"}</span>
@@ -223,7 +188,7 @@ export default function AdminLayout({ children }) {
             }
             to="/admin/profile"
             data-tooltip="Mi perfil"
-            title={sidebarCollapsed ? "Mi perfil" : undefined}
+            title="Mi perfil"
             onClick={() => setSidebarOpen(false)}
             onMouseEnter={() => preloadRoute("/admin/profile")}
             onFocus={() => preloadRoute("/admin/profile")}
@@ -231,7 +196,7 @@ export default function AdminLayout({ children }) {
             <UserCircle size={20} strokeWidth={2} aria-hidden="true" /><span>Mi perfil</span>
           </NavLink>
 
-          <button type="button" className="admin-sidebar__logout" data-tooltip="Cerrar sesion" title={sidebarCollapsed ? "Cerrar sesion" : undefined} onClick={handleLogout}>
+          <button type="button" className="admin-sidebar__logout" data-tooltip="Cerrar sesion" title="Cerrar sesion" onClick={handleLogout}>
             <LogOut size={20} strokeWidth={2} aria-hidden="true" />
             <span>Cerrar sesión</span>
           </button>

@@ -454,6 +454,9 @@ export default function DocumentCard({
               title="Abrir documento"
               onClick={handleOpenPreview}
               disabled={!preview && !doc.downloadUrl}
+              data-senior-priority={
+                !preview && !doc.downloadUrl ? "secondary" : undefined
+              }
             >
               <DownloadIcon />
             </button>

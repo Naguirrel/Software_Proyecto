@@ -274,7 +274,7 @@
    DARK MODE OVERRIDES
    ══════════════════════════════ */
 [data-theme="dark"] .cron-nodo--done {
-  box-shadow: 0 0 0 3px #0b1120, 0 0 0 5px #10b981;
+  box-shadow: 0 0 0 3px var(--vg-bg), 0 0 0 5px #10b981;
 }
 
 [data-theme="dark"] .cron-card--done {
@@ -286,13 +286,13 @@
 }
 
 [data-theme="dark"] .cron-badge-progreso {
-  background: #4c0519;
-  color: #fda4af;
+  background: var(--vg-danger-bg);
+  color: var(--vg-danger-text);
 }
 
 [data-theme="dark"] .cron-btn-accion {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--vg-bg-alt);
+  border: 1px solid var(--vg-border-mid);
 }
 
 /* ══════════════════════════════

@@ -45,6 +45,30 @@ describe("clientWorkflowService", () => {
     expect(workflow.gates.interview.allowed).toBe(false);
   });
 
+  test("sin asesor ignora avances históricos y conserva bloqueadas las etapas dependientes", async () => {
+    const workflow = await createService(buildRow({
+      ds160_complete: true,
+      required_documents_uploaded: 3,
+      required_documents_approved: 3,
+      payment_started: true,
+      consular_paid: true,
+      appointment_scheduled: true,
+      interview_started: true,
+    })).getWorkflow(5);
+
+    expect(workflow).toMatchObject({ assigned: false, currentStep: "assignment" });
+    expect(workflow.gates.appointment).toMatchObject({
+      allowed: false,
+      requiredStep: "assignment",
+      requiredPath: "/dashboard",
+    });
+    expect(workflow.gates.interview).toMatchObject({
+      allowed: false,
+      requiredStep: "assignment",
+      requiredPath: "/dashboard",
+    });
+  });
+
   test("bloquea el pago hasta completar DS-160 y aprobar los documentos requeridos", async () => {
     const service = createService(buildRow({ id_asesor: 9, ds160_complete: true, required_documents_uploaded: 3 }));
 

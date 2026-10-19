@@ -352,6 +352,7 @@ export default function Perfil() {
                 <button
                   type="button"
                   style={s.avatarCameraBtn}
+                  data-senior-priority="secondary"
                   aria-label={t("profile.changePhoto")}
                   onClick={() =>
                     alert(t("profile.photoSoon"))
@@ -500,7 +501,7 @@ export default function Perfil() {
             </article>
 
             {/* ----- Preferencias de cuenta ----- */}
-            <article style={s.prefCard}>
+            <article style={s.prefCard} data-senior-priority="secondary">
               <h2 style={{ ...s.prefTitle, fontSize: fz("18px", "21px") }}>
                 {t("profile.preferences")}
               </h2>
@@ -542,7 +543,7 @@ export default function Perfil() {
             </article>
 
             {/* ----- Aviso amarillo ----- */}
-            <div style={s.notice}>
+            <div style={s.notice} data-senior-priority="secondary">
               <span style={s.noticeIcon}><Icon.info /></span>
               <p style={{ ...s.noticeText, fontSize: fz("14px", "16px") }}>
                 {t("profile.notice")}

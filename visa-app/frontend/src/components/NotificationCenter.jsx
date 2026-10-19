@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
 import useIdioma from "../hooks/useIdioma";
@@ -7,10 +8,13 @@ import { getNotificationPriority } from "../utils/notificationPriority";
 
 export default function NotificationCenter({ userId, unreadCount = 0 }) {
   const { t } = useIdioma();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notifications, setNotifications] = useState([]);
+  const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState("");
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
   const closeRef = useRef(null);
@@ -53,6 +57,42 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
   const togglePanel = () => {
     if (!open) loadNotifications();
     setOpen((value) => !value);
+  };
+
+  const openNotification = async (notification) => {
+    if (busyId !== null) return;
+    setBusyId(notification.id);
+    setActionError("");
+
+    try {
+      if (!notification.leido) {
+        const response = await fetch(buildApiUrl(`/notificaciones/${notification.id}/leer`), {
+          method: "PUT",
+          headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ userId }),
+        });
+        if (!response.ok) throw new Error("No se pudo marcar la notificación como leída.");
+      }
+
+      const actionUrl = String(notification.action_url || "");
+      const hasSafeAction = actionUrl.startsWith("/") && !actionUrl.startsWith("//");
+
+      setNotifications((current) => (
+        hasSafeAction
+          ? current.map((item) => item.id === notification.id ? { ...item, leido: true } : item)
+          : current.filter((item) => item.id !== notification.id)
+      ));
+      window.dispatchEvent(new CustomEvent("notificacionesLeidas"));
+
+      if (hasSafeAction) {
+        closePanel(false);
+        navigate(actionUrl);
+      }
+    } catch (requestError) {
+      setActionError(requestError.message || "No se pudo actualizar la notificación.");
+    } finally {
+      setBusyId(null);
+    }
   };
 
   useEffect(() => {
@@ -113,6 +153,7 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
             <button ref={closeRef} type="button" onClick={() => closePanel()} aria-label={t("notifications.close")}>×</button>
           </header>
           <div className="vg-notification-panel__body" aria-live="polite">
+            {actionError && <p className="vg-notification-error" role="alert">{actionError}</p>}
             {loading ? (
               <p className="vg-notification-empty" role="status">{t("notifications.loading")}</p>
             ) : error ? (
@@ -127,11 +168,22 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
                 {notifications.map((notification) => {
                   const priority = getNotificationPriority(notification);
                   return (
-                  <li key={notification.id} className={[notification.leido ? "" : "is-unread", `is-priority-${priority}`].filter(Boolean).join(" ")}>
-                    <NotificationPriorityBadge priority={priority} label={t(`notifications.priority.${priority}`)} />
-                    <strong>{notification.titulo}</strong>
-                    {notification.mensaje && <p>{notification.mensaje}</p>}
-                  </li>
+                    <li key={notification.id} className={[notification.leido ? "" : "is-unread", `is-priority-${priority}`].filter(Boolean).join(" ")}>
+                      <button
+                        type="button"
+                        className="vg-notification-item"
+                        disabled={busyId === notification.id}
+                        onClick={() => openNotification(notification)}
+                        aria-label={`${notification.leido ? "Abrir" : "Leer"}: ${notification.titulo}`}
+                      >
+                        <NotificationPriorityBadge priority={priority} label={t(`notifications.priority.${priority}`)} />
+                        <strong>{notification.titulo}</strong>
+                        {notification.mensaje && <p>{notification.mensaje}</p>}
+                        {!notification.action_url && (
+                          <small>{busyId === notification.id ? "Actualizando…" : "Pulsa para quitar este aviso pendiente"}</small>
+                        )}
+                      </button>
+                    </li>
                   );
                 })}
               </ul>

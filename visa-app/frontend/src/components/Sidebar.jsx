@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  Accessibility,
-  ChevronLeft,
-  ChevronRight,
   Clock3,
   CalendarDays,
   CreditCard,
@@ -20,7 +17,6 @@ import {
 } from "lucide-react";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
-import { setModoSenior as applyModoSenior } from "../utils/modoSenior";
 import useModoSenior from "../hooks/useModoSenior";
 import useTheme from "../hooks/useTheme";
 import useIdioma from "../hooks/useIdioma";
@@ -29,6 +25,8 @@ import VisaGuideLogo from "./VisaGuideLogo";
 import EmailVerificationNotice from "./EmailVerificationNotice";
 import { preloadRoute } from "../routes/lazyRoutes";
 import useClientWorkflow from "../hooks/useClientWorkflow";
+import SeniorModeToggle from "./SeniorModeToggle";
+import SeniorGuidance from "./SeniorGuidance";
 
 const menuItems = [
   { id: "inicio", labelKey: "sidebar.inicio", Icon: LayoutGrid, path: "/dashboard" },
@@ -42,14 +40,13 @@ const menuItems = [
 ];
 
 const staffMenuItem = { id: "gestion-consular", labelKey: "sidebar.gestionConsular", Icon: CreditCard, path: "/gestion-consular" };
+const UNASSIGNED_CLIENT_MENU_IDS = new Set(["inicio", "cronologia", "documentos"]);
 
 export default function Sidebar({ currentPage }) {
   const modoSenior = useModoSenior();
   const iconSize = modoSenior ? 28 : 20;
   const rowSenior = modoSenior ? s.rowSenior : null;
-  const [seniorAnnouncement, setSeniorAnnouncement] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [autoExpandDisabled, setAutoExpandDisabled] = useState(false);
   const sidebarRef = useRef(null);
   const { isDark, toggleTheme } = useTheme();
@@ -67,6 +64,16 @@ export default function Sidebar({ currentPage }) {
   const [noLeidas, setNoLeidas] = useState(0);
   const isClient = usuario?.rol === "cliente";
   const { workflow } = useClientWorkflow({ enabled: isClient });
+  const navigationItems = usuario?.rol === "asesor"
+    ? [menuItems[0], staffMenuItem, ...menuItems.slice(1)]
+    : menuItems;
+  const waitingForAdvisor = isClient && workflow?.assigned === false;
+  const visibleNavigationItems = navigationItems.filter((item) => {
+    if (!modoSenior || !isClient) return true;
+    if (waitingForAdvisor) return UNASSIGNED_CLIENT_MENU_IDS.has(item.id);
+    if (!item.gate) return true;
+    return currentPage === item.id || Boolean(workflow?.gates?.[item.gate]?.allowed);
+  });
 
   useEffect(() => {
     document.body.classList.add("vg-has-top-actions");
@@ -126,7 +133,6 @@ export default function Sidebar({ currentPage }) {
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key !== "Escape") return;
-      setDesktopExpanded(false);
       setAutoExpandDisabled(true);
       setMobileOpen(false);
       if (sidebarRef.current?.contains(document.activeElement)) {
@@ -137,19 +143,12 @@ export default function Sidebar({ currentPage }) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
-  const toggleModoSenior = () => {
-    const next = !modoSenior;
-    applyModoSenior(next);
-    setSeniorAnnouncement(t(next ? "sidebar.seniorOn" : "sidebar.seniorOff"));
-  };
-
   const getPerfilLabel = (perfil) => {
     const perfiles = ["turismo_negocios", "estudiante", "renovacion", "grupo_familiar", "adulto_mayor"];
     return t(`perfilLabel.${perfiles.includes(perfil) ? perfil : "default"}`);
   };
 
   const collapseSidebar = () => {
-    setDesktopExpanded(false);
     setMobileOpen(false);
   };
 
@@ -157,6 +156,12 @@ export default function Sidebar({ currentPage }) {
     <>
       {/* ─── Mobile hamburger button ─── */}
       <TopActions userId={usuario?.id} unreadCount={noLeidas} />
+      {isClient && modoSenior && (
+        <SeniorGuidance
+          currentPage={currentPage}
+          advisorAssigned={workflow?.assigned !== false}
+        />
+      )}
 
       <button
         className="vg-hamburger"
@@ -195,7 +200,7 @@ export default function Sidebar({ currentPage }) {
       <aside
         id="vg-primary-sidebar"
         ref={sidebarRef}
-        className={`vg-sidebar${desktopExpanded ? " vg-sidebar--expanded" : ""}${mobileOpen ? " vg-sidebar--mobile-open" : ""}${autoExpandDisabled ? " vg-sidebar--auto-disabled" : ""}`}
+        className={`vg-sidebar${mobileOpen ? " vg-sidebar--mobile-open" : ""}${autoExpandDisabled ? " vg-sidebar--auto-disabled" : ""}`}
         style={s.sidebar}
         aria-label={t("sidebar.navLabel")}
         onMouseLeave={() => setAutoExpandDisabled(false)}
@@ -209,19 +214,6 @@ export default function Sidebar({ currentPage }) {
           subtitle={t("sidebar.subtitle")}
         />
 
-        <button
-          type="button"
-          className="vg-sidebar-expand-button"
-          aria-expanded={desktopExpanded}
-          aria-controls="vg-sidebar-content"
-          aria-label={desktopExpanded ? t("sidebar.collapse") : t("sidebar.expand")}
-          onClick={() => setDesktopExpanded((expanded) => !expanded)}
-        >
-          {desktopExpanded
-            ? <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
-            : <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />}
-        </button>
-
         {/* Nav */}
         <div id="vg-sidebar-content" className="vg-sidebar-content">
         <nav style={s.nav}>
@@ -230,11 +222,18 @@ export default function Sidebar({ currentPage }) {
             <p className="vg-sidebar-label vg-sidebar-workflow-note">Asesor pendiente · documentos habilitados</p>
           )}
           <ul style={{ ...s.menuList, gap: modoSenior ? "6px" : "3px" }}>
-            {(usuario?.rol === "asesor" ? [menuItems[0], staffMenuItem, ...menuItems.slice(1)] : menuItems).map((item) => {
+            {visibleNavigationItems.map((item) => {
               const isActive = currentPage === item.id;
               const label = t(item.labelKey);
               const itemGate = item.gate ? workflow?.gates?.[item.gate] : null;
-              const isLocked = Boolean(isClient && item.gate && (!workflow || !itemGate?.allowed));
+              const blockedByAssignment = waitingForAdvisor && !UNASSIGNED_CLIENT_MENU_IDS.has(item.id);
+              const isLocked = Boolean(
+                blockedByAssignment
+                || (isClient && item.gate && (!workflow || !itemGate?.allowed))
+              );
+              const lockedReason = blockedByAssignment
+                ? "Esta opción se habilitará cuando un administrador asigne tu asesor."
+                : itemGate?.reason || "Validando etapa…";
               if (isLocked) {
                 return (
                   <li key={item.id}>
@@ -242,8 +241,8 @@ export default function Sidebar({ currentPage }) {
                       className="vg-sidebar-locked-link"
                       style={{ ...s.menuItem, ...rowSenior }}
                       aria-disabled="true"
-                      data-tooltip={itemGate?.reason || "Validando etapa…"}
-                      title={itemGate?.reason || "Validando etapa…"}
+                      data-tooltip={lockedReason}
+                      title={lockedReason}
                     >
                       <span style={{ ...s.menuIcon, width: iconSize, height: iconSize }}><item.Icon size={iconSize} strokeWidth={2} aria-hidden="true" /></span>
                       <span className="vg-sidebar-label" style={{ ...s.menuText, fontSize: modoSenior ? "18px" : "14px" }}>{label}</span>
@@ -258,7 +257,7 @@ export default function Sidebar({ currentPage }) {
                     to={item.path}
                     style={{ ...s.menuItem, ...rowSenior, ...(isActive ? s.menuItemActive : {}) }}
                     data-tooltip={label}
-                    title={!desktopExpanded ? label : undefined}
+                    title={label}
                     onClick={collapseSidebar}
                     onMouseEnter={() => preloadRoute(item.path)}
                     onFocus={() => preloadRoute(item.path)}
@@ -294,21 +293,17 @@ export default function Sidebar({ currentPage }) {
             <span className="vg-sidebar-label">{isDark ? t("sidebar.lightMode") : t("sidebar.darkMode")}</span>
           </button>
 
-          <button
-            type="button"
-            className="vg-sidebar-action vg-sidebar-senior-row"
-            style={{ ...s.sidebarAction, ...rowSenior }}
-            onClick={toggleModoSenior}
-            aria-label={t("sidebar.toggleSenior")}
-            aria-pressed={modoSenior}
-            data-tooltip={t("sidebar.seniorMode")}
-          >
-            <Accessibility size={iconSize} strokeWidth={2} aria-hidden="true" />
-            <span className="vg-sidebar-label">{t("sidebar.seniorMode")}</span>
-          </button>
-          <span className="visually-hidden" role="status" aria-live="polite">
-            {seniorAnnouncement}
-          </span>
+          {isClient && (
+            <SeniorModeToggle
+              className="vg-sidebar-action vg-sidebar-senior-row"
+              label={t("sidebar.seniorMode")}
+              labelClassName="vg-sidebar-label"
+              ariaLabel={t("sidebar.toggleSenior")}
+              iconSize={iconSize}
+              showState
+              style={{ ...s.sidebarAction, ...rowSenior }}
+            />
+          )}
 
           {/* User */}
           <Link

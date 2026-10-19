@@ -115,20 +115,24 @@ function createClientWorkflowService(pool) {
           : !documentsApproved
             ? gate(false, "Los tres documentos obligatorios deben estar aprobados antes del pago.", "documents")
             : gate(true),
-      appointment: !consularPaid
-        ? gate(false, "El pago consular debe estar confirmado antes de programar la cita.", "payment")
-        : gate(true),
-      interview: !appointmentScheduled
-        ? gate(false, "Necesitas una cita consular activa antes de iniciar la preparación de entrevista.", "appointment")
-        : gate(true),
+      appointment: !assigned
+        ? gate(false, "Necesitas un asesor asignado antes de programar una cita.", "assignment")
+        : !consularPaid
+          ? gate(false, "El pago consular debe estar confirmado antes de programar la cita.", "payment")
+          : gate(true),
+      interview: !assigned
+        ? gate(false, "Necesitas un asesor asignado antes de iniciar la preparación de entrevista.", "assignment")
+        : !appointmentScheduled
+          ? gate(false, "Necesitas una cita consular activa antes de iniciar la preparación de entrevista.", "appointment")
+          : gate(true),
     };
 
     let currentStep = "profile";
     if (profileComplete) currentStep = assigned ? "ds160" : "assignment";
     if (assigned && ds160Complete) currentStep = documentsApproved ? "payment" : "documents";
-    if (paymentStarted) currentStep = consularPaid ? "appointment" : "payment";
-    if (appointmentScheduled) currentStep = "interview";
-    if (interviewStarted) currentStep = "interview";
+    if (assigned && paymentStarted) currentStep = consularPaid ? "appointment" : "payment";
+    if (assigned && appointmentScheduled) currentStep = "interview";
+    if (assigned && interviewStarted) currentStep = "interview";
 
     return {
       assigned,
