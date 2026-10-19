@@ -80,6 +80,31 @@ describe("integración: registro, login y sesión", () => {
     expect(state.users).toHaveLength(0);
   });
 
+  test("rechaza contraseñas que no cumplen la política sin crear usuarios (SP10-05)", async () => {
+    const { app, state } = createAuthIntegrationApp();
+    const policyMessage = "La contraseña debe tener al menos 8 caracteres e incluir letras y números";
+
+    for (const contrasena of ["abc123", "abcdef1", "12345678", "abcdefgh", "1234-5678", "        "]) {
+      const response = await request(app).post("/register").send({ ...NEW_USER, contrasena });
+
+      expect([contrasena, response.status]).toEqual([contrasena, 400]);
+      expect(response.body.error).toBe(policyMessage);
+      expect(response.body.token).toBeUndefined();
+    }
+    expect(state.users).toHaveLength(0);
+  });
+
+  test("acepta una contraseña justo en el límite de la política y permite iniciar sesión (SP10-05)", async () => {
+    const { app, state } = createAuthIntegrationApp();
+
+    const registered = await request(app).post("/register").send({ ...NEW_USER, contrasena: "abcdefg1" });
+    const login = await request(app).post("/login").send({ correo: NEW_USER.correo, contrasena: "abcdefg1" });
+
+    expect(registered.status).toBe(200);
+    expect(login.status).toBe(200);
+    expect(state.users).toHaveLength(1);
+  });
+
   test("no permite registrar dos veces el mismo correo", async () => {
     const { app, state } = createAuthIntegrationApp();
 
