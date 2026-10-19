@@ -488,6 +488,7 @@ describe("admin process management", () => {
         "Tu tramite cambio a Pendiente.",
         "info",
         "tramite-21-estado-Pendiente",
+        "baja",
       ]
     );
   });
@@ -538,6 +539,7 @@ describe("admin process management", () => {
         "Tu tramite avanzo a la etapa: Cita consular.",
         "etapa",
         "Cita consular",
+        "baja",
       ]
     );
   });
@@ -586,6 +588,7 @@ describe("admin process management", () => {
         "Se te asigno un asesor para acompanar tu tramite.",
         "info",
         "tramite-21-asesor",
+        "normal",
       ]
     );
   });

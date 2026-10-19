@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Bell, CheckCheck, CircleAlert, FileText, MessageSquareText, Settings2, Trash2, UserPlus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAdvisorNotifications } from "./advisorNotificationsStore";
+import useIdioma from "../../hooks/useIdioma";
+import NotificationPriorityBadge from "../NotificationPriorityBadge";
+import { getNotificationPriority } from "../../utils/notificationPriority";
 
 const typeLabels = {
   all: "Todos los tipos",
@@ -37,6 +40,7 @@ function relativeDate(value) {
 }
 
 export default function AdvisorNotificationCenter() {
+  const { t } = useIdioma();
   const {
     notifications, unreadCount, hasMore, status, error, preferences,
     loadNotifications, loadMore, markRead, markAllRead, archive, remove, updatePreferences,
@@ -135,16 +139,16 @@ export default function AdvisorNotificationCenter() {
       {unreadCount > 0 && <button className="advisor-notification-read-all" type="button" onClick={() => markAllRead().catch((requestError) => setActionError(requestError.message))}><CheckCheck aria-hidden="true" /> Marcar todas como leídas</button>}
       <div className="advisor-notification-body" aria-live="polite">
         {(actionError || (error && status === "offline")) && <div className="advisor-notification-error" role="status"><span>{actionError || error}</span><button type="button" onClick={() => { setActionError(""); loadNotifications().catch((requestError) => setActionError(requestError.message)); }}>Actualizar</button></div>}
-        {!filtered.length ? <p className="advisor-notification-empty">No hay notificaciones en este filtro.</p> : <ul>{filtered.map((notification) => <li key={notification.id} className={notification.leido ? "" : "is-unread"}>
+        {!filtered.length ? <p className="advisor-notification-empty">No hay notificaciones en este filtro.</p> : <ul>{filtered.map((notification) => { const priority = getNotificationPriority(notification); return <li key={notification.id} className={[notification.leido ? "" : "is-unread", `is-priority-${priority}`].filter(Boolean).join(" ")}>
           <button className="advisor-notification-content" type="button" disabled={busyId === notification.id} onClick={() => openNotification(notification)}>
             <span className={`advisor-notification-icon advisor-notification-icon--${notification.tipo}`}><NotificationIcon type={notification.tipo} /></span>
-            <span><strong>{notification.titulo}</strong><small>{notification.mensaje}</small><time dateTime={notification.created_at} title={new Date(notification.created_at).toLocaleString("es-GT")}>{relativeDate(notification.created_at)}</time></span>
+            <span><NotificationPriorityBadge priority={priority} label={t(`notifications.priority.${priority}`)} /><strong>{notification.titulo}</strong><small>{notification.mensaje}</small><time dateTime={notification.created_at} title={new Date(notification.created_at).toLocaleString("es-GT")}>{relativeDate(notification.created_at)}</time></span>
           </button>
           <div className="advisor-notification-item-actions">
             <button type="button" aria-label={`Archivar: ${notification.titulo}`} onClick={() => archive(notification.id).catch((requestError) => setActionError(requestError.message))}><Archive aria-hidden="true" /></button>
             <button type="button" aria-label={`Eliminar: ${notification.titulo}`} onClick={() => remove(notification.id).catch((requestError) => setActionError(requestError.message))}><Trash2 aria-hidden="true" /></button>
           </div>
-        </li>)}</ul>}
+        </li>; })}</ul>}
         {hasMore && <button type="button" className="advisor-notification-load-more" onClick={() => loadMore().catch((requestError) => setActionError(requestError.message))}>Cargar notificaciones anteriores</button>}
       </div>
     </section>}

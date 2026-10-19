@@ -152,7 +152,7 @@ function createConsularPaymentService(pool, { notificacionService } = {}) {
       if (error.code === "23505") throw httpError("Ya existe un pago activo para este cliente", 409);
       throw error;
     }
-    await notifyAssignedAdvisor(user.id_usuario, "Transferencia pendiente de validación", `${user.nombre} registró un comprobante bancario.`);
+    await notifyAssignedAdvisor(user.id_usuario, "Transferencia pendiente de validación", `${user.nombre} registró un comprobante bancario.`, "alta");
     return presentPayment(result.rows[0]);
   }
 
@@ -200,7 +200,7 @@ function createConsularPaymentService(pool, { notificacionService } = {}) {
       await advanceProcessAfterCustomerPayment(current.rows[0].user_id);
       await notify(current.rows[0].user_id, "Transferencia confirmada", "Tu asesor confirmó la recepción del pago. Iniciaremos la gestión consular.");
     } else {
-      await notify(current.rows[0].user_id, "Comprobante rechazado", `Debes registrar un nuevo comprobante. Motivo: ${rejectionReason}`);
+      await notify(current.rows[0].user_id, "Comprobante rechazado", `Debes registrar un nuevo comprobante. Motivo: ${rejectionReason}`, "alta");
     }
     return presentPayment(result.rows[0]);
   }
@@ -213,7 +213,7 @@ function createConsularPaymentService(pool, { notificacionService } = {}) {
     if (current.rows[0].status !== "client_paid") throw httpError("El pago bancario aún no está confirmado", 409);
     const result = await pool.query("UPDATE consular_payments SET status='consular_processing',updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND status='client_paid' RETURNING *", [parsedId]);
     if (!result.rows.length) throw httpError("La gestión consular ya fue iniciada", 409);
-    await notify(current.rows[0].user_id, "Gestión consular iniciada", "Tu asesor comenzó la gestión del pago ante el consulado.");
+    await notify(current.rows[0].user_id, "Gestión consular iniciada", "Tu asesor comenzó la gestión del pago ante el consulado.", "baja");
     return presentPayment(result.rows[0]);
   }
 
@@ -242,13 +242,13 @@ function createConsularPaymentService(pool, { notificacionService } = {}) {
       WHERE tramite.progreso<51`, [userId]);
   }
 
-  async function notifyAssignedAdvisor(userId, title, message) {
+  async function notifyAssignedAdvisor(userId, title, message, prioridad) {
     const result = await pool.query("SELECT id_asesor FROM tramite WHERE id_usuario=$1", [userId]);
-    if (result.rows[0]?.id_asesor) await notify(result.rows[0].id_asesor, title, message);
+    if (result.rows[0]?.id_asesor) await notify(result.rows[0].id_asesor, title, message, prioridad);
   }
 
-  async function notify(userId, title, message) {
-    try { await notificacionService?.crearNotificacion({ userId, titulo: title, mensaje: message, tipo: "info" }); }
+  async function notify(userId, title, message, prioridad = "normal") {
+    try { await notificacionService?.crearNotificacion({ userId, titulo: title, mensaje: message, tipo: "info", prioridad }); }
     catch (error) { console.error("CONSULAR PAYMENT NOTIFICATION ERROR:", error); }
   }
 

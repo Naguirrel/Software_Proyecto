@@ -83,7 +83,7 @@ function createNotificacionController(notificacionService) {
 
   async function crear(req, res) {
     try {
-      const { userId, titulo, mensaje, tipo, etapaRelacionada } = req.body;
+      const { userId, titulo, mensaje, tipo, etapaRelacionada, prioridad } = req.body;
       if (!userId) {
         return res.status(400).json({ error: "userId requerido" });
       }
@@ -93,6 +93,7 @@ function createNotificacionController(notificacionService) {
         mensaje,
         tipo,
         etapaRelacionada,
+        prioridad,
       });
       return res.status(201).json({
         message: "Notificación creada correctamente",

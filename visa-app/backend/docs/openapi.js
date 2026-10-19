@@ -108,6 +108,7 @@ const schemas = {
       mensaje: { type: "string" },
       tipo: { type: "string" },
       etapaRelacionada: { type: "string" },
+      prioridad: { type: "string", enum: ["baja", "normal", "alta"], default: "normal" },
     },
   },
   DocumentStatusRequest: {
@@ -597,6 +598,7 @@ Object.assign(schemas, {
       entity_type: { type: "string", nullable: true },
       entity_id: { type: "integer", nullable: true },
       dedupe_key: { type: "string", nullable: true },
+      prioridad: { type: "string", enum: ["baja", "normal", "alta"], description: "Prioridad visual: alta pide atención o una acción; baja es solo informativa." },
       created_at: { type: "string", format: "date-time" },
       updated_at: { type: "string", format: "date-time" },
     },

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
 import useIdioma from "../hooks/useIdioma";
+import NotificationPriorityBadge from "./NotificationPriorityBadge";
+import { getNotificationPriority } from "../utils/notificationPriority";
 
 export default function NotificationCenter({ userId, unreadCount = 0 }) {
   const { t } = useIdioma();
@@ -122,12 +124,16 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
               <p className="vg-notification-empty">{t("notifications.empty")}</p>
             ) : (
               <ul className="vg-notification-list">
-                {notifications.map((notification) => (
-                  <li key={notification.id} className={notification.leido ? "" : "is-unread"}>
+                {notifications.map((notification) => {
+                  const priority = getNotificationPriority(notification);
+                  return (
+                  <li key={notification.id} className={[notification.leido ? "" : "is-unread", `is-priority-${priority}`].filter(Boolean).join(" ")}>
+                    <NotificationPriorityBadge priority={priority} label={t(`notifications.priority.${priority}`)} />
                     <strong>{notification.titulo}</strong>
                     {notification.mensaje && <p>{notification.mensaje}</p>}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>

@@ -19,6 +19,7 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
       return {
         titulo: "Documento aprobado",
         mensaje: `Tu ${documentName} fue aprobado.`,
+        prioridad: "normal",
       };
     }
 
@@ -28,6 +29,7 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
         mensaje: feedbackChanged
           ? `Tu ${documentName} requiere correcciones. Revisa las observaciones del administrador.`
           : `Tu ${documentName} requiere correcciones.`,
+        prioridad: "alta",
       };
     }
 
@@ -35,6 +37,7 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
       return {
         titulo: "Nuevas observaciones en documento",
         mensaje: "El administrador agrego observaciones a uno de tus documentos.",
+        prioridad: "alta",
       };
     }
 
@@ -52,6 +55,7 @@ function createAdminDocumentController(adminDocumentService, { notificacionServi
         userId: documento.usuario_id,
         titulo: notification.titulo,
         mensaje: notification.mensaje,
+        prioridad: notification.prioridad,
         tipo: "documento",
         etapaRelacionada: documento.documento_key || `documento-${documento.id}`,
       });

@@ -256,6 +256,7 @@ function defaultQueryHandler(sql, values) {
           tipo: values[3],
           leido: false,
           etapa_relacionada: values[4],
+          prioridad: values[5] || "normal",
         },
       ],
     });
@@ -1741,6 +1742,7 @@ describe("app endpoints", () => {
         "Ya puedes consultar la retroalimentacion de tu entrevista.",
         "entrevista",
         "entrevista-30",
+        "normal",
       ]
     );
   });
@@ -2291,7 +2293,7 @@ describe("app endpoints", () => {
     });
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO notificaciones"),
-      [3, "Documento aprobado", "Tu Pasaporte fue aprobado.", "documento", "passport"]
+      [3, "Documento aprobado", "Tu Pasaporte fue aprobado.", "documento", "passport", "normal"]
     );
   });
 
@@ -2308,7 +2310,7 @@ describe("app endpoints", () => {
     });
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO notificaciones"),
-      [3, "Documento aprobado", "Tu Pasaporte fue aprobado.", "documento", "passport"]
+      [3, "Documento aprobado", "Tu Pasaporte fue aprobado.", "documento", "passport", "normal"]
     );
   });
 
@@ -2325,7 +2327,7 @@ describe("app endpoints", () => {
     });
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO notificaciones"),
-      [3, "Documento requiere correcciones", "Tu Pasaporte requiere correcciones.", "documento", "passport"]
+      [3, "Documento requiere correcciones", "Tu Pasaporte requiere correcciones.", "documento", "passport", "alta"]
     );
   });
 
@@ -2350,6 +2352,7 @@ describe("app endpoints", () => {
         "El administrador agrego observaciones a uno de tus documentos.",
         "documento",
         "passport",
+        "alta",
       ]
     );
   });
@@ -2377,6 +2380,7 @@ describe("app endpoints", () => {
         "Tu Pasaporte requiere correcciones. Revisa las observaciones del administrador.",
         "documento",
         "passport",
+        "alta",
       ]
     );
   });
@@ -2394,7 +2398,7 @@ describe("app endpoints", () => {
     });
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO notificaciones"),
-      [3, "Documento requiere correcciones", "Tu Pasaporte requiere correcciones.", "documento", "passport"]
+      [3, "Documento requiere correcciones", "Tu Pasaporte requiere correcciones.", "documento", "passport", "alta"]
     );
   });
 
