@@ -3,6 +3,9 @@ import { buildApiUrl } from "../config/api";
 import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
+import useIdioma from "../hooks/useIdioma";
+import NotificationPriorityBadge from "../components/NotificationPriorityBadge";
+import { getNotificationPriority } from "../utils/notificationPriority";
 import { buildSessionHeaders } from "../utils/sessionAuth";
 
 const TIPO_CONFIG = {
@@ -27,6 +30,7 @@ function formatFecha(dateStr) {
 export default function Notificaciones() {
   const { isValidating, session } = useRequireAuth();
   const modoSenior = useModoSenior();
+  const { t } = useIdioma();
 
   const [notificaciones, setNotificaciones] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -207,19 +211,26 @@ export default function Notificaciones() {
           <div style={s.lista}>
             {notificaciones.map((n) => {
               const cfg = TIPO_CONFIG[n.tipo] || TIPO_CONFIG.info;
+              const prioridad = getNotificationPriority(n);
+              const esAlta = prioridad === "alta";
               return (
                 <div
                   key={n.id}
+                  data-priority={prioridad}
                   style={{
                     ...s.card,
-                    backgroundColor: n.leido ? "#ffffff" : "#f0f9ff",
-                    borderLeft: n.leido ? "4px solid #e2e8f0" : "4px solid #dc2649",
+                    backgroundColor: esAlta ? "var(--vg-danger-bg)" : n.leido ? "#ffffff" : "#f0f9ff",
+                    borderLeft: esAlta
+                      ? "4px solid var(--vg-danger-text)"
+                      : n.leido ? "4px solid #e2e8f0" : "4px solid #dc2649",
+                    opacity: prioridad === "baja" && n.leido ? 0.8 : 1,
                   }}
                 >
                   {!n.leido && <span style={s.puntoPendiente} />}
 
                   <div style={s.cardBody}>
                     <div style={s.cardTop}>
+                      <NotificationPriorityBadge priority={prioridad} label={t(`notifications.priority.${prioridad}`)} />
                       <span style={{ ...s.tipoBadge, background: cfg.bg, color: cfg.color, fontSize: fs(11) }}>
                         {cfg.label}
                       </span>

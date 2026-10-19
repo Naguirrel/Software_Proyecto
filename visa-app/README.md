@@ -52,6 +52,7 @@ docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" 
   < backend/migrations/001_advisor_communication.sql
 docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
   < backend/migrations/002_user_lookup_indexes.sql
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   < backend/migrations/004_notification_priority.sql
 ```
 
 ## Autenticación

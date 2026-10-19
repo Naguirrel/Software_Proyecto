@@ -168,6 +168,7 @@ async function notifyProcessUpdates(notificacionService, { processId, userId, pr
       mensaje: `Tu tramite cambio a ${next.estado}.`,
       tipo: "info",
       etapaRelacionada: `tramite-${processId}-estado-${next.estado}`,
+      prioridad: "baja",
     }));
   }
 
@@ -176,7 +177,8 @@ async function notifyProcessUpdates(notificacionService, { processId, userId, pr
       userId,
       next.etapa_actual,
       `Nueva etapa: ${next.etapa_actual}`,
-      `Tu tramite avanzo a la etapa: ${next.etapa_actual}.`
+      `Tu tramite avanzo a la etapa: ${next.etapa_actual}.`,
+      "baja"
     ));
   }
 
@@ -321,7 +323,7 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
           ORDER BY created_at DESC, id DESC
         `, [userId]),
         pool.query(`
-          SELECT id, titulo, mensaje, tipo, leido, etapa_relacionada, created_at
+          SELECT id, titulo, mensaje, tipo, prioridad, leido, etapa_relacionada, created_at
           FROM notificaciones
           WHERE id_usuario = $1
           ORDER BY created_at DESC, id DESC
