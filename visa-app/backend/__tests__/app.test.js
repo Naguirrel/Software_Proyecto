@@ -811,7 +811,7 @@ describe("app endpoints", () => {
     const response = await request(app).post("/register").send({
       nombre: "Nuevo Usuario",
       correo: "nuevo@example.com",
-      contrasena: "1234",
+      contrasena: "clave1234",
     });
 
     expect(response.status).toBe(200);
@@ -830,14 +830,14 @@ describe("app endpoints", () => {
     await request(app).post("/register").send({
       nombre: "Nuevo Usuario",
       correo: "nuevo@example.com",
-      contrasena: "1234",
+      contrasena: "clave1234",
     });
 
     const insertCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO usuario"));
     const storedPassword = insertCall[1][2];
-    expect(storedPassword).not.toBe("1234");
+    expect(storedPassword).not.toBe("clave1234");
     expect(storedPassword).toMatch(/^\$2[aby]\$/);
-    expect(bcrypt.compareSync("1234", storedPassword)).toBe(true);
+    expect(bcrypt.compareSync("clave1234", storedPassword)).toBe(true);
   });
 
   test("POST /register devuelve 409 cuando el correo ya existe", async () => {
@@ -854,7 +854,7 @@ describe("app endpoints", () => {
     const response = await request(app).post("/register").send({
       nombre: "Usuario Repetido",
       correo: "repetido@example.com",
-      contrasena: "1234",
+      contrasena: "clave1234",
     });
 
     expect(response.status).toBe(409);
@@ -878,7 +878,7 @@ describe("app endpoints", () => {
     const response = await request(app).post("/register").send({
       nombre: "Usuario Invalido",
       correo: "correo-sin-formato",
-      contrasena: "1234",
+      contrasena: "clave1234",
     });
 
     expect(response.status).toBe(400);
@@ -900,7 +900,7 @@ describe("app endpoints", () => {
     const response = await request(app).post("/register").send({
       nombre: "Usuario Repetido",
       correo: "nuevo@example.com",
-      contrasena: "1234",
+      contrasena: "clave1234",
     });
 
     expect(response.status).toBe(500);
@@ -2535,7 +2535,7 @@ describe("app endpoints", () => {
       const usuario = {
         nombre: "Usuario Integracion",
         correo: "integracion@example.com",
-        contrasena: "clave-segura",
+        contrasena: "clave-segura-1",
       };
       const datosDs160 = {
         personal: {
