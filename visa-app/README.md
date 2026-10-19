@@ -45,14 +45,17 @@ Configura las variables de `.env.example`. Las obligatorias son la conexión Pos
 
 ### Actualizaciones de base de datos
 
-`init.sql` prepara instalaciones nuevas. Para una base existente, aplica las migraciones pendientes antes de desplegar el backend:
+`init.sql` prepara instalaciones nuevas. Para una base existente, aplica las migraciones pendientes en orden antes de desplegar el backend. Todas son idempotentes, así que volver a ejecutar una ya aplicada no cambia nada:
 
 ```bash
 docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
   < backend/migrations/001_advisor_communication.sql
 docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
   < backend/migrations/002_user_lookup_indexes.sql
-docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   < backend/migrations/004_notification_priority.sql
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/migrations/003_question_bank_examples.sql
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/migrations/004_notification_priority.sql
 ```
 
 ## Autenticación
