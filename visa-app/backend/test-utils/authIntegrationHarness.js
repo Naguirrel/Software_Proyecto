@@ -22,6 +22,10 @@ function createInMemoryAuthDb() {
   async function query(sql, values = []) {
     const text = normalize(sql);
 
+    if (["BEGIN", "COMMIT", "ROLLBACK"].includes(text)) {
+      return { rows: [] };
+    }
+
     if (text.startsWith("SELECT") && text.includes("FROM usuario WHERE correo = $1")) {
       const user = findUser((row) => row.correo === values[0]);
       return { rows: user ? [publicUser(user)] : [] };
@@ -116,7 +120,10 @@ function createInMemoryAuthDb() {
     }
 
     if (text.startsWith("INSERT INTO login_attempts")) {
-      const [id_usuario, correo, ip, created_at] = values;
+      const hasNullUser = text.includes("VALUES (NULL,");
+      const [id_usuario, correo, ip, created_at] = hasNullUser
+        ? [null, values[0], values[1], values[2]]
+        : values;
       state.loginAttempts.push({ id: state.nextRecordId++, id_usuario, correo, ip, created_at });
       return { rows: [] };
     }
@@ -165,7 +172,30 @@ function createInMemoryAuthDb() {
     throw new Error(`Consulta no soportada por la base en memoria: ${text}`);
   }
 
-  return { state, pool: { query: jest.fn(query) } };
+  let transactionTail = Promise.resolve();
+  const pool = {
+    query: jest.fn(query),
+    connect: jest.fn(async () => {
+      const previousTransaction = transactionTail;
+      let releaseTransaction;
+      transactionTail = new Promise((resolve) => {
+        releaseTransaction = resolve;
+      });
+      await previousTransaction;
+
+      let released = false;
+      return {
+        query: jest.fn(query),
+        release: jest.fn(() => {
+          if (released) return;
+          released = true;
+          releaseTransaction();
+        }),
+      };
+    }),
+  };
+
+  return { state, pool };
 }
 
 function createAuthIntegrationApp({ sendEmail } = {}) {

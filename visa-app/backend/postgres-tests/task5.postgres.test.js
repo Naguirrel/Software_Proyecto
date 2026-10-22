@@ -243,6 +243,40 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
     expect(after).toEqual(before);
   });
 
+  test("SEC-002: PostgreSQL serializa el bloqueo ante intentos de login concurrentes", async () => {
+    const user = await registerUser();
+    ctx.mailbox.length = 0;
+
+    const responses = await Promise.all(
+      Array.from({ length: 12 }, () => request(ctx.app).post("/login").send({
+        correo: user.correo,
+        contrasena: "clave-incorrecta",
+      }))
+    );
+
+    expect(responses.filter((response) => response.status === 401)).toHaveLength(4);
+    expect(responses.filter((response) => response.status === 423)).toHaveLength(8);
+
+    const attempts = await ctx.pool.query(
+      "SELECT COUNT(*)::int AS total FROM login_attempts WHERE id_usuario = $1",
+      [user.id]
+    );
+    const account = await ctx.pool.query(
+      "SELECT bloqueado_hasta FROM usuario WHERE id_usuario = $1",
+      [user.id]
+    );
+
+    expect(attempts.rows[0].total).toBe(5);
+    expect(account.rows[0].bloqueado_hasta).toBeInstanceOf(Date);
+    expect(ctx.mailbox.filter((message) => message.subject.includes("bloqueada"))).toHaveLength(1);
+
+    const correctPassword = await request(ctx.app).post("/login").send({
+      correo: user.correo,
+      contrasena: TEST_PASSWORD,
+    });
+    expect(correctPassword.status).toBe(423);
+  });
+
   test("DB-001: PostgreSQL impone el límite de 2000 caracteres en ejemplos del banco", async () => {
     const valid = await ctx.pool.query(
       `INSERT INTO question_bank (question, category, difficulty, ejemplo_fuerte)
