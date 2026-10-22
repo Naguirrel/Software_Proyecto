@@ -1,3 +1,17 @@
+.ds160-toast__action {
+  margin-left: 12px;
+  padding: 5px 10px;
+  border: 1px solid currentColor;
+  border-radius: var(--vg-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ds160-toast__action:focus-visible { outline: 3px solid var(--vg-red); outline-offset: 2px; }
+
 /* ══════════════════════════════
    DS-160 — Modo Senior
    La pantalla usa estilos inline, por eso estas reglas usan !important.

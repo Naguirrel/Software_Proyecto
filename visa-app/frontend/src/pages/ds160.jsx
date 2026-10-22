@@ -254,6 +254,7 @@ export default function DS160Form() {
     guardando,
     descargandoPdf,
     mensajeGuardado,
+    formularioFinalizado,
     cargando,
     seccion,
     totalSecciones,
@@ -314,13 +315,18 @@ export default function DS160Form() {
         </div>
 
         {mensajeGuardado && (
-          <div style={{
+          <div role={mensajeGuardado.startsWith("✓") ? "status" : "alert"} style={{
             ...st.toast,
             background: mensajeGuardado.startsWith("✓") ? "var(--vg-success-bg)" : "var(--vg-danger-bg)",
-            borderColor: mensajeGuardado.startsWith("✓") ? "var(--vg-success-border)" : "var(--vg-danger-border)",
+            borderColor: mensajeGuardado.startsWith("✓") ? "var(--vg-success)" : "var(--vg-danger-text)",
             color: mensajeGuardado.startsWith("✓") ? "var(--vg-success)" : "var(--vg-danger-text)"
           }}>
             {mensajeGuardado}
+            {formularioFinalizado && (
+              <button type="button" className="ds160-toast__action" onClick={() => { window.location.href = "/dashboard"; }}>
+                Ir al dashboard
+              </button>
+            )}
           </div>
         )}
 
@@ -360,7 +366,7 @@ export default function DS160Form() {
                   className="ds160-nav-btn ds160-nav-btn--next"
                   style={{ ...st.navBtn, ...st.navNext, fontSize: modoSenior ? "16px" : "14px", opacity: guardando ? 0.7 : 1 }}
                   onClick={finalizarFormulario}
-                  disabled={guardando}
+                  disabled={guardando || formularioFinalizado}
                 >
                   {guardando ? "Finalizando..." : "Finalizar ✓"}
                 </button>
