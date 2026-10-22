@@ -84,10 +84,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 0.2s;
 }
 .dash-tl-node--done   { background: var(--vg-navy); }
-.dash-tl-node--active { background: var(--vg-red); animation: vgPulse 2s ease-in-out infinite; }
+.dash-tl-node--active { background: var(--vg-red); }
+
+[data-theme="dark"] .dash-tl-node--done { background: var(--vg-red-dark); }
 
 .dash-tl-num {
   font-weight: 700;
@@ -110,7 +111,10 @@
   margin-top: 17px;
   min-width: 8px;
   align-self: flex-start;
+  background: var(--vg-border);
 }
+.dash-tl-line--done { background: var(--vg-navy); }
+[data-theme="dark"] .dash-tl-line--done { background: var(--vg-red-dark); }
 
 /* ── Etapa actual box ── */
 .dash-etapa-box {
