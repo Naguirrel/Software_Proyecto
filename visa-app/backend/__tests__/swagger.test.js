@@ -28,6 +28,38 @@ describe("documentación de la API", () => {
     expect(response.text).toContain("VisaGuide API");
   });
 
+  test("documenta las rutas nuevas de flujo y desbloqueo con contratos específicos", async () => {
+    const { body: contract } = await request(app).get("/api-docs.json").expect(200);
+    const workflow = contract.paths["/workflow/me"].get;
+    const unlockByToken = contract.paths["/desbloquear-cuenta"].post;
+    const unlockByAdmin = contract.paths["/admin/users/{id}/unlock"].post;
+
+    expect(workflow.security).toEqual([{ bearerAuth: [] }]);
+    expect(workflow.responses[200].content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/ClientWorkflowResponse",
+    });
+    expect(workflow.responses[404]).toEqual({ $ref: "#/components/responses/NotFound" });
+    expect(contract.components.schemas.ClientWorkflowResponse.properties.gates.required).toContain("interview");
+
+    expect(unlockByToken.requestBody.content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/TokenRequest",
+    });
+    expect(unlockByToken.responses[200].content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/SuccessMessage",
+    });
+
+    expect(unlockByAdmin.security).toEqual([{ bearerAuth: [] }]);
+    expect(unlockByAdmin.parameters[0]).toMatchObject({ name: "id", in: "path", required: true });
+    expect(unlockByAdmin.responses[200].content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/AdminUserResponse",
+    });
+    expect(unlockByAdmin.responses[404]).toEqual({ $ref: "#/components/responses/NotFound" });
+
+    expect(contract.paths["/login"].post.responses[423].content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/AccountLockedError",
+    });
+  });
+
   test("documenta cada ruta del asesor con seguridad y respuestas tipadas", async () => {
     const { body: contract } = await request(app).get("/api-docs.json").expect(200);
     const advisorOperations = Object.entries(contract.paths)
