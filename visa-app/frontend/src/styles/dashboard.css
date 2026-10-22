@@ -185,6 +185,7 @@
 
 .dash-stat-card {
   min-width: 0;
+  min-height: 160px;
   padding: 20px;
   border: 1px solid var(--vg-border);
   border-radius: var(--vg-card-radius);
@@ -192,8 +193,9 @@
   box-shadow: var(--vg-shadow-sm);
   display: grid;
   grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 8px 12px;
-  align-items: center;
+  align-items: start;
 }
 
 .dash-stat-card__icon {
@@ -221,16 +223,21 @@
 }
 
 .dash-stat-card__stage {
-  overflow: hidden;
   color: var(--vg-text);
   font-size: 18px;
   line-height: 1.2;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+}
+
+.dash-stat-card__hint,
+.dash-stat-card__progress {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  align-self: end;
 }
 
 .dash-stat-card__progress {
   height: 7px;
-  grid-column: 1 / -1;
   overflow: hidden;
   border-radius: 999px;
   background: var(--vg-border);
@@ -743,7 +750,7 @@ html.modo-senior .dash-stats__heading { gap: 24px; margin-bottom: 21px; }
 html.modo-senior .dash-stats__heading p,
 html.modo-senior .dash-stats__status { font-size: 16px; }
 html.modo-senior .dash-stats__grid { gap: 24px; }
-html.modo-senior .dash-stat-card { padding: 30px; gap: 12px 18px; }
+html.modo-senior .dash-stat-card { min-height: 200px; padding: 30px; gap: 12px 18px; }
 html.modo-senior .dash-stat-card__icon { width: 52px; height: 52px; }
 html.modo-senior .dash-stat-card__label,
 html.modo-senior .dash-stat-card__hint { font-size: 16px; }
