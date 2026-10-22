@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { buildApiUrl } from "../config/api";
 import { secciones } from "../data/ds160Sections";
 import { validarCampo, validarSeccion } from "../utils/ds160Validation";
+import { buildDs160PdfFilename } from "../utils/ds160PdfFilename";
 
 function getCorreo() {
   const sessionRaw = localStorage.getItem("visaguide_session");
@@ -226,7 +227,9 @@ export default function useDS160Form() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "ds160.pdf";
+      const sessionRaw = localStorage.getItem("visaguide_session");
+      const session = sessionRaw ? JSON.parse(sessionRaw) : {};
+      link.download = buildDs160PdfFilename(formData, session);
       document.body.appendChild(link);
       link.click();
       link.remove();

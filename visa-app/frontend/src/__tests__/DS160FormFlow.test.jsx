@@ -260,9 +260,13 @@ describe("DS-160: guardado manual y descarga de PDF", () => {
 
   it("descarga el PDF generado por el backend al presionar 'Descargar PDF'", async () => {
     const user = userEvent.setup();
-    const fetchMock = mockFetch();
+    const fetchMock = mockFetch({ datos: { nombres: "Norman David", apellidos: "Aguirre López" } });
     const createObjectURL = vi.fn(() => "blob:mock-url");
     const revokeObjectURL = vi.fn();
+    let downloadedName;
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function () {
+      downloadedName = this.download;
+    });
     vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
 
     renderForm();
@@ -275,6 +279,7 @@ describe("DS-160: guardado manual y descarga de PDF", () => {
       expect(pdfCall).toBeDefined();
     });
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(downloadedName).toBe("Form_DS160_Norman_Aguirre.pdf");
   });
 
   it("muestra un mensaje si la descarga del PDF falla", async () => {
