@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import Chat from "../pages/Chat";
@@ -38,8 +38,27 @@ describe("chat del cliente", () => {
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     expect(screen.getByPlaceholderText("Escribe tu mensaje a Laura…")).toBeInTheDocument();
     expect(screen.getByText("Mi consulta")).toBeInTheDocument();
+    expect(screen.queryByText("CHAT SEGURO")).not.toBeInTheDocument();
 
     await act(async () => { await vi.advanceTimersByTimeAsync(4_000); });
     expect(screen.getByText("Respuesta nueva")).toBeInTheDocument();
+  });
+
+  test("conserva el envío de mensajes", async () => {
+    apiRequest.mockImplementation(async (path) => {
+      if (path === "/chat?limit=50") return { assignment, messages: [], hasMoreBefore: false };
+      if (path === "/chat/messages") return { message: { id: 3, sender: "client", message: "Hola Laura", createdAt: "2026-10-05T18:02:00.000Z" } };
+      throw new Error(`Solicitud inesperada: ${path}`);
+    });
+
+    render(<MemoryRouter><Chat /></MemoryRouter>);
+    const input = await screen.findByPlaceholderText("Escribe tu mensaje a Laura…");
+    fireEvent.change(input, { target: { value: "Hola Laura" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+
+    expect(await screen.findByText("Hola Laura")).toBeInTheDocument();
+    expect(apiRequest).toHaveBeenCalledWith("/chat/messages", expect.objectContaining({
+      method: "POST", body: JSON.stringify({ message: "Hola Laura" }),
+    }));
   });
 });
