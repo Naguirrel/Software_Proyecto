@@ -42,6 +42,11 @@ export default function useDS160Form() {
 
   const debeMostrar = (campo) =>
     !campo.dependeDe || formData[campo.dependeDe.campo] === campo.dependeDe.valor;
+  const seccionesCompletadas = new Set(
+    secciones
+      .filter(({ campos }) => validarSeccion(campos, formData, debeMostrar).esValida)
+      .map(({ id }) => id)
+  );
 
   // Cargar datos al iniciar
   useEffect(() => {
@@ -290,6 +295,7 @@ export default function useDS160Form() {
     seccion,
     totalSecciones,
     progreso,
+    seccionesCompletadas,
     // Funciones
     debeMostrar,
     handleChange,

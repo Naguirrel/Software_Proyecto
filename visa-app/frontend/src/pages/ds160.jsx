@@ -258,6 +258,7 @@ export default function DS160Form() {
     seccion,
     totalSecciones,
     progreso,
+    seccionesCompletadas,
     debeMostrar,
     handleChange,
     guardarProgreso,
@@ -405,27 +406,32 @@ export default function DS160Form() {
                 SECCIONES DEL FORMULARIO
               </h4>
               <ul style={st.seccionesList}>
-                {secciones.map(sc => (
-                  <li
-                    key={sc.id}
-                    className="ds160-section-item"
-                    style={{
-                      ...st.seccionItem,
-                      ...(sc.id === seccionActual ? st.seccionActual : {}),
-                      ...(sc.id < seccionActual ? st.seccionDone : {}),
-                      fontSize: modoSenior ? "14px" : "13px"
-                    }}
-                  >
-                    {sc.id < seccionActual && (
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                        stroke="var(--vg-success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                        style={{ marginRight: "6px", flexShrink: 0 }} aria-hidden="true">
-                        <polyline points="20,6 9,17 4,12" />
-                      </svg>
-                    )}
-                    {sc.titulo}
-                  </li>
-                ))}
+                {secciones.map(sc => {
+                  const completada = seccionesCompletadas.has(sc.id);
+                  return (
+                    <li
+                      key={sc.id}
+                      className="ds160-section-item"
+                      aria-label={`${sc.titulo}, ${completada ? "completada" : "pendiente"}`}
+                      aria-current={sc.id === seccionActual ? "step" : undefined}
+                      style={{
+                        ...st.seccionItem,
+                        ...(sc.id === seccionActual ? st.seccionActual : {}),
+                        ...(completada && sc.id !== seccionActual ? st.seccionDone : {}),
+                        fontSize: modoSenior ? "14px" : "13px"
+                      }}
+                    >
+                      {completada && (
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                          stroke={sc.id === seccionActual ? "currentColor" : "var(--vg-success)"} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                          style={{ marginRight: "6px", flexShrink: 0 }} aria-hidden="true">
+                          <polyline points="20,6 9,17 4,12" />
+                        </svg>
+                      )}
+                      {sc.titulo}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>

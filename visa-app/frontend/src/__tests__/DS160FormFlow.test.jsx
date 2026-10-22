@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import DS160Form from "../pages/ds160";
 import { secciones } from "../data/ds160Sections";
+import { validarSeccion } from "../utils/ds160Validation";
 
 const SESSION = {
   id: 7,
@@ -89,6 +90,47 @@ describe("DS-160: carga inicial del formulario", () => {
 });
 
 describe("DS-160: validación y navegación entre secciones", () => {
+  it("marca secciones por datos válidos y actualiza la marca al editar o retroceder", async () => {
+    const user = userEvent.setup();
+    mockFetch({
+      datos: {
+        apellidos: "Perez", nombres: "Ana", otrosNombres: "No",
+        fechaNacimiento: "1990-01-01", lugarNacimiento: "Guatemala", paisNacimiento: "Guatemala",
+      },
+      seccion_actual: 2,
+    });
+    renderForm();
+
+    await screen.findByText(/Sección 2:/);
+    expect(screen.getByRole("listitem", { name: "Datos Personales, completada" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: "Información de Contacto, pendiente" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Anterior/ }));
+    expect(screen.getByRole("listitem", { name: "Datos Personales, completada" })).toHaveAttribute("aria-current", "step");
+
+    await user.clear(screen.getByLabelText(/APELLIDOS/i));
+    expect(screen.getByRole("listitem", { name: "Datos Personales, pendiente" })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/APELLIDOS/i), "Perez");
+    expect(screen.getByRole("listitem", { name: "Datos Personales, completada" })).toBeInTheDocument();
+  });
+
+  it("respeta las condiciones de los campos requeridos", () => {
+    const familia = secciones.find(({ id }) => id === 9);
+    const validar = (datos) => validarSeccion(
+      familia.campos,
+      datos,
+      (campo) => !campo.dependeDe || datos[campo.dependeDe.campo] === campo.dependeDe.valor
+    ).esValida;
+    const datos = {
+      estadoCivil: "Soltero/a", nombrePadre: "Juan", nombreMadre: "María", familiaresEEUU: "No",
+    };
+
+    expect(validar(datos)).toBe(true);
+    expect(validar({ ...datos, estadoCivil: "Casado/a" })).toBe(false);
+    expect(validar({ ...datos, estadoCivil: "Casado/a", nombreConyuge: "Sofía" })).toBe(true);
+  });
+
   it("no avanza de sección y muestra errores si faltan campos obligatorios", async () => {
     const user = userEvent.setup();
     mockFetch();
@@ -132,6 +174,7 @@ describe("DS-160: validación y navegación entre secciones", () => {
     await screen.findByText(/Sección 2:/);
     const backButton = screen.getByRole("button", { name: /Anterior/ });
     expect(backButton).toBeEnabled();
+    expect(screen.getByRole("listitem", { name: "Datos Personales, pendiente" })).toBeInTheDocument();
 
     await user.click(backButton);
 
