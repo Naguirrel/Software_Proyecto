@@ -1,6 +1,39 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const request = require("supertest");
+const SwaggerParser = require("@apidevtools/swagger-parser");
 const { createApiDocsRouter } = require("../swagger");
+
+function listMountedRoutes() {
+  const backendRoot = path.resolve(__dirname, "..");
+  const appSource = fs.readFileSync(path.join(backendRoot, "app.js"), "utf8");
+  const factoryFiles = new Map();
+  const requirePattern = /const\s+(?:\{([^}]+)\}|(\w+))\s*=\s*require\(["']\.\/routes\/([^"']+)["']\)/g;
+
+  for (const match of appSource.matchAll(requirePattern)) {
+    const names = match[1] ? match[1].split(",").map((name) => name.trim()) : [match[2]];
+    for (const name of names) factoryFiles.set(name, match[3]);
+  }
+
+  const routes = [];
+  const mountPattern = /app\.use\(\s*["']([^"']+)["']\s*,\s*(create\w+Routes)\s*\(/g;
+  for (const [, prefix, factoryName] of appSource.matchAll(mountPattern)) {
+    const routeFile = factoryFiles.get(factoryName);
+    if (!routeFile) throw new Error(`No se encontró el archivo de ${factoryName}`);
+    const routeSource = fs.readFileSync(path.join(backendRoot, "routes", `${routeFile}.js`), "utf8");
+    const routePattern = /router\.(get|post|put|patch|delete)\(\s*["']([^"']+)["']/g;
+    for (const [, method, localPath] of routeSource.matchAll(routePattern)) {
+      const joined = `${prefix === "/" ? "" : prefix}${localPath === "/" ? "" : localPath}` || "/";
+      routes.push({
+        method,
+        path: joined.replace(/:([A-Za-z0-9_]+)/g, "{$1}"),
+        source: `routes/${routeFile}.js`,
+      });
+    }
+  }
+  return routes;
+}
 
 describe("documentación de la API", () => {
   const app = express();
@@ -20,6 +53,19 @@ describe("documentación de la API", () => {
       maxLength: 100,
       pattern: "^[A-Za-z0-9._:-]+$",
     });
+  });
+
+  test("el contrato OpenAPI es estructuralmente válido", async () => {
+    const { body: contract } = await request(app).get("/api-docs.json").expect(200);
+
+    await expect(SwaggerParser.validate(contract)).resolves.toBeDefined();
+  });
+
+  test("documenta todas las rutas HTTP montadas en Express", async () => {
+    const { body: contract } = await request(app).get("/api-docs.json").expect(200);
+    const missing = listMountedRoutes().filter(({ method, path: routePath }) => !contract.paths[routePath]?.[method]);
+
+    expect(missing).toEqual([]);
   });
 
   test("sirve Swagger UI", async () => {
@@ -42,7 +88,12 @@ describe("documentación de la API", () => {
     expect(contract.components.schemas.ClientWorkflowResponse.properties.gates.required).toContain("interview");
 
     expect(unlockByToken.requestBody.content["application/json"].schema).toEqual({
-      $ref: "#/components/schemas/TokenRequest",
+      $ref: "#/components/schemas/UnlockTokenRequest",
+    });
+    expect(contract.components.schemas.UnlockTokenRequest.properties.token).toMatchObject({
+      minLength: 64,
+      maxLength: 64,
+      pattern: "^[a-f0-9]{64}$",
     });
     expect(unlockByToken.responses[200].content["application/json"].schema).toEqual({
       $ref: "#/components/schemas/SuccessMessage",
@@ -58,6 +109,23 @@ describe("documentación de la API", () => {
     expect(contract.paths["/login"].post.responses[423].content["application/json"].schema).toEqual({
       $ref: "#/components/schemas/AccountLockedError",
     });
+  });
+
+  test("marca como obsoletas las rutas legacy que responden 405", async () => {
+    const { body: contract } = await request(app).get("/api-docs.json").expect(200);
+    const legacyOperations = [
+      contract.paths["/estado-tramite"].get,
+      contract.paths["/usuario-perfil"].get,
+      contract.paths["/ds160"].get,
+      contract.paths["/ds160/pdf"].get,
+      contract.paths["/notificaciones/{userId}/leer-todas"].put,
+    ];
+
+    for (const operation of legacyOperations) {
+      expect(operation.deprecated).toBe(true);
+      expect(operation.responses[405]).toBeDefined();
+      expect(operation.responses[200]).toBeUndefined();
+    }
   });
 
   test("documenta cada ruta del asesor con seguridad y respuestas tipadas", async () => {

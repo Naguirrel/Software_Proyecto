@@ -50,6 +50,20 @@ const schemas = {
     required: ["token"],
     properties: { token: { type: "string" } },
   },
+  UnlockTokenRequest: {
+    type: "object",
+    required: ["token"],
+    additionalProperties: false,
+    properties: {
+      token: {
+        type: "string",
+        minLength: 64,
+        maxLength: 64,
+        pattern: "^[a-f0-9]{64}$",
+        description: "Token hexadecimal de un solo uso recibido por correo.",
+      },
+    },
+  },
   ResetPasswordRequest: {
     type: "object",
     required: ["token", "nuevaContrasena"],
@@ -767,15 +781,19 @@ const endpoints = [
   ["post", "/reset-password", "Autenticación", "Restablecer contraseña", null, "ResetPasswordRequest"],
   ["post", "/verificar-email", "Autenticación", "Verificar correo", null, "TokenRequest"],
   ["post", "/reenviar-verificacion", "Autenticación", "Reenviar verificación", null, "EmailRequest"],
-  ["post", "/desbloquear-cuenta", "Autenticación", "Desbloquear cuenta con el enlace del correo", null, "TokenRequest"],
+  ["post", "/desbloquear-cuenta", "Autenticación", "Desbloquear cuenta con el enlace del correo", null, "UnlockTokenRequest"],
   ["post", "/guardar-perfil", "Perfil y trámite", "Guardar perfil de visa", "session", "ProfileRequest"],
   ["post", "/estado-tramite", "Perfil y trámite", "Consultar estado del trámite", "session"],
+  ["get", "/estado-tramite", "Perfil y trámite", "Ruta heredada no permitida", "session"],
   ["get", "/workflow/me", "Perfil y trámite", "Consultar permisos y progreso del flujo del solicitante", "session"],
   ["post", "/usuario-perfil", "Perfil y trámite", "Consultar perfil del usuario", "session"],
+  ["get", "/usuario-perfil", "Perfil y trámite", "Ruta heredada no permitida", "session"],
   ["put", "/usuario-perfil", "Perfil y trámite", "Actualizar perfil del usuario", "session", "ProfileUpdateRequest"],
   ["put", "/tramite", "Perfil y trámite", "Actualización manual de trámite bloqueada", "session"],
+  ["get", "/ds160", "DS-160", "Ruta heredada no permitida"],
   ["post", "/ds160/load", "DS-160", "Cargar formulario DS-160", null, "UserEmailRequest"],
   ["post", "/ds160", "DS-160", "Guardar formulario DS-160", null, "Ds160Request"],
+  ["get", "/ds160/pdf", "DS-160", "Ruta heredada no permitida"],
   ["post", "/ds160/pdf", "DS-160", "Exportar DS-160 en PDF", null, "UserEmailRequest", 200, "binary"],
   ["post", "/upload", "Documentos", "Subir documento", "session", "DocumentUpload", 201, null, "multipart/form-data"],
   ["post", "/documentos", "Documentos", "Crear documento", "session", "DocumentUpload", 201, null, "multipart/form-data"],
@@ -806,6 +824,7 @@ const endpoints = [
   ["get", "/notificaciones/{userId}/no-leidas", "Notificaciones", "Contar no leídas", "session"],
   ["get", "/notificaciones/{userId}", "Notificaciones", "Listar notificaciones", "session"],
   ["put", "/notificaciones/{id}/leer", "Notificaciones", "Marcar como leída", "session"],
+  ["put", "/notificaciones/{userId}/leer-todas", "Notificaciones", "Ruta heredada no permitida"],
   ["delete", "/notificaciones/{id}", "Notificaciones", "Eliminar notificación", "session"],
   ["get", "/payments/me", "Gestión consular", "Consultar pagos propios", "session"],
   ["post", "/payments/bank-transfer", "Gestión consular", "Registrar transferencia", "session", "BankTransferUpload", 201, null, "multipart/form-data"],
@@ -926,6 +945,30 @@ for (const endpoint of endpoints) {
   const [method, path, ...settings] = endpoint;
   paths[path] ??= {};
   paths[path][method] = buildOperation(method, path, ...settings);
+}
+
+for (const [path, method, replacement] of [
+  ["/estado-tramite", "get", "POST /estado-tramite"],
+  ["/usuario-perfil", "get", "POST /usuario-perfil"],
+  ["/ds160", "get", "POST /ds160/load"],
+  ["/ds160/pdf", "get", "POST /ds160/pdf"],
+  ["/notificaciones/{userId}/leer-todas", "put", "PUT /notificaciones/leer-todas con userId en el cuerpo"],
+]) {
+  const operation = paths[path][method];
+  operation.deprecated = true;
+  operation.description = `Ruta conservada por compatibilidad. Responde 405; usa ${replacement}.`;
+  operation.responses = {
+    405: {
+      description: `Método no permitido. Usa ${replacement}.`,
+      content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+    },
+    429: { $ref: "#/components/responses/TooManyRequests" },
+    500: { $ref: "#/components/responses/InternalError" },
+  };
+  if (operation.security) {
+    operation.responses[401] = { $ref: "#/components/responses/Unauthorized" };
+    operation.responses[403] = { $ref: "#/components/responses/Forbidden" };
+  }
 }
 
 paths["/tramite"].put.description = "Ruta heredada protegida. Los clientes no pueden modificar estado, etapa ni progreso; el sistema los actualiza al completar cada actividad validada.";
@@ -1242,7 +1285,7 @@ module.exports = {
       BadRequest: { description: "Solicitud inválida", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       Unauthorized: { description: "Sesión ausente o inválida", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       Forbidden: { description: "Permisos insuficientes", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
-      NotFound: { description: "Recurso no encontrado o no asignado al asesor autenticado", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      NotFound: { description: "Recurso no encontrado o fuera del alcance de la sesión autenticada", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       TooManyRequests: { description: "Límite temporal de solicitudes excedido", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       InternalError: { description: "Error interno", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
     },
