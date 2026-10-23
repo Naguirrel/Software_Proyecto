@@ -371,6 +371,10 @@ img, video, canvas, svg {
   overflow-y: auto;
 }
 
+.vg-sidebar-bottom-section {
+  flex-shrink: 0;
+}
+
 .vg-sidebar-label {
   opacity: 0;
   visibility: hidden;

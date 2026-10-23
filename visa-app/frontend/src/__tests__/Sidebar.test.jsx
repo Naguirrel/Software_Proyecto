@@ -71,6 +71,18 @@ describe("Sidebar", () => {
     await waitFor(() => expect(screen.getByTestId("top-actions")).toHaveTextContent("12:3"));
   });
 
+  it("mantiene perfil, tema y salida fuera del área desplazable al minimizar la barra", () => {
+    renderSidebar();
+
+    const sidebar = document.querySelector(".vg-sidebar");
+    const footer = sidebar.querySelector(":scope > .vg-sidebar-bottom-section");
+    expect(footer).toBeInTheDocument();
+    expect(sidebar.querySelector(".vg-sidebar-content")).not.toContainElement(footer);
+    expect(footer).toContainElement(screen.getByRole("link", { name: /Abrir perfil de Ana López/i }));
+    expect(footer).toContainElement(screen.getByRole("button", { name: "Activar modo oscuro" }));
+    expect(footer).toContainElement(screen.getByRole("button", { name: "Cerrar sesión" }));
+  });
+
   it("identifica visualmente la opción activa", () => {
     renderSidebar("documentos");
 
