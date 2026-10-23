@@ -42,6 +42,7 @@ function mockAdminSession() {
     },
   ];
   let adminSettings = { nombre_comercial: "VisaGuide", razon_social: "", sitio_web: "", idioma: "en", zona_horaria: "America/Guatemala", notificaciones_automaticas: true };
+  let adminProfile = { ...adminSession, telefono: "", ciudad: "", pais: "" };
   let adminUsers = [
     { id: 1, nombre: "Admin General", correo: "admin@prueba.com", rol: "admin", perfil: null, activo: true, telefono: "", ciudad: "", pais: "", asignados: 0, pendientes: 0, asesor: null, actividad: "2026-08-10T10:00:00.000Z" },
     { id: 4, nombre: "Cliente Prueba", correo: "cliente@example.com", rol: "cliente", perfil: "Turismo B1/B2", activo: true, bloqueado: true, bloqueadoHasta: "2026-08-10T10:15:00.000Z", telefono: "", ciudad: "", pais: "", asignados: 0, pendientes: 0, asesor: null, actividad: "2026-08-05T10:00:00.000Z" },
@@ -148,7 +149,8 @@ function mockAdminSession() {
       return Promise.resolve({ ok: true, json: async () => ({ formulario: { id: 31, estado_revision: JSON.parse(options.body).estado } }) });
     }
     if (String(url).endsWith("/admin/profile")) {
-      return Promise.resolve({ ok: true, json: async () => ({ usuario: adminSession }) });
+      if (options.method === "PUT") adminProfile = { ...adminProfile, ...JSON.parse(options.body || "{}") };
+      return Promise.resolve({ ok: true, json: async () => ({ usuario: adminProfile }) });
     }
     if (String(url).endsWith("/questions/admin")) {
       return Promise.resolve({ ok: true, json: async () => ({ questions: adminQuestions }) });
@@ -663,6 +665,27 @@ describe("panel de administracion", () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/admin/settings"),
       expect.objectContaining({ method: "PUT", body: expect.stringContaining('"idioma":"es"') })
+    );
+  });
+
+  it("distingue los datos de solo lectura y valida la edición del perfil admin", async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, "", "/admin/profile");
+    render(<App />);
+
+    const account = (await screen.findByRole("heading", { name: "Datos de la cuenta" })).closest("section");
+    expect(within(account).getByText("admin@prueba.com")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeDisabled();
+    const nameInput = screen.getByRole("textbox", { name: "Nombre" });
+    await user.clear(nameInput);
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("El nombre es obligatorio.");
+    await user.type(nameInput, "Admin Actualizado");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    expect(await screen.findByText("Perfil actualizado correctamente.")).toBeInTheDocument();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/admin/profile"),
+      expect.objectContaining({ method: "PUT", body: expect.stringContaining('"nombre":"Admin Actualizado"') })
     );
   });
 
