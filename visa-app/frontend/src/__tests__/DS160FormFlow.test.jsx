@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import DS160Form from "../pages/ds160";
 import { secciones } from "../data/ds160Sections";
 import { validarSeccion } from "../utils/ds160Validation";
@@ -16,6 +16,14 @@ const SESSION = {
 const LAST_SECTION_DATA = {
   enfermedadContagiosa: "No", arrestado: "No", terrorismo: "No", deportado: "No",
 };
+const OriginalURL = globalThis.URL;
+
+function mockPdfObjectURL(createObjectURL, revokeObjectURL = vi.fn()) {
+  class MockURL extends OriginalURL {}
+  MockURL.createObjectURL = createObjectURL;
+  MockURL.revokeObjectURL = revokeObjectURL;
+  vi.stubGlobal("URL", MockURL);
+}
 
 function setSession() {
   localStorage.setItem("visaguide_session", JSON.stringify(SESSION));
@@ -63,6 +71,10 @@ function renderForm() {
 beforeEach(() => {
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   setSession();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("DS-160: carga inicial del formulario", () => {
@@ -206,7 +218,7 @@ describe("DS-160: guardado manual y descarga de PDF", () => {
     const saveResponse = new Promise((resolve) => { resolveSave = resolve; });
     const fetchMock = mockFetch({ datos: LAST_SECTION_DATA, seccion_actual: 10, saveResponse });
     const createObjectURL = vi.fn(() => "blob:final-pdf");
-    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL: vi.fn() });
+    mockPdfObjectURL(createObjectURL);
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     render(<MemoryRouter initialEntries={["/ds160"]}><DS160Form /><CurrentPath /></MemoryRouter>);
 
@@ -302,7 +314,7 @@ describe("DS-160: guardado manual y descarga de PDF", () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function () {
       downloadedName = this.download;
     });
-    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+    mockPdfObjectURL(createObjectURL, revokeObjectURL);
 
     renderForm();
     await screen.findByText(/Sección 1: Datos Personales/);
