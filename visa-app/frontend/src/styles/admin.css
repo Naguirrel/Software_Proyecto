@@ -1759,6 +1759,13 @@ a.admin-insight-card:hover { border-color:var(--vg-red); box-shadow:0 12px 26px 
 .admin-pagination { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid #dce3ec; background:#f8fafc; padding:16px 20px; color:#64748b; font-weight:700; }
 .admin-pagination div { display:flex; align-items:center; gap:8px; }
 .admin-pagination button { display:grid; width:40px; height:40px; place-items:center; border:1px solid #dce3ec; border-radius:9px; background:#fff; cursor:pointer; }
+.admin-users-filter-note { max-width:760px; margin:0 20px 18px; border-left:3px solid var(--vg-red); border-radius:0 8px 8px 0; background:color-mix(in srgb,var(--vg-red) 5%,var(--vg-card)); padding:12px 16px; color:var(--vg-text-muted); font-size:14px; line-height:1.55; overflow-wrap:anywhere; }
+.admin-users-page .admin-pagination { flex-wrap:wrap; border-color:var(--vg-border); background:var(--vg-bg-alt); color:var(--vg-text-muted); }
+.admin-users-page .admin-pagination button { background:var(--vg-card); border-color:var(--vg-border); color:var(--vg-text); }
+.admin-users-page .admin-pagination button:hover:not(:disabled) { border-color:var(--vg-red); color:var(--vg-red); }
+.admin-users-page .admin-pagination button:disabled { cursor:not-allowed; opacity:.45; }
+.admin-users-page .admin-pagination button:focus-visible { outline:2px solid var(--vg-red); outline-offset:2px; }
+@media (max-width:560px) { .admin-users-filter-note { margin-inline:16px; }.admin-users-page .admin-pagination { justify-content:center; text-align:center; } }
 .admin-table td strong,.admin-table td small { display:block; }
 .admin-table td small { margin-top:4px; color:#64748b; }
 .admin-user-cell { display:flex; align-items:center; gap:12px; }
