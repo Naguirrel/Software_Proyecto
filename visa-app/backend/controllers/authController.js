@@ -348,8 +348,8 @@ function createAuthController(authService, { activityLogService, testUsersReady,
   async function unlockAccount(req, res) {
     const { token } = req.body || {};
 
-    if (!token) {
-      return res.status(400).json({ error: "El token de desbloqueo es obligatorio" });
+    if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+      return res.status(400).json({ error: "El token de desbloqueo debe tener un formato válido" });
     }
 
     try {

@@ -304,8 +304,8 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
     });
   }
 
-  async function unlockAccount(userId) {
-    const result = await pool.query(
+  async function unlockAccount(userId, queryable = pool) {
+    const result = await queryable.query(
       "UPDATE usuario SET bloqueado_hasta = NULL, intentos_reset_en = $1 WHERE id_usuario = $2 RETURNING *",
       [new Date(), userId]
     );
@@ -324,19 +324,27 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
 
   async function unlockWithToken(token) {
     await loginSecuritySchemaReady;
-    const result = await pool.query(
-      "SELECT id, id_usuario, expires_at, used_at FROM account_unlock_tokens WHERE token_hash = $1",
-      [hashToken(token || "")]
-    );
-    const record = result.rows[0];
+    return withLoginSecurityTransaction(async (client) => {
+      // El UPDATE condicional hace que el token sea de un solo uso incluso si
+      // varias instancias del backend reciben la misma solicitud a la vez.
+      const tokenResult = await client.query(
+        `UPDATE account_unlock_tokens
+         SET used_at = CURRENT_TIMESTAMP
+         WHERE token_hash = $1
+           AND used_at IS NULL
+           AND expires_at > $2
+         RETURNING id_usuario`,
+        [hashToken(token || ""), new Date()]
+      );
+      const record = tokenResult.rows[0];
+      if (!record) return null;
 
-    if (!record || record.used_at || new Date(record.expires_at) < new Date()) {
-      return null;
-    }
-
-    const usuario = await unlockAccount(record.id_usuario);
-    await pool.query("UPDATE account_unlock_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = $1", [record.id]);
-    return usuario;
+      const usuario = await unlockAccount(record.id_usuario, client);
+      if (!usuario) {
+        throw new Error("El usuario asociado al token de desbloqueo no existe");
+      }
+      return usuario;
+    });
   }
 
   return {

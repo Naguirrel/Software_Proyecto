@@ -153,6 +153,26 @@ describe("integración: bloqueo de cuenta tras intentos fallidos (RNF-13)", () =
     expect(actions).toContain("user.account_unlocked");
   });
 
+  test("consume atómicamente un token ante solicitudes concurrentes", async () => {
+    const { app, mailbox, activityLogService } = await setupUser();
+    await failLogins(app, 5);
+    const token = extractUnlockTokenFromMail(mailbox[0]);
+    activityLogService.logActivity.mockClear();
+
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, () => request(app).post("/desbloquear-cuenta").send({ token }))
+    );
+
+    expect(responses.filter((response) => response.status === 200)).toHaveLength(1);
+    expect(responses.filter((response) => response.status === 400)).toHaveLength(7);
+    expect(
+      activityLogService.logActivity.mock.calls
+        .map(([entry]) => entry.action)
+        .filter((action) => action === "user.account_unlocked")
+    ).toHaveLength(1);
+    expect((await login(app)).status).toBe(200);
+  });
+
   test("rechaza tokens de desbloqueo vacíos, inventados o vencidos", async () => {
     const { app, state, mailbox } = await setupUser();
     await failLogins(app, 5);

@@ -275,6 +275,30 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
       contrasena: TEST_PASSWORD,
     });
     expect(correctPassword.status).toBe(423);
+
+    const lockMail = ctx.mailbox.find((message) => message.subject.includes("bloqueada"));
+    const token = lockMail?.text.match(/desbloquear-cuenta\?token=([a-f0-9]{64})/)?.[1];
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+    const storedToken = await ctx.pool.query(
+      `SELECT used_at IS NULL AS unused, expires_at > $2 AS valid
+       FROM account_unlock_tokens
+       WHERE token_hash = $1`,
+      [crypto.createHash("sha256").update(token).digest("hex"), new Date()]
+    );
+    expect(storedToken.rows).toEqual([{ unused: true, valid: true }]);
+
+    const unlockResponses = await Promise.all(
+      Array.from({ length: 8 }, () => request(ctx.app).post("/desbloquear-cuenta").send({ token }))
+    );
+    expect(unlockResponses.map((response) => response.status).sort()).toEqual([
+      200, 400, 400, 400, 400, 400, 400, 400,
+    ]);
+
+    const loginAfterUnlock = await request(ctx.app).post("/login").send({
+      correo: user.correo,
+      contrasena: TEST_PASSWORD,
+    });
+    expect(loginAfterUnlock.status).toBe(200);
   });
 
   test("DB-001: PostgreSQL impone el límite de 2000 caracteres en ejemplos del banco", async () => {

@@ -158,15 +158,15 @@ function createInMemoryAuthDb() {
       return { rows: [] };
     }
 
-    if (text.includes("FROM account_unlock_tokens WHERE token_hash = $1")) {
-      const record = state.unlockTokens.find((row) => row.token_hash === values[0]);
-      return { rows: record ? [{ ...record }] : [] };
-    }
-
-    if (text.startsWith("UPDATE account_unlock_tokens SET used_at")) {
-      const record = state.unlockTokens.find((row) => row.id === values[0]);
-      if (record) record.used_at = new Date();
-      return { rows: [] };
+    if (text.startsWith("UPDATE account_unlock_tokens SET used_at = CURRENT_TIMESTAMP WHERE token_hash = $1")) {
+      const record = state.unlockTokens.find((row) => (
+        row.token_hash === values[0]
+        && row.used_at === null
+        && new Date(row.expires_at) > new Date()
+      ));
+      if (!record) return { rows: [] };
+      record.used_at = new Date();
+      return { rows: [{ id_usuario: record.id_usuario }] };
     }
 
     throw new Error(`Consulta no soportada por la base en memoria: ${text}`);
