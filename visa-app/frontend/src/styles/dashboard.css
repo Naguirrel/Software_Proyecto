@@ -185,7 +185,7 @@
 
 .dash-stat-card {
   min-width: 0;
-  min-height: 176px;
+  min-height: 156px;
   padding: 20px;
   border: 1px solid var(--vg-border);
   border-radius: var(--vg-card-radius);
@@ -193,7 +193,7 @@
   box-shadow: var(--vg-shadow-sm);
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-rows: minmax(1.5em, auto) minmax(2.5em, auto) minmax(0, 1fr) minmax(3em, auto);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 8px 12px;
   align-items: start;
 }
@@ -211,40 +211,34 @@
   color: var(--vg-red);
 }
 
-.dash-stat-card__label,
-.dash-stat-card__hint {
+.dash-stat-card__label {
   color: var(--vg-text-muted);
   font-size: 12px;
 }
 
 .dash-stat-card__label { grid-column: 2; grid-row: 1; }
 
-.dash-stat-card__value {
+.dash-stat-card__value,
+.dash-stat-card__stage {
   color: var(--vg-text);
   font-size: 28px;
-  line-height: 1;
+  line-height: 1.15;
 }
 
 .dash-stat-card__value,
 .dash-stat-card__stage { grid-column: 2; grid-row: 2; }
 
 .dash-stat-card__stage {
-  color: var(--vg-text);
-  font-size: 18px;
-  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
 .dash-stat-card__documents { text-transform: capitalize; }
 
-.dash-stat-card__hint,
 .dash-stat-card__progress {
   grid-column: 1 / -1;
   grid-row: 4;
   align-self: start;
 }
-
-.dash-stat-card__hint { line-height: 1.4; overflow-wrap: anywhere; }
 
 .dash-stat-card__progress {
   height: 7px;
@@ -763,10 +757,9 @@ html.modo-senior .dash-stats__status { font-size: 16px; }
 html.modo-senior .dash-stats__grid { gap: 24px; }
 html.modo-senior .dash-stat-card { min-height: 224px; padding: 30px; gap: 12px 18px; }
 html.modo-senior .dash-stat-card__icon { width: 52px; height: 52px; }
-html.modo-senior .dash-stat-card__label,
-html.modo-senior .dash-stat-card__hint { font-size: 16px; }
-html.modo-senior .dash-stat-card__value { font-size: 36px; }
-html.modo-senior .dash-stat-card__stage { font-size: 22px; }
+html.modo-senior .dash-stat-card__label { font-size: 16px; }
+html.modo-senior .dash-stat-card__value,
+html.modo-senior .dash-stat-card__stage { font-size: 36px; }
 html.modo-senior .dash-stat-card__progress { height: 10px; }
 
 html.modo-senior .dash-action-label { gap: 9px; margin-bottom: 18px; font-size: 16px; }

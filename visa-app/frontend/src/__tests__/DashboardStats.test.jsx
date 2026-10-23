@@ -36,6 +36,7 @@ describe("DashboardStats", () => {
     );
     expect(screen.getByText("3 documentos asociados", { selector: ".dash-stat-card__stage" })).toBeInTheDocument();
     expect(screen.getByText("Pago de visa")).toBeInTheDocument();
+    expect(screen.queryByText("Estado de tu trámite")).not.toBeInTheDocument();
   });
 
   it("muestra valores seguros cuando no existen datos", () => {

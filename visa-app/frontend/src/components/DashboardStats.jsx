@@ -56,7 +56,6 @@ export default function DashboardStats({ loading, error, stats }) {
           <span className="dash-stat-card__icon" aria-hidden="true"><Route size={20} /></span>
           <span className="dash-stat-card__label">{t("stats.stage")}</span>
           <strong className="dash-stat-card__stage">{currentStage}</strong>
-          <span className="dash-stat-card__hint">{t("stats.stageHint")}</span>
         </article>
       </div>
     </section>
