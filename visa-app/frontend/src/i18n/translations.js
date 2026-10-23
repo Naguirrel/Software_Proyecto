@@ -190,6 +190,7 @@ const es = {
   "timeline.completedOn": "Completado el {fecha}",
   "timeline.current": "▶ ACTUAL",
   "timeline.inProgress": "En progreso",
+  "timeline.contactUs": "Contactanos",
   "timeline.partialError": "Algunas etapas no pudieron actualizarse con datos recientes.",
   "timeline.error": "No se pudo actualizar la cronología.",
 
@@ -449,6 +450,7 @@ const en = {
   "timeline.completedOn": "Completed on {fecha}",
   "timeline.current": "▶ CURRENT",
   "timeline.inProgress": "In progress",
+  "timeline.contactUs": "Contact us",
   "timeline.partialError": "Some stages could not be updated with recent data.",
   "timeline.error": "The timeline could not be updated.",
 
