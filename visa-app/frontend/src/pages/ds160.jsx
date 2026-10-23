@@ -1,3 +1,6 @@
+import { useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
@@ -245,7 +248,10 @@ function getSt() {
 
 export default function DS160Form() {
   const { isValidating: authValidating } = useRequireAuth();
+  const navigate = useNavigate();
   const modoSenior = useModoSenior();
+  const descargarButtonRef = useRef(null);
+  const dashboardButtonRef = useRef(null);
   const st = getSt();
   const {
     seccionActual,
@@ -254,10 +260,12 @@ export default function DS160Form() {
     guardando,
     descargandoPdf,
     mensajeGuardado,
+    formularioFinalizado,
     cargando,
     seccion,
     totalSecciones,
     progreso,
+    seccionesCompletadas,
     debeMostrar,
     handleChange,
     guardarProgreso,
@@ -266,6 +274,21 @@ export default function DS160Form() {
     siguienteSeccion,
     anteriorSeccion,
   } = useDS160Form();
+
+  useLayoutEffect(() => {
+    if (formularioFinalizado) descargarButtonRef.current?.focus();
+  }, [formularioFinalizado]);
+
+  const handleCompletionKeyDown = (event) => {
+    if (event.key !== "Tab") return;
+    if (event.shiftKey && document.activeElement === descargarButtonRef.current) {
+      event.preventDefault();
+      dashboardButtonRef.current?.focus();
+    } else if (!event.shiftKey && document.activeElement === dashboardButtonRef.current) {
+      event.preventDefault();
+      descargarButtonRef.current?.focus();
+    }
+  };
 
   const campoConAyuda = seccion?.campos.find(c => c.tip || c.porque);
 
@@ -283,7 +306,7 @@ export default function DS160Form() {
   }
 
   return (
-    <div style={st.layout}>
+    <div style={st.layout} inert={formularioFinalizado} aria-hidden={formularioFinalizado ? "true" : undefined}>
       <Sidebar currentPage="ds160" />
       <main id="main-content" tabIndex="-1" className="vg-authenticated-page ds160-page" style={st.page}>
 
@@ -312,11 +335,11 @@ export default function DS160Form() {
           </div>
         </div>
 
-        {mensajeGuardado && (
-          <div style={{
+        {mensajeGuardado && !formularioFinalizado && (
+          <div role={mensajeGuardado.startsWith("✓") ? "status" : "alert"} style={{
             ...st.toast,
             background: mensajeGuardado.startsWith("✓") ? "var(--vg-success-bg)" : "var(--vg-danger-bg)",
-            borderColor: mensajeGuardado.startsWith("✓") ? "var(--vg-success-border)" : "var(--vg-danger-border)",
+            borderColor: mensajeGuardado.startsWith("✓") ? "var(--vg-success)" : "var(--vg-danger-text)",
             color: mensajeGuardado.startsWith("✓") ? "var(--vg-success)" : "var(--vg-danger-text)"
           }}>
             {mensajeGuardado}
@@ -359,7 +382,7 @@ export default function DS160Form() {
                   className="ds160-nav-btn ds160-nav-btn--next"
                   style={{ ...st.navBtn, ...st.navNext, fontSize: modoSenior ? "16px" : "14px", opacity: guardando ? 0.7 : 1 }}
                   onClick={finalizarFormulario}
-                  disabled={guardando}
+                  disabled={guardando || formularioFinalizado}
                 >
                   {guardando ? "Finalizando..." : "Finalizar ✓"}
                 </button>
@@ -405,32 +428,64 @@ export default function DS160Form() {
                 SECCIONES DEL FORMULARIO
               </h4>
               <ul style={st.seccionesList}>
-                {secciones.map(sc => (
-                  <li
-                    key={sc.id}
-                    className="ds160-section-item"
-                    style={{
-                      ...st.seccionItem,
-                      ...(sc.id === seccionActual ? st.seccionActual : {}),
-                      ...(sc.id < seccionActual ? st.seccionDone : {}),
-                      fontSize: modoSenior ? "14px" : "13px"
-                    }}
-                  >
-                    {sc.id < seccionActual && (
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                        stroke="var(--vg-success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                        style={{ marginRight: "6px", flexShrink: 0 }} aria-hidden="true">
-                        <polyline points="20,6 9,17 4,12" />
-                      </svg>
-                    )}
-                    {sc.titulo}
-                  </li>
-                ))}
+                {secciones.map(sc => {
+                  const completada = seccionesCompletadas.has(sc.id);
+                  return (
+                    <li
+                      key={sc.id}
+                      className="ds160-section-item"
+                      aria-label={`${sc.titulo}, ${completada ? "completada" : "pendiente"}`}
+                      aria-current={sc.id === seccionActual ? "step" : undefined}
+                      style={{
+                        ...st.seccionItem,
+                        ...(sc.id === seccionActual ? st.seccionActual : {}),
+                        ...(completada && sc.id !== seccionActual ? st.seccionDone : {}),
+                        fontSize: modoSenior ? "14px" : "13px"
+                      }}
+                    >
+                      {completada && (
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                          stroke={sc.id === seccionActual ? "currentColor" : "var(--vg-success)"} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                          style={{ marginRight: "6px", flexShrink: 0 }} aria-hidden="true">
+                          <polyline points="20,6 9,17 4,12" />
+                        </svg>
+                      )}
+                      {sc.titulo}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
         </div>
       </main>
+      {formularioFinalizado && createPortal(
+        <div className="ds160-completion-backdrop">
+          <section
+            className="ds160-completion-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ds160-completion-title"
+            aria-describedby="ds160-completion-description"
+            onKeyDown={handleCompletionKeyDown}
+          >
+            <span className="ds160-completion-dialog__icon" aria-hidden="true">✓</span>
+            <h2 id="ds160-completion-title">Hecho, ya completaste el formulario</h2>
+            <p id="ds160-completion-description">Tus respuestas se guardaron correctamente. Puedes descargar el PDF o volver al dashboard.</p>
+            {mensajeGuardado && <p className="ds160-completion-dialog__error" role="alert">{mensajeGuardado}</p>}
+            <div className="ds160-completion-dialog__actions">
+              <button ref={descargarButtonRef} type="button" className="ds160-completion-dialog__download" onClick={descargarPdf} disabled={descargandoPdf}>
+                <DownloadIcon />
+                {descargandoPdf ? "Descargando..." : "Descargar formulario"}
+              </button>
+              <button ref={dashboardButtonRef} type="button" className="ds160-completion-dialog__back" onClick={() => navigate("/dashboard")}>
+                Volver al dashboard
+              </button>
+            </div>
+          </section>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

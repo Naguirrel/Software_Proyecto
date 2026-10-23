@@ -227,8 +227,14 @@
   flex-shrink: 0;
 }
 
-.cron-btn-accion {
+.cron-card__actions {
   margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cron-btn-accion {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -241,10 +247,18 @@
   font-weight: 700;
   cursor: pointer;
   font-family: var(--vg-font);
+  text-decoration: none;
   transition: opacity 0.15s;
 }
 .cron-btn-accion:hover { opacity: 0.88; }
 .cron-btn-accion--senior { font-size: 17px; padding: 15px 26px; }
+
+.cron-btn-contact {
+  background: #087a3f;
+  border: 1px solid #087a3f;
+  color: #fff;
+}
+.cron-btn-contact:hover { background: #066b37; opacity: 1; }
 
 /* ══════════════════════════════
    PENDIENTE
@@ -294,6 +308,14 @@
   background: var(--vg-bg-alt);
   border: 1px solid var(--vg-border-mid);
 }
+
+[data-theme="dark"] .cron-btn-contact {
+  background: #087a3f;
+  border-color: #087a3f;
+  color: #fff;
+}
+
+[data-theme="dark"] .cron-btn-contact:hover { background: #066b37; }
 
 /* ══════════════════════════════
    RESPONSIVE

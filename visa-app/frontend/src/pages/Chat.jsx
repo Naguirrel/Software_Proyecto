@@ -17,14 +17,6 @@ function SendIcon() {
   );
 }
 
-function ShieldIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" strokeWidth="2">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    </svg>
-  );
-}
-
 const CHAT_POLL_INTERVAL_MS = 4_000;
 const CHAT_PAGE_SIZE = 50;
 
@@ -181,10 +173,6 @@ export default function Chat() {
                 <div className="chat-header__info">
                   <h2 className="chat-header__name">{assignment?.advisor_name || "Asesor pendiente"}</h2>
                   <p className="chat-header__role">{assignment?.advisor_name ? "Asesor consular asignado · actualización automática" : "Aún no tienes asesor asignado"}</p>
-                </div>
-                <div className="chat-header__badge" data-senior-priority="secondary">
-                  <ShieldIcon />
-                  CHAT SEGURO
                 </div>
               </div>
 

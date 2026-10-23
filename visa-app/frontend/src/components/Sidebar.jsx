@@ -275,6 +275,7 @@ export default function Sidebar({ currentPage }) {
             })}
           </ul>
         </nav>
+        </div>
 
         {/* Bottom section */}
         <div className="vg-sidebar-bottom-section" style={s.bottomSection}>
@@ -347,7 +348,6 @@ export default function Sidebar({ currentPage }) {
             <LogOut size={iconSize} strokeWidth={2} aria-hidden="true" />
             <span className="vg-sidebar-label">{t("sidebar.logout")}</span>
           </button>
-        </div>
         </div>
       </aside>
     </>

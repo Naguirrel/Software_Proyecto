@@ -24,19 +24,6 @@ import { apiRequest } from "../utils/apiClient";
 import useClientWorkflow from "../hooks/useClientWorkflow";
 import "../styles/dashboard.css";
 
-// Pulse animation for active node
-if (!document.getElementById("vg-dash-anim")) {
-  const st = document.createElement("style");
-  st.id = "vg-dash-anim";
-  st.textContent = `
-    @keyframes vgPulse {
-      0%,100% { box-shadow: 0 0 0 4px rgba(225,29,72,0.20); }
-      50%      { box-shadow: 0 0 0 9px rgba(225,29,72,0.07); }
-    }
-  `;
-  document.head.appendChild(st);
-}
-
 export default function Dashboard() {
   const { isValidating, session } = useRequireAuth();
   const modoSenior = useModoSenior();
@@ -229,7 +216,7 @@ export default function Dashboard() {
     );
     if (i < ETAPAS.length - 1) {
       timelineEls.push(
-        <div key={`l${e.n}`} className="dash-tl-line" style={{ background: e.done ? "var(--vg-navy)" : "var(--vg-border)" }} />
+        <div key={`l${e.n}`} className={`dash-tl-line${e.done ? " dash-tl-line--done" : ""}`} />
       );
     }
   });

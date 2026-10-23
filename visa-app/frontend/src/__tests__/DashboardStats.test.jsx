@@ -34,16 +34,23 @@ describe("DashboardStats", () => {
       "aria-valuenow",
       "50"
     );
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("3 documentos asociados", { selector: ".dash-stat-card__stage" })).toBeInTheDocument();
     expect(screen.getByText("Pago de visa")).toBeInTheDocument();
+    expect(screen.queryByText("Estado de tu trámite")).not.toBeInTheDocument();
   });
 
   it("muestra valores seguros cuando no existen datos", () => {
     render(<DashboardStats loading={false} error="" stats={null} />);
 
     expect(screen.getByText("0%")).toBeInTheDocument();
-    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getByText("0 documentos asociados")).toBeInTheDocument();
     expect(screen.getByText("Trámite no iniciado")).toBeInTheDocument();
+  });
+
+  it("usa el singular cuando hay un documento asociado", () => {
+    render(<DashboardStats loading={false} error="" stats={{ documentCount: 1 }} />);
+
+    expect(screen.getByText("1 documento asociado")).toBeInTheDocument();
   });
 
   it("muestra estados de carga y error", () => {

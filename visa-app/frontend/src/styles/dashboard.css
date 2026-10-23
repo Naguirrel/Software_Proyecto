@@ -84,10 +84,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 0.2s;
 }
 .dash-tl-node--done   { background: var(--vg-navy); }
-.dash-tl-node--active { background: var(--vg-red); animation: vgPulse 2s ease-in-out infinite; }
+.dash-tl-node--active { background: var(--vg-red); }
+
+[data-theme="dark"] .dash-tl-node--done { background: var(--vg-red-dark); }
 
 .dash-tl-num {
   font-weight: 700;
@@ -110,7 +111,10 @@
   margin-top: 17px;
   min-width: 8px;
   align-self: flex-start;
+  background: var(--vg-border);
 }
+.dash-tl-line--done { background: var(--vg-navy); }
+[data-theme="dark"] .dash-tl-line--done { background: var(--vg-red-dark); }
 
 /* ── Etapa actual box ── */
 .dash-etapa-box {
@@ -181,6 +185,7 @@
 
 .dash-stat-card {
   min-width: 0;
+  min-height: 132px;
   padding: 20px;
   border: 1px solid var(--vg-border);
   border-radius: var(--vg-card-radius);
@@ -188,15 +193,17 @@
   box-shadow: var(--vg-shadow-sm);
   display: grid;
   grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 8px 12px;
-  align-items: center;
+  align-items: start;
 }
 
 .dash-stat-card__icon {
   display: inline-flex;
   width: 38px;
   height: 38px;
-  grid-row: span 2;
+  grid-column: 1;
+  grid-row: 1 / span 2;
   align-items: center;
   justify-content: center;
   border-radius: 11px;
@@ -204,29 +211,38 @@
   color: var(--vg-red);
 }
 
-.dash-stat-card__label,
-.dash-stat-card__hint {
+.dash-stat-card__label {
   color: var(--vg-text-muted);
   font-size: 12px;
 }
 
-.dash-stat-card__value {
+.dash-stat-card__label { grid-column: 2; grid-row: 1; }
+
+.dash-stat-card__value,
+.dash-stat-card__stage {
   color: var(--vg-text);
   font-size: 28px;
-  line-height: 1;
+  line-height: 1.15;
 }
 
+.dash-stat-card__value,
+.dash-stat-card__stage { grid-column: 2; grid-row: 2; }
+
 .dash-stat-card__stage {
-  overflow: hidden;
-  color: var(--vg-text);
-  font-size: 18px;
-  line-height: 1.2;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+}
+
+.dash-stat-card__documents { text-transform: capitalize; }
+
+.dash-stat-card__progress {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  align-self: start;
 }
 
 .dash-stat-card__progress {
   height: 7px;
-  grid-column: 1 / -1;
+  margin-top: 5px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--vg-border);
@@ -739,12 +755,11 @@ html.modo-senior .dash-stats__heading { gap: 24px; margin-bottom: 21px; }
 html.modo-senior .dash-stats__heading p,
 html.modo-senior .dash-stats__status { font-size: 16px; }
 html.modo-senior .dash-stats__grid { gap: 24px; }
-html.modo-senior .dash-stat-card { padding: 30px; gap: 12px 18px; }
+html.modo-senior .dash-stat-card { min-height: 224px; padding: 30px; gap: 12px 18px; }
 html.modo-senior .dash-stat-card__icon { width: 52px; height: 52px; }
-html.modo-senior .dash-stat-card__label,
-html.modo-senior .dash-stat-card__hint { font-size: 16px; }
-html.modo-senior .dash-stat-card__value { font-size: 36px; }
-html.modo-senior .dash-stat-card__stage { font-size: 22px; }
+html.modo-senior .dash-stat-card__label { font-size: 16px; }
+html.modo-senior .dash-stat-card__value,
+html.modo-senior .dash-stat-card__stage { font-size: 36px; }
 html.modo-senior .dash-stat-card__progress { height: 10px; }
 
 html.modo-senior .dash-action-label { gap: 9px; margin-bottom: 18px; font-size: 16px; }

@@ -95,7 +95,7 @@ describe("Dashboard", () => {
     expect(screen.getByRole("heading", { name: "Corregir documentos" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Revisión de documentos/i })).toBeInTheDocument();
     expect(screen.getByText("100%")).toBeInTheDocument();
-    expect(screen.getByText("1", { selector: ".dash-stat-card__value" })).toBeInTheDocument();
+    expect(screen.getByText("1 documento asociado", { selector: ".dash-stat-card__stage" })).toBeInTheDocument();
     expect(screen.getByText("Subir documentos")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/estado-tramite"),
