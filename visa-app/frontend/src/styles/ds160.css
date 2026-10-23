@@ -1,16 +1,96 @@
-.ds160-toast__action {
-  margin-left: 12px;
-  padding: 5px 10px;
-  border: 1px solid currentColor;
+.ds160-completion-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.66);
+}
+
+.ds160-completion-dialog {
+  width: min(100%, 480px);
+  padding: clamp(24px, 5vw, 36px);
+  border: 1px solid var(--vg-border);
+  border-radius: var(--vg-card-radius);
+  background: var(--vg-card);
+  color: var(--vg-text);
+  box-shadow: var(--vg-shadow-lg);
+  text-align: center;
+}
+
+.ds160-completion-dialog__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--vg-success-bg);
+  color: var(--vg-success);
+  font-size: 27px;
+  font-weight: 800;
+}
+
+.ds160-completion-dialog h2 {
+  margin: 16px 0 8px;
+  font-size: clamp(21px, 4vw, 26px);
+  line-height: 1.2;
+}
+
+.ds160-completion-dialog p {
+  margin: 0;
+  color: var(--vg-text-muted);
+  line-height: 1.5;
+}
+
+.ds160-completion-dialog__error {
+  margin-top: 16px !important;
+  color: var(--vg-danger-text) !important;
+}
+
+.ds160-completion-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.ds160-completion-dialog__actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
   border-radius: var(--vg-radius-sm);
-  background: transparent;
-  color: inherit;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
 }
 
-.ds160-toast__action:focus-visible { outline: 3px solid var(--vg-red); outline-offset: 2px; }
+.ds160-completion-dialog__actions button:focus-visible { outline: 3px solid var(--vg-red); outline-offset: 2px; }
+.ds160-completion-dialog__actions button:disabled { cursor: wait; opacity: 0.65; }
+
+.ds160-completion-dialog__download {
+  border: 1px solid var(--vg-red);
+  background: var(--vg-red);
+  color: var(--vg-on-strong);
+}
+
+[data-theme="dark"] .ds160-completion-dialog__download { color: var(--vg-bg); }
+
+.ds160-completion-dialog__download svg { width: 18px; height: 18px; }
+
+.ds160-completion-dialog__back {
+  border: 1px solid var(--vg-border-mid);
+  background: var(--vg-card);
+  color: var(--vg-text);
+}
+
+@media (max-width: 480px) {
+  .ds160-completion-dialog__actions button { width: 100%; }
+}
 
 /* ══════════════════════════════
    DS-160 — Modo Senior

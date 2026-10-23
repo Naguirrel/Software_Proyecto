@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import DS160Form from "../pages/ds160";
 import { secciones } from "../data/ds160Sections";
@@ -21,7 +21,7 @@ function setSession() {
   localStorage.setItem("visaguide_session", JSON.stringify(SESSION));
 }
 
-function mockFetch({ datos = {}, seccion_actual = 1, completado = false, saveOk = true, saveResponse } = {}) {
+function mockFetch({ datos = {}, seccion_actual = 1, completado = false, saveOk = true, saveResponse, pdfOk = true } = {}) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((url, options) => {
     const requestUrl = String(url);
     if (requestUrl.includes("/validar-sesion")) {
@@ -35,7 +35,8 @@ function mockFetch({ datos = {}, seccion_actual = 1, completado = false, saveOk 
     }
     if (requestUrl.endsWith("/ds160/pdf")) {
       return Promise.resolve({
-        ok: true,
+        ok: pdfOk,
+        json: async () => ({ error: "No se pudo descargar el PDF." }),
         blob: async () => new Blob(["%PDF-1.4"], { type: "application/pdf" }),
       });
     }
@@ -44,6 +45,11 @@ function mockFetch({ datos = {}, seccion_actual = 1, completado = false, saveOk 
     }
     return Promise.resolve({ ok: true, json: async () => ({}) });
   });
+}
+
+function CurrentPath() {
+  const { pathname } = useLocation();
+  return <output data-testid="current-path">{pathname}</output>;
 }
 
 function renderForm() {
@@ -194,24 +200,53 @@ describe("DS-160: validación y navegación entre secciones", () => {
 });
 
 describe("DS-160: guardado manual y descarga de PDF", () => {
-  it("avisa la finalización solo después de guardar y ofrece volver al dashboard", async () => {
+  it("muestra el diálogo solo después de guardar y permite descargar o volver al dashboard", async () => {
     const user = userEvent.setup();
     let resolveSave;
     const saveResponse = new Promise((resolve) => { resolveSave = resolve; });
     const fetchMock = mockFetch({ datos: LAST_SECTION_DATA, seccion_actual: 10, saveResponse });
+    const createObjectURL = vi.fn(() => "blob:final-pdf");
+    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    render(<MemoryRouter initialEntries={["/ds160"]}><DS160Form /><CurrentPath /></MemoryRouter>);
+
+    await screen.findByText(/Sección 10:/);
+    await user.click(screen.getByRole("button", { name: /Finalizar/ }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Finalizando/ })).toBeDisabled();
+    resolveSave({ ok: true });
+
+    const dialog = await screen.findByRole("dialog", { name: "Hecho, ya completaste el formulario" });
+    expect(within(dialog).getAllByRole("button")).toHaveLength(2);
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Descargar formulario" })).toHaveFocus());
+    await user.tab();
+    expect(within(dialog).getByRole("button", { name: "Volver al dashboard" })).toHaveFocus();
+    await user.tab();
+    expect(within(dialog).getByRole("button", { name: "Descargar formulario" })).toHaveFocus();
+    expect(screen.queryByText("✓ Formulario completado. Los datos han sido guardados.")).not.toBeInTheDocument();
+    const saveCall = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith("/ds160") && options?.method === "POST");
+    expect(JSON.parse(saveCall[1].body)).toMatchObject({ completado: true, seccion_actual: 10 });
+
+    await user.click(within(dialog).getByRole("button", { name: "Descargar formulario" }));
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/ds160/pdf"))).toBe(true);
+
+    await user.click(within(dialog).getByRole("button", { name: "Volver al dashboard" }));
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/dashboard");
+  });
+
+  it("muestra el error de descarga dentro del diálogo sin cerrarlo", async () => {
+    const user = userEvent.setup();
+    mockFetch({ datos: LAST_SECTION_DATA, seccion_actual: 10, pdfOk: false });
     renderForm();
 
     await screen.findByText(/Sección 10:/);
     await user.click(screen.getByRole("button", { name: /Finalizar/ }));
-    expect(screen.queryByText(/Formulario completado/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Finalizando/ })).toBeDisabled();
-    resolveSave({ ok: true });
+    const dialog = await screen.findByRole("dialog", { name: "Hecho, ya completaste el formulario" });
+    await user.click(within(dialog).getByRole("button", { name: "Descargar formulario" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Formulario completado. Los datos han sido guardados.");
-    expect(screen.getByRole("button", { name: "Ir al dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Finalizar/ })).toBeDisabled();
-    const saveCall = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith("/ds160") && options?.method === "POST");
-    expect(JSON.parse(saveCall[1].body)).toMatchObject({ completado: true, seccion_actual: 10 });
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("No se pudo descargar el PDF.");
+    expect(within(dialog).getByRole("button", { name: "Volver al dashboard" })).toBeInTheDocument();
   });
 
   it("mantiene el formulario abierto y muestra error si falla la finalización", async () => {
@@ -223,7 +258,7 @@ describe("DS-160: guardado manual y descarga de PDF", () => {
     await user.click(screen.getByRole("button", { name: /Finalizar/ }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Error al finalizar el formulario. Intenta de nuevo.");
-    expect(screen.queryByRole("button", { name: "Ir al dashboard" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Finalizar/ })).toBeEnabled();
   });
 

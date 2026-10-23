@@ -267,7 +267,7 @@ export default function useDS160Form() {
       dirtyRef.current = false;
       setFormularioFinalizado(true);
       window.clearTimeout(mensajeTimeoutRef.current);
-      setMensajeGuardado("✓ Formulario completado. Los datos han sido guardados.");
+      setMensajeGuardado("");
     } catch {
       mostrarMensajeTemporal("Error al finalizar el formulario. Intenta de nuevo.");
     } finally {

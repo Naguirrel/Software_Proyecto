@@ -1,3 +1,6 @@
+import { useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
@@ -245,7 +248,10 @@ function getSt() {
 
 export default function DS160Form() {
   const { isValidating: authValidating } = useRequireAuth();
+  const navigate = useNavigate();
   const modoSenior = useModoSenior();
+  const descargarButtonRef = useRef(null);
+  const dashboardButtonRef = useRef(null);
   const st = getSt();
   const {
     seccionActual,
@@ -269,6 +275,21 @@ export default function DS160Form() {
     anteriorSeccion,
   } = useDS160Form();
 
+  useLayoutEffect(() => {
+    if (formularioFinalizado) descargarButtonRef.current?.focus();
+  }, [formularioFinalizado]);
+
+  const handleCompletionKeyDown = (event) => {
+    if (event.key !== "Tab") return;
+    if (event.shiftKey && document.activeElement === descargarButtonRef.current) {
+      event.preventDefault();
+      dashboardButtonRef.current?.focus();
+    } else if (!event.shiftKey && document.activeElement === dashboardButtonRef.current) {
+      event.preventDefault();
+      descargarButtonRef.current?.focus();
+    }
+  };
+
   const campoConAyuda = seccion?.campos.find(c => c.tip || c.porque);
 
   if (authValidating || cargando) {
@@ -285,7 +306,7 @@ export default function DS160Form() {
   }
 
   return (
-    <div style={st.layout}>
+    <div style={st.layout} inert={formularioFinalizado} aria-hidden={formularioFinalizado ? "true" : undefined}>
       <Sidebar currentPage="ds160" />
       <main id="main-content" tabIndex="-1" className="vg-authenticated-page ds160-page" style={st.page}>
 
@@ -314,7 +335,7 @@ export default function DS160Form() {
           </div>
         </div>
 
-        {mensajeGuardado && (
+        {mensajeGuardado && !formularioFinalizado && (
           <div role={mensajeGuardado.startsWith("✓") ? "status" : "alert"} style={{
             ...st.toast,
             background: mensajeGuardado.startsWith("✓") ? "var(--vg-success-bg)" : "var(--vg-danger-bg)",
@@ -322,11 +343,6 @@ export default function DS160Form() {
             color: mensajeGuardado.startsWith("✓") ? "var(--vg-success)" : "var(--vg-danger-text)"
           }}>
             {mensajeGuardado}
-            {formularioFinalizado && (
-              <button type="button" className="ds160-toast__action" onClick={() => { window.location.href = "/dashboard"; }}>
-                Ir al dashboard
-              </button>
-            )}
           </div>
         )}
 
@@ -443,6 +459,33 @@ export default function DS160Form() {
           </div>
         </div>
       </main>
+      {formularioFinalizado && createPortal(
+        <div className="ds160-completion-backdrop">
+          <section
+            className="ds160-completion-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ds160-completion-title"
+            aria-describedby="ds160-completion-description"
+            onKeyDown={handleCompletionKeyDown}
+          >
+            <span className="ds160-completion-dialog__icon" aria-hidden="true">✓</span>
+            <h2 id="ds160-completion-title">Hecho, ya completaste el formulario</h2>
+            <p id="ds160-completion-description">Tus respuestas se guardaron correctamente. Puedes descargar el PDF o volver al dashboard.</p>
+            {mensajeGuardado && <p className="ds160-completion-dialog__error" role="alert">{mensajeGuardado}</p>}
+            <div className="ds160-completion-dialog__actions">
+              <button ref={descargarButtonRef} type="button" className="ds160-completion-dialog__download" onClick={descargarPdf} disabled={descargandoPdf}>
+                <DownloadIcon />
+                {descargandoPdf ? "Descargando..." : "Descargar formulario"}
+              </button>
+              <button ref={dashboardButtonRef} type="button" className="ds160-completion-dialog__back" onClick={() => navigate("/dashboard")}>
+                Volver al dashboard
+              </button>
+            </div>
+          </section>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
