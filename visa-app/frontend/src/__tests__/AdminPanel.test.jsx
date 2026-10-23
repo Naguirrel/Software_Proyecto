@@ -108,7 +108,7 @@ function mockAdminSession() {
         return Promise.resolve({
           ok: true,
           json: async () => ({
-            usuario: { id: 8, nombre: "Carlos Mendoza", correo: "carlos@example.com", rol: "cliente", perfil: "Renovación B1/B2", activo: true, telefono: "", ciudad: "", pais: "", createdAt: "2026-07-20T10:00:00.000Z", actividad: "2026-08-01T10:00:00.000Z" },
+            usuario: { id: 8, nombre: "Carlos Mendoza", apellido: "Mendoza", correo: "carlos@example.com", rol: "cliente", perfil: "Renovación B1/B2", activo: true, telefono: "", ciudad: "", pais: "", createdAt: "2026-07-20T10:00:00.000Z", actividad: "2026-08-01T10:00:00.000Z" },
             tramite: { id: 21, estado: managedProcess.estado, etapaActual: managedProcess.etapaActual, progreso: managedProcess.progreso, asesor: managedProcess.asesor },
             casos: [],
             actividad: [],
@@ -616,6 +616,7 @@ describe("panel de administracion", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Detalle de Usuario" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Carlos Mendoza" })).toBeInTheDocument();
+    expect(screen.queryByText("Carlos Mendoza Mendoza")).not.toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: /DS-160/ })).toBeInTheDocument();
     expect(screen.getByText("Nombres")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Documentos" })).toBeInTheDocument();
