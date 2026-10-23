@@ -15,6 +15,31 @@ function hashToken(token) {
 
 function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, passwordResetSchemaReady, emailVerificationSchemaReady, loginSecuritySchemaReady }) {
 
+  async function withLoginSecurityTransaction(callback) {
+    // Acepta tanto pg.Pool como pg.PoolClient; producción usa Pool y las
+    // pruebas unitarias pueden inyectar directamente un cliente transaccional.
+    const connectedClient = typeof pool.connect === "function" ? await pool.connect() : null;
+    const client = connectedClient || pool;
+    let releaseError;
+    try {
+      await client.query("BEGIN");
+      const result = await callback(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        releaseError = rollbackError;
+      }
+      throw error;
+    } finally {
+      if (typeof connectedClient?.release === "function") {
+        connectedClient.release(releaseError);
+      }
+    }
+  }
+
   async function findUserByEmail(correo) {
     await userSchemaReady;
     const result = await pool.query(
@@ -176,48 +201,111 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
   // bloqueo o desbloqueo) y dentro de la ventana del bloqueo.
   async function registerFailedLogin({ usuario, correo, ip }) {
     await loginSecuritySchemaReady;
-    const now = new Date();
-    await pool.query(
-      "INSERT INTO login_attempts (id_usuario, correo, ip, created_at) VALUES ($1, $2, $3, $4)",
-      [usuario?.id_usuario || null, String(correo || "").slice(0, 200), ip ? String(ip).slice(0, 64) : null, now]
-    );
+    const safeEmail = String(correo || "").slice(0, 200);
+    const safeIp = ip ? String(ip).slice(0, 64) : null;
 
-    if (!usuario) return { locked: false };
-
-    const windowStart = new Date(now.getTime() - ACCOUNT_LOCK_MS);
-    const lastReset = usuario.intentos_reset_en ? new Date(usuario.intentos_reset_en) : null;
-    const since = lastReset && lastReset > windowStart ? lastReset : windowStart;
-
-    const result = await pool.query(
-      "SELECT COUNT(*)::int AS total FROM login_attempts WHERE id_usuario = $1 AND created_at > $2",
-      [usuario.id_usuario, since]
-    );
-    const failedAttempts = Number(result.rows[0]?.total) || 0;
-    if (failedAttempts < MAX_FAILED_LOGIN_ATTEMPTS) {
-      return { locked: false, failedAttempts };
+    if (!usuario) {
+      await pool.query(
+        "INSERT INTO login_attempts (id_usuario, correo, ip, created_at) VALUES (NULL, $1, $2, $3)",
+        [safeEmail, safeIp, new Date()]
+      );
+      return { locked: false };
     }
 
-    const lockedUntil = new Date(now.getTime() + ACCOUNT_LOCK_MS);
-    await pool.query(
-      "UPDATE usuario SET bloqueado_hasta = $1, intentos_reset_en = $2 WHERE id_usuario = $3",
-      [lockedUntil, now, usuario.id_usuario]
-    );
-    return { locked: true, lockedUntil, failedAttempts };
+    return withLoginSecurityTransaction(async (client) => {
+      // Serializa todos los intentos de una cuenta, incluso entre instancias del backend.
+      const userResult = await client.query(
+        `SELECT bloqueado_hasta, intentos_reset_en
+         FROM usuario
+         WHERE id_usuario = $1
+         FOR UPDATE`,
+        [usuario.id_usuario]
+      );
+      const currentUser = userResult.rows[0];
+      const now = new Date();
+
+      // Si la cuenta se eliminó mientras se validaba la contraseña, conserva el
+      // registro de seguridad sin una referencia que pueda violar la FK.
+      if (!currentUser) {
+        await client.query(
+          "INSERT INTO login_attempts (id_usuario, correo, ip, created_at) VALUES (NULL, $1, $2, $3)",
+          [safeEmail, safeIp, now]
+        );
+        return { locked: false };
+      }
+
+      const activeLock = getActiveLock(currentUser, now);
+      if (activeLock) {
+        return { locked: true, lockedUntil: activeLock, lockCreated: false };
+      }
+
+      await client.query(
+        "INSERT INTO login_attempts (id_usuario, correo, ip, created_at) VALUES ($1, $2, $3, $4)",
+        [usuario.id_usuario, safeEmail, safeIp, now]
+      );
+
+      const windowStart = new Date(now.getTime() - ACCOUNT_LOCK_MS);
+      const lastReset = currentUser.intentos_reset_en ? new Date(currentUser.intentos_reset_en) : null;
+      const since = lastReset && lastReset > windowStart ? lastReset : windowStart;
+      const result = await client.query(
+        "SELECT COUNT(*)::int AS total FROM login_attempts WHERE id_usuario = $1 AND created_at > $2",
+        [usuario.id_usuario, since]
+      );
+      const failedAttempts = Number(result.rows[0]?.total) || 0;
+
+      if (failedAttempts < MAX_FAILED_LOGIN_ATTEMPTS) {
+        return { locked: false, failedAttempts };
+      }
+
+      const lockedUntil = new Date(now.getTime() + ACCOUNT_LOCK_MS);
+      await client.query(
+        "UPDATE usuario SET bloqueado_hasta = $1, intentos_reset_en = $2 WHERE id_usuario = $3",
+        [lockedUntil, now, usuario.id_usuario]
+      );
+      return { locked: true, lockedUntil, lockCreated: true, failedAttempts };
+    });
   }
 
-  // Reinicia el contador tras un login exitoso, solo si hubo intentos o bloqueo previos.
+  // Reinicia el contador tras un login exitoso. La misma fila usada por los
+  // intentos fallidos se bloquea para que un login correcto no levante un
+  // bloqueo creado concurrentemente.
   async function clearFailedLogins(usuario) {
     await loginSecuritySchemaReady;
-    const result = await pool.query(
-      "SELECT COUNT(*)::int AS total FROM login_attempts WHERE id_usuario = $1 AND created_at > $2",
-      [usuario.id_usuario, usuario.intentos_reset_en || new Date(0)]
-    );
-    if (!usuario.bloqueado_hasta && !(Number(result.rows[0]?.total) > 0)) return;
-    await unlockAccount(usuario.id_usuario);
+    return withLoginSecurityTransaction(async (client) => {
+      const userResult = await client.query(
+        `SELECT bloqueado_hasta, intentos_reset_en
+         FROM usuario
+         WHERE id_usuario = $1
+         FOR UPDATE`,
+        [usuario.id_usuario]
+      );
+      const currentUser = userResult.rows[0];
+      if (!currentUser) return { locked: false, cleared: false };
+
+      const activeLock = getActiveLock(currentUser);
+      if (activeLock) {
+        return { locked: true, lockedUntil: activeLock, cleared: false };
+      }
+
+      const result = await client.query(
+        "SELECT COUNT(*)::int AS total FROM login_attempts WHERE id_usuario = $1 AND created_at > $2",
+        [usuario.id_usuario, currentUser.intentos_reset_en || new Date(0)]
+      );
+      const hasFailedAttempts = Number(result.rows[0]?.total) > 0;
+      if (!currentUser.bloqueado_hasta && !hasFailedAttempts) {
+        return { locked: false, cleared: false };
+      }
+
+      await client.query(
+        "UPDATE usuario SET bloqueado_hasta = NULL, intentos_reset_en = $1 WHERE id_usuario = $2",
+        [new Date(), usuario.id_usuario]
+      );
+      return { locked: false, cleared: true };
+    });
   }
 
-  async function unlockAccount(userId) {
-    const result = await pool.query(
+  async function unlockAccount(userId, queryable = pool) {
+    const result = await queryable.query(
       "UPDATE usuario SET bloqueado_hasta = NULL, intentos_reset_en = $1 WHERE id_usuario = $2 RETURNING *",
       [new Date(), userId]
     );
@@ -236,19 +324,27 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
 
   async function unlockWithToken(token) {
     await loginSecuritySchemaReady;
-    const result = await pool.query(
-      "SELECT id, id_usuario, expires_at, used_at FROM account_unlock_tokens WHERE token_hash = $1",
-      [hashToken(token || "")]
-    );
-    const record = result.rows[0];
+    return withLoginSecurityTransaction(async (client) => {
+      // El UPDATE condicional hace que el token sea de un solo uso incluso si
+      // varias instancias del backend reciben la misma solicitud a la vez.
+      const tokenResult = await client.query(
+        `UPDATE account_unlock_tokens
+         SET used_at = CURRENT_TIMESTAMP
+         WHERE token_hash = $1
+           AND used_at IS NULL
+           AND expires_at > $2
+         RETURNING id_usuario`,
+        [hashToken(token || ""), new Date()]
+      );
+      const record = tokenResult.rows[0];
+      if (!record) return null;
 
-    if (!record || record.used_at || new Date(record.expires_at) < new Date()) {
-      return null;
-    }
-
-    const usuario = await unlockAccount(record.id_usuario);
-    await pool.query("UPDATE account_unlock_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = $1", [record.id]);
-    return usuario;
+      const usuario = await unlockAccount(record.id_usuario, client);
+      if (!usuario) {
+        throw new Error("El usuario asociado al token de desbloqueo no existe");
+      }
+      return usuario;
+    });
   }
 
   return {

@@ -30,6 +30,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",
     "jest": "^30.0.0",
     "supertest": "^7.0.0"
   },

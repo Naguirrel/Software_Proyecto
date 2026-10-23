@@ -320,6 +320,7 @@ RATE_LIMIT_API_WINDOW_MS / RATE_LIMIT_API_MAX
 RATE_LIMIT_LOGIN_WINDOW_MS / RATE_LIMIT_LOGIN_MAX
 RATE_LIMIT_REGISTER_WINDOW_MS / RATE_LIMIT_REGISTER_MAX
 RATE_LIMIT_RECOVERY_WINDOW_MS / RATE_LIMIT_RECOVERY_MAX
+LOGIN_ATTEMPT_RETENTION_DAYS=30 # entero entre 1 y 365
 ```
 
 Notas:
@@ -434,7 +435,7 @@ Monte la ruta en `app.js` con `app.use(...)` antes de `notFoundHandler`/`errorHa
 - En endpoints nuevos tome el usuario de `req.auth`, nunca de `correo`/`userId` enviados por el cliente, y valide propiedad del recurso.
 - `email_verificado` se guarda y se muestra como aviso, pero no bloquea el acceso.
 - Registro y restablecimiento exigen la politica de `services/passwordPolicy.js` (8+ caracteres con letras y numeros); el frontend la replica en `utils/passwordPolicy.js`. El login no la exige para no bloquear cuentas antiguas.
-- Login, registro, recuperacion, verificacion y desbloqueo tienen rate limiting propio (`middleware/rateLimiters.js`), ademas de un limite general para toda la API. Tras 5 intentos fallidos el login bloquea la cuenta 15 minutos y envia un enlace de desbloqueo (`POST /desbloquear-cuenta`).
+- Login, registro, recuperacion, verificacion y desbloqueo tienen rate limiting propio (`middleware/rateLimiters.js`), ademas de un limite general para toda la API. Tras 5 intentos fallidos el login bloquea la cuenta 15 minutos y envia un enlace de desbloqueo (`POST /desbloquear-cuenta`). El conteo y la transicion a bloqueo se serializan por usuario con una transaccion y `SELECT ... FOR UPDATE`, por lo que las solicitudes concurrentes no superan cinco registros ni duplican el correo. El token de desbloqueo se consume con un `UPDATE ... RETURNING` dentro de la misma transaccion que desbloquea la cuenta, de modo que solo una solicitud concurrente puede usarlo. Los intentos de login se conservan 30 dias por defecto y se limpian en lotes de hasta 10 000 al arrancar; `LOGIN_ATTEMPT_RETENTION_DAYS` admite valores de 1 a 365.
 - Para `navigator.sendBeacon` (sin headers), las rutas DS-160 aceptan `token` en el body y lo promueven a `Authorization`.
 
 ### Base de datos
@@ -538,7 +539,7 @@ Administracion [admin]:
 - `/admin/metrics`: `overview`, `processes`, `processes.csv`, `processes.xlsx`
 - `/admin/documents`: `GET /`, `PUT /:id/status`
 - `/admin/processes`: `GET /`, `GET /:id`, `GET /:id/history`, `PUT /:id`
-- `/admin`: `dashboard`, `users`, `advisors`, `assignments`, `ds160`, `profile`, `settings`, `activity-logs`, `POST /email-reminders/run`
+- `/admin`: `dashboard`, `users`, `POST /users/:id/unlock`, `advisors`, `assignments`, `ds160`, `profile`, `settings`, `activity-logs`, `POST /email-reminders/run`
 
 Asesor (`advisorRoutes.js`) [asesor; todo filtrado por `tramite.id_asesor = req.auth.id_usuario`]:
 
@@ -735,7 +736,7 @@ Estado actual:
 - Queries parametrizadas en todo el backend.
 - Perfil, tramite, entrevistas y audios exigen sesion y toman al usuario de `req.auth` (SP10-01/02).
 - `helmet` en Express (`middleware/securityHeaders.js`) con `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`, `Referrer-Policy: no-referrer`, `Permissions-Policy` y sin `X-Powered-By`; CSP estricta solo en `/api-docs` (la API responde JSON).
-- Rate limiting general y por endpoint de autenticacion, y bloqueo de cuenta tras 5 intentos fallidos (ver "Autenticacion y autorizacion").
+- Rate limiting general y por endpoint de autenticacion, y bloqueo atomico por cuenta tras 5 intentos fallidos (ver "Autenticacion y autorizacion").
 - Politica de contrasenas en registro y restablecimiento (8+ caracteres con letras y numeros).
 - Errores 5xx sin detalles internos ni mensajes de PostgreSQL (`middleware/errorResponse.js`).
 - Correo con Resend con validacion TLS normal.
@@ -746,10 +747,9 @@ Pendientes conocidos, en orden de prioridad (no los "arregle" de paso sin pedido
 
 1. Cualquier `asesor` puede ver y borrar documentos de todos los clientes via `/documentos/*` (`controllers/documentController.js` permite `asesor` sin revisar asignacion), aunque `/advisor/*` si filtra por asignacion (SP10-07).
 2. No hay revocacion de tokens: cambiar o restablecer la contrasena no invalida las sesiones activas (SP10-10).
-3. El conteo de intentos fallidos no es atomico: con peticiones concurrentes se pueden registrar mas de 5 intentos y enviar varios correos de desbloqueo (SP10-09).
-4. Los Nginx (`nginx/visa-app.duckdns.org.conf` y `frontend/nginx.conf`) no tienen `server_tokens off`, cabeceras de seguridad ni HSTS; las cabeceras de helmet solo cubren lo que responde Express (SP10-03, parte Nginx).
-5. El login no normaliza el correo a minusculas (el registro si), y `authService.verifyPassword` aun acepta contrasenas legacy en texto plano y las migra a bcrypt al primer login.
-6. Un valor de `SESSION_SECRET` estuvo versionado en el antiguo `docker-compose.override.yml`; debe rotarse donde se haya utilizado. El desarrollo ahora exige `docker-compose.dev.yml` explicitamente y recibe el secreto desde `.env`.
+3. Los Nginx (`nginx/visa-app.duckdns.org.conf` y `frontend/nginx.conf`) no tienen `server_tokens off`, cabeceras de seguridad ni HSTS; las cabeceras de helmet solo cubren lo que responde Express (SP10-03, parte Nginx).
+4. El login no normaliza el correo a minusculas (el registro si), y `authService.verifyPassword` aun acepta contrasenas legacy en texto plano y las migra a bcrypt al primer login.
+5. Un valor de `SESSION_SECRET` estuvo versionado en el antiguo `docker-compose.override.yml`; debe rotarse donde se haya utilizado. El desarrollo ahora exige `docker-compose.dev.yml` explicitamente y recibe el secreto desde `.env`.
 
 No registre secretos ni datos sensibles en consola. No commitee `.env`, `backend/.env`, `node_modules`, `dist` ni artefactos de coverage, y no ponga credenciales reales en los `.env.example`.
 

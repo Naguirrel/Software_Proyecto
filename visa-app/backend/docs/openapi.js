@@ -50,6 +50,20 @@ const schemas = {
     required: ["token"],
     properties: { token: { type: "string" } },
   },
+  UnlockTokenRequest: {
+    type: "object",
+    required: ["token"],
+    additionalProperties: false,
+    properties: {
+      token: {
+        type: "string",
+        minLength: 64,
+        maxLength: 64,
+        pattern: "^[a-f0-9]{64}$",
+        description: "Token hexadecimal de un solo uso recibido por correo.",
+      },
+    },
+  },
   ResetPasswordRequest: {
     type: "object",
     required: ["token", "nuevaContrasena"],
@@ -254,6 +268,120 @@ schemas.GenericUpload = {
 };
 
 Object.assign(schemas, {
+  AccountLockedError: {
+    type: "object",
+    required: ["error", "bloqueadoHasta", "minutosRestantes"],
+    properties: {
+      error: { type: "string", example: "Tu cuenta está bloqueada temporalmente por varios intentos fallidos." },
+      bloqueadoHasta: { type: "string", format: "date-time" },
+      minutosRestantes: { type: "integer", minimum: 1, maximum: 15, example: 15 },
+    },
+  },
+  ClientWorkflowGate: {
+    type: "object",
+    required: ["allowed", "reason", "requiredStep", "requiredPath"],
+    properties: {
+      allowed: { type: "boolean" },
+      reason: { type: "string" },
+      requiredStep: {
+        type: "string",
+        nullable: true,
+        enum: ["profile", "assignment", "documents", "ds160", "payment", "appointment", "interview"],
+      },
+      requiredPath: { type: "string", nullable: true, pattern: "^/" },
+    },
+  },
+  ClientWorkflowProcess: {
+    type: "object",
+    required: ["id", "state", "stage", "progress"],
+    properties: {
+      id: { type: "integer", example: 18 },
+      state: { type: "string", example: "En proceso" },
+      stage: { type: "string", example: "Formulario DS-160" },
+      progress: { type: "integer", minimum: 0, maximum: 100, example: 17 },
+    },
+  },
+  ClientWorkflowRequirements: {
+    type: "object",
+    required: [
+      "profileComplete", "ds160Complete", "requiredDocuments", "requiredDocumentsUploaded",
+      "requiredDocumentsApproved", "documentsUploaded", "documentsApproved", "paymentStarted",
+      "consularPaid", "appointmentScheduled", "interviewStarted",
+    ],
+    properties: {
+      profileComplete: { type: "boolean" },
+      ds160Complete: { type: "boolean" },
+      requiredDocuments: { type: "integer", minimum: 0, example: 3 },
+      requiredDocumentsUploaded: { type: "integer", minimum: 0, example: 2 },
+      requiredDocumentsApproved: { type: "integer", minimum: 0, example: 1 },
+      documentsUploaded: { type: "boolean" },
+      documentsApproved: { type: "boolean" },
+      paymentStarted: { type: "boolean" },
+      consularPaid: { type: "boolean" },
+      appointmentScheduled: { type: "boolean" },
+      interviewStarted: { type: "boolean" },
+    },
+  },
+  ClientWorkflowResponse: {
+    type: "object",
+    required: ["assigned", "advisorId", "currentStep", "currentStepLabel", "process", "requirements", "gates"],
+    properties: {
+      assigned: { type: "boolean" },
+      advisorId: { type: "integer", nullable: true, example: 7 },
+      currentStep: {
+        type: "string",
+        enum: ["profile", "assignment", "documents", "ds160", "payment", "appointment", "interview"],
+      },
+      currentStepLabel: { type: "string", example: "Completar DS-160" },
+      process: { allOf: [{ $ref: "#/components/schemas/ClientWorkflowProcess" }], nullable: true },
+      requirements: { $ref: "#/components/schemas/ClientWorkflowRequirements" },
+      gates: {
+        type: "object",
+        required: [
+          "profile", "documents", "dashboard", "timeline", "notifications", "information",
+          "chat", "ds160", "payment", "appointment", "interview",
+        ],
+        additionalProperties: false,
+        properties: Object.fromEntries(
+          [
+            "profile", "documents", "dashboard", "timeline", "notifications", "information",
+            "chat", "ds160", "payment", "appointment", "interview",
+          ].map((name) => [name, { $ref: "#/components/schemas/ClientWorkflowGate" }])
+        ),
+      },
+    },
+  },
+  AdminUser: {
+    type: "object",
+    required: ["id", "nombre", "correo", "rol", "activo", "bloqueado", "bloqueadoHasta"],
+    properties: {
+      id: { type: "integer" },
+      nombre: { type: "string" },
+      correo: { type: "string", format: "email" },
+      rol: { type: "string", enum: ["cliente", "asesor", "admin"] },
+      perfil: { type: "string", nullable: true },
+      activo: { type: "boolean" },
+      bloqueado: { type: "boolean" },
+      bloqueadoHasta: { type: "string", format: "date-time", nullable: true },
+      telefono: { type: "string" },
+      ciudad: { type: "string" },
+      pais: { type: "string" },
+      createdAt: { type: "string", format: "date-time", nullable: true },
+      updatedAt: { type: "string", format: "date-time", nullable: true },
+      capacidad: { type: "integer", minimum: 0 },
+      disponible: { type: "boolean" },
+      asignados: { type: "integer", minimum: 0 },
+      pendientes: { type: "integer", minimum: 0 },
+      asesor: { type: "string", nullable: true },
+      asesorId: { type: "integer", nullable: true },
+      actividad: { type: "string", format: "date-time", nullable: true },
+    },
+  },
+  AdminUserResponse: {
+    type: "object",
+    required: ["usuario"],
+    properties: { usuario: { $ref: "#/components/schemas/AdminUser" } },
+  },
   AdvisorApplicant: {
     type: "object",
     required: ["id", "nombre", "correo", "perfil"],
@@ -653,14 +781,19 @@ const endpoints = [
   ["post", "/reset-password", "Autenticación", "Restablecer contraseña", null, "ResetPasswordRequest"],
   ["post", "/verificar-email", "Autenticación", "Verificar correo", null, "TokenRequest"],
   ["post", "/reenviar-verificacion", "Autenticación", "Reenviar verificación", null, "EmailRequest"],
-  ["post", "/desbloquear-cuenta", "Autenticación", "Desbloquear cuenta con el enlace del correo", null, "TokenRequest"],
+  ["post", "/desbloquear-cuenta", "Autenticación", "Desbloquear cuenta con el enlace del correo", null, "UnlockTokenRequest"],
   ["post", "/guardar-perfil", "Perfil y trámite", "Guardar perfil de visa", "session", "ProfileRequest"],
   ["post", "/estado-tramite", "Perfil y trámite", "Consultar estado del trámite", "session"],
+  ["get", "/estado-tramite", "Perfil y trámite", "Ruta heredada no permitida", "session"],
+  ["get", "/workflow/me", "Perfil y trámite", "Consultar permisos y progreso del flujo del solicitante", "session"],
   ["post", "/usuario-perfil", "Perfil y trámite", "Consultar perfil del usuario", "session"],
+  ["get", "/usuario-perfil", "Perfil y trámite", "Ruta heredada no permitida", "session"],
   ["put", "/usuario-perfil", "Perfil y trámite", "Actualizar perfil del usuario", "session", "ProfileUpdateRequest"],
   ["put", "/tramite", "Perfil y trámite", "Actualización manual de trámite bloqueada", "session"],
+  ["get", "/ds160", "DS-160", "Ruta heredada no permitida"],
   ["post", "/ds160/load", "DS-160", "Cargar formulario DS-160", null, "UserEmailRequest"],
   ["post", "/ds160", "DS-160", "Guardar formulario DS-160", null, "Ds160Request"],
+  ["get", "/ds160/pdf", "DS-160", "Ruta heredada no permitida"],
   ["post", "/ds160/pdf", "DS-160", "Exportar DS-160 en PDF", null, "UserEmailRequest", 200, "binary"],
   ["post", "/upload", "Documentos", "Subir documento", "session", "DocumentUpload", 201, null, "multipart/form-data"],
   ["post", "/documentos", "Documentos", "Crear documento", "session", "DocumentUpload", 201, null, "multipart/form-data"],
@@ -691,6 +824,7 @@ const endpoints = [
   ["get", "/notificaciones/{userId}/no-leidas", "Notificaciones", "Contar no leídas", "session"],
   ["get", "/notificaciones/{userId}", "Notificaciones", "Listar notificaciones", "session"],
   ["put", "/notificaciones/{id}/leer", "Notificaciones", "Marcar como leída", "session"],
+  ["put", "/notificaciones/{userId}/leer-todas", "Notificaciones", "Ruta heredada no permitida"],
   ["delete", "/notificaciones/{id}", "Notificaciones", "Eliminar notificación", "session"],
   ["get", "/payments/me", "Gestión consular", "Consultar pagos propios", "session"],
   ["post", "/payments/bank-transfer", "Gestión consular", "Registrar transferencia", "session", "BankTransferUpload", 201, null, "multipart/form-data"],
@@ -813,6 +947,30 @@ for (const endpoint of endpoints) {
   paths[path][method] = buildOperation(method, path, ...settings);
 }
 
+for (const [path, method, replacement] of [
+  ["/estado-tramite", "get", "POST /estado-tramite"],
+  ["/usuario-perfil", "get", "POST /usuario-perfil"],
+  ["/ds160", "get", "POST /ds160/load"],
+  ["/ds160/pdf", "get", "POST /ds160/pdf"],
+  ["/notificaciones/{userId}/leer-todas", "put", "PUT /notificaciones/leer-todas con userId en el cuerpo"],
+]) {
+  const operation = paths[path][method];
+  operation.deprecated = true;
+  operation.description = `Ruta conservada por compatibilidad. Responde 405; usa ${replacement}.`;
+  operation.responses = {
+    405: {
+      description: `Método no permitido. Usa ${replacement}.`,
+      content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+    },
+    429: { $ref: "#/components/responses/TooManyRequests" },
+    500: { $ref: "#/components/responses/InternalError" },
+  };
+  if (operation.security) {
+    operation.responses[401] = { $ref: "#/components/responses/Unauthorized" };
+    operation.responses[403] = { $ref: "#/components/responses/Forbidden" };
+  }
+}
+
 paths["/tramite"].put.description = "Ruta heredada protegida. Los clientes no pueden modificar estado, etapa ni progreso; el sistema los actualiza al completar cada actividad validada.";
 delete paths["/tramite"].put.responses[200];
 paths["/tramite"].put.responses[403] = {
@@ -829,8 +987,31 @@ paths["/questions/random"].get.parameters = [
 paths["/login"].post.description = "Tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos (RNF-13) y se envía un correo con un enlace de desbloqueo. Durante el bloqueo responde 423 aunque la contraseña sea correcta.";
 paths["/login"].post.responses[423] = {
   description: "Cuenta bloqueada temporalmente por intentos fallidos. Incluye bloqueadoHasta y minutosRestantes.",
-  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+  content: { "application/json": { schema: { $ref: "#/components/schemas/AccountLockedError" } } },
 };
+
+paths["/desbloquear-cuenta"].post.description = "Consume una sola vez el token enviado por correo y reinicia el bloqueo y el contador de intentos fallidos.";
+paths["/desbloquear-cuenta"].post.requestBody.content["application/json"].example = {
+  token: "4a90f50b21f59ac32cf9f98b08953f1986501dc7ba66eb0332f40da91a043cca",
+};
+paths["/desbloquear-cuenta"].post.responses[200] = jsonSchemaResponse(
+  "Cuenta desbloqueada",
+  "SuccessMessage"
+);
+
+paths["/workflow/me"].get.description = "Requiere una sesión válida con rol cliente. Devuelve el estado calculado del trámite y las compuertas que determinan qué secciones están habilitadas.";
+paths["/workflow/me"].get.responses[200] = jsonSchemaResponse(
+  "Flujo actual del solicitante",
+  "ClientWorkflowResponse"
+);
+paths["/workflow/me"].get.responses[404] = { $ref: "#/components/responses/NotFound" };
+
+paths["/admin/users/{id}/unlock"].post.description = "Requiere rol administrador. Elimina el bloqueo temporal y reinicia el contador de intentos fallidos de la cuenta indicada.";
+paths["/admin/users/{id}/unlock"].post.responses[200] = jsonSchemaResponse(
+  "Cuenta desbloqueada",
+  "AdminUserResponse"
+);
+paths["/admin/users/{id}/unlock"].post.responses[404] = { $ref: "#/components/responses/NotFound" };
 
 paths["/questions/random"].get.responses[409] = {
   description: "No hay suficientes preguntas activas elegibles para la cantidad solicitada.",
@@ -1104,7 +1285,7 @@ module.exports = {
       BadRequest: { description: "Solicitud inválida", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       Unauthorized: { description: "Sesión ausente o inválida", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       Forbidden: { description: "Permisos insuficientes", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
-      NotFound: { description: "Recurso no encontrado o no asignado al asesor autenticado", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+      NotFound: { description: "Recurso no encontrado o fuera del alcance de la sesión autenticada", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       TooManyRequests: { description: "Límite temporal de solicitudes excedido", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
       InternalError: { description: "Error interno", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
     },
