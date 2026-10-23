@@ -8,8 +8,8 @@ const STEP_PATHS = {
   1: { path: "/perfil" },
   2: { path: "/ds160" },
   3: { path: "/documents" },
-  4: { path: buildAdvisorWhatsappUrl(), external: true },
-  5: { path: buildAdvisorWhatsappUrl(), external: true },
+  4: { path: "/chat", contactPath: buildAdvisorWhatsappUrl() },
+  5: { path: "/chat", contactPath: buildAdvisorWhatsappUrl() },
   6: { path: "/entrevista" },
   7: { path: "/notificaciones" },
 };

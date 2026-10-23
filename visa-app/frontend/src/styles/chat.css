@@ -82,21 +82,6 @@
   font-weight: 500;
 }
 
-.chat-header__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: #cbd5e1;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  white-space: nowrap;
-}
-
 /* ─── Messages area ─── */
 .chat-messages {
   flex: 1;
@@ -391,9 +376,5 @@
 
   .chat-bubble {
     max-width: 85%;
-  }
-
-  .chat-header__badge {
-    display: none;
   }
 }

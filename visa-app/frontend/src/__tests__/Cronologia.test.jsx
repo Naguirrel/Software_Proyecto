@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Cronologia from "../pages/Cronologia";
+import { buildAdvisorWhatsappUrl } from "../utils/advisorContact";
+import { getProcessTimeline } from "../utils/dashboardStats";
 
 const authState = vi.hoisted(() => ({
   isValidating: false,
@@ -32,6 +36,15 @@ vi.mock("../hooks/useClientWorkflow", () => ({
 vi.mock("../components/Sidebar", () => ({
   default: ({ currentPage }) => <nav data-testid="sidebar">{currentPage}</nav>,
 }));
+
+const renderCronologia = () => render(
+  <MemoryRouter initialEntries={["/cronologia"]}>
+    <Routes>
+      <Route path="/cronologia" element={<Cronologia />} />
+      <Route path="/chat" element={<p>Chat del asesor</p>} />
+    </Routes>
+  </MemoryRouter>
+);
 
 describe("Cronologia", () => {
   beforeEach(() => {
@@ -74,7 +87,7 @@ describe("Cronologia", () => {
       });
     });
 
-    render(<Cronologia />);
+    renderCronologia();
 
     expect(await screen.findByRole("heading", { name: "Subir documentos" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Subir documentos/i })).toBeInTheDocument();
@@ -82,7 +95,7 @@ describe("Cronologia", () => {
     expect(screen.queryByRole("heading", { name: /Revisión experta/i })).not.toBeInTheDocument();
   });
 
-  it("muestra hablar con el asesor en la etapa de pago", async () => {
+  it("abre el chat y conserva WhatsApp como contacto separado en la etapa de pago", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
       const requestUrl = String(url);
 
@@ -111,10 +124,24 @@ describe("Cronologia", () => {
       });
     });
 
-    render(<Cronologia />);
+    renderCronologia();
 
     expect(await screen.findByRole("heading", { name: "Pago de visa" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Hablar con el asesor/i })).toBeInTheDocument();
+    const chat = screen.getByRole("link", { name: /Hablar con el asesor/i });
+    const contact = screen.getByRole("link", { name: "Contactanos" });
+    expect(chat).toHaveAttribute("href", "/chat");
+    expect(contact).toHaveAttribute("href", buildAdvisorWhatsappUrl());
+    expect(contact.querySelector("svg")).toBeInTheDocument();
+
+    await userEvent.setup().click(chat);
+    expect(screen.getByText("Chat del asesor")).toBeInTheDocument();
+  });
+
+  it("usa las mismas rutas de chat y WhatsApp en la etapa de cita", () => {
+    expect(getProcessTimeline(5)[4].action).toMatchObject({
+      path: "/chat",
+      contactPath: buildAdvisorWhatsappUrl(),
+    });
   });
 
   it("sin asesor explica la espera y no consulta ni habilita el DS-160", async () => {
@@ -126,7 +153,7 @@ describe("Cronologia", () => {
       return Promise.resolve({ ok: true, json: async () => [] });
     });
 
-    render(<Cronologia />);
+    renderCronologia();
 
     expect(await screen.findByText(/esperando asignación de asesor/i)).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/ds160"))).toBe(false);

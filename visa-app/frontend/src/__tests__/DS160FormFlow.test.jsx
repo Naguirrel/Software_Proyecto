@@ -1,9 +1,10 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { MemoryRouter, useLocation } from "react-router-dom";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import DS160Form from "../pages/ds160";
 import { secciones } from "../data/ds160Sections";
+import { validarSeccion } from "../utils/ds160Validation";
 
 const SESSION = {
   id: 7,
@@ -12,12 +13,23 @@ const SESSION = {
   correo: "usuario@example.com",
   perfil: "turismo_negocios",
 };
+const LAST_SECTION_DATA = {
+  enfermedadContagiosa: "No", arrestado: "No", terrorismo: "No", deportado: "No",
+};
+const OriginalURL = globalThis.URL;
+
+function mockPdfObjectURL(createObjectURL, revokeObjectURL = vi.fn()) {
+  class MockURL extends OriginalURL {}
+  MockURL.createObjectURL = createObjectURL;
+  MockURL.revokeObjectURL = revokeObjectURL;
+  vi.stubGlobal("URL", MockURL);
+}
 
 function setSession() {
   localStorage.setItem("visaguide_session", JSON.stringify(SESSION));
 }
 
-function mockFetch({ datos = {}, seccion_actual = 1, completado = false } = {}) {
+function mockFetch({ datos = {}, seccion_actual = 1, completado = false, saveOk = true, saveResponse, pdfOk = true } = {}) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((url, options) => {
     const requestUrl = String(url);
     if (requestUrl.includes("/validar-sesion")) {
@@ -31,15 +43,21 @@ function mockFetch({ datos = {}, seccion_actual = 1, completado = false } = {}) 
     }
     if (requestUrl.endsWith("/ds160/pdf")) {
       return Promise.resolve({
-        ok: true,
+        ok: pdfOk,
+        json: async () => ({ error: "No se pudo descargar el PDF." }),
         blob: async () => new Blob(["%PDF-1.4"], { type: "application/pdf" }),
       });
     }
     if (requestUrl.endsWith("/ds160") && options?.method === "POST") {
-      return Promise.resolve({ ok: true, json: async () => ({ message: "ok" }) });
+      return saveResponse || Promise.resolve({ ok: saveOk, json: async () => ({ message: "ok" }) });
     }
     return Promise.resolve({ ok: true, json: async () => ({}) });
   });
+}
+
+function CurrentPath() {
+  const { pathname } = useLocation();
+  return <output data-testid="current-path">{pathname}</output>;
 }
 
 function renderForm() {
@@ -53,6 +71,10 @@ function renderForm() {
 beforeEach(() => {
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   setSession();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("DS-160: carga inicial del formulario", () => {
@@ -89,6 +111,47 @@ describe("DS-160: carga inicial del formulario", () => {
 });
 
 describe("DS-160: validación y navegación entre secciones", () => {
+  it("marca secciones por datos válidos y actualiza la marca al editar o retroceder", async () => {
+    const user = userEvent.setup();
+    mockFetch({
+      datos: {
+        apellidos: "Perez", nombres: "Ana", otrosNombres: "No",
+        fechaNacimiento: "1990-01-01", lugarNacimiento: "Guatemala", paisNacimiento: "Guatemala",
+      },
+      seccion_actual: 2,
+    });
+    renderForm();
+
+    await screen.findByText(/Sección 2:/);
+    expect(screen.getByRole("listitem", { name: "Datos Personales, completada" })).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { name: "Información de Contacto, pendiente" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Anterior/ }));
+    expect(screen.getByRole("listitem", { name: "Datos Personales, completada" })).toHaveAttribute("aria-current", "step");
+
+    await user.clear(screen.getByLabelText(/APELLIDOS/i));
+    expect(screen.getByRole("listitem", { name: "Datos Personales, pendiente" })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/APELLIDOS/i), "Perez");
+    expect(screen.getByRole("listitem", { name: "Datos Personales, completada" })).toBeInTheDocument();
+  });
+
+  it("respeta las condiciones de los campos requeridos", () => {
+    const familia = secciones.find(({ id }) => id === 9);
+    const validar = (datos) => validarSeccion(
+      familia.campos,
+      datos,
+      (campo) => !campo.dependeDe || datos[campo.dependeDe.campo] === campo.dependeDe.valor
+    ).esValida;
+    const datos = {
+      estadoCivil: "Soltero/a", nombrePadre: "Juan", nombreMadre: "María", familiaresEEUU: "No",
+    };
+
+    expect(validar(datos)).toBe(true);
+    expect(validar({ ...datos, estadoCivil: "Casado/a" })).toBe(false);
+    expect(validar({ ...datos, estadoCivil: "Casado/a", nombreConyuge: "Sofía" })).toBe(true);
+  });
+
   it("no avanza de sección y muestra errores si faltan campos obligatorios", async () => {
     const user = userEvent.setup();
     mockFetch();
@@ -132,6 +195,7 @@ describe("DS-160: validación y navegación entre secciones", () => {
     await screen.findByText(/Sección 2:/);
     const backButton = screen.getByRole("button", { name: /Anterior/ });
     expect(backButton).toBeEnabled();
+    expect(screen.getByRole("listitem", { name: "Datos Personales, pendiente" })).toBeInTheDocument();
 
     await user.click(backButton);
 
@@ -148,6 +212,68 @@ describe("DS-160: validación y navegación entre secciones", () => {
 });
 
 describe("DS-160: guardado manual y descarga de PDF", () => {
+  it("muestra el diálogo solo después de guardar y permite descargar o volver al dashboard", async () => {
+    const user = userEvent.setup();
+    let resolveSave;
+    const saveResponse = new Promise((resolve) => { resolveSave = resolve; });
+    const fetchMock = mockFetch({ datos: LAST_SECTION_DATA, seccion_actual: 10, saveResponse });
+    const createObjectURL = vi.fn(() => "blob:final-pdf");
+    mockPdfObjectURL(createObjectURL);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    render(<MemoryRouter initialEntries={["/ds160"]}><DS160Form /><CurrentPath /></MemoryRouter>);
+
+    await screen.findByText(/Sección 10:/);
+    await user.click(screen.getByRole("button", { name: /Finalizar/ }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Finalizando/ })).toBeDisabled();
+    resolveSave({ ok: true });
+
+    const dialog = await screen.findByRole("dialog", { name: "Hecho, ya completaste el formulario" });
+    expect(within(dialog).getAllByRole("button")).toHaveLength(2);
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Descargar formulario" })).toHaveFocus());
+    await user.tab();
+    expect(within(dialog).getByRole("button", { name: "Volver al dashboard" })).toHaveFocus();
+    await user.tab();
+    expect(within(dialog).getByRole("button", { name: "Descargar formulario" })).toHaveFocus();
+    expect(screen.queryByText("✓ Formulario completado. Los datos han sido guardados.")).not.toBeInTheDocument();
+    const saveCall = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith("/ds160") && options?.method === "POST");
+    expect(JSON.parse(saveCall[1].body)).toMatchObject({ completado: true, seccion_actual: 10 });
+
+    await user.click(within(dialog).getByRole("button", { name: "Descargar formulario" }));
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/ds160/pdf"))).toBe(true);
+
+    await user.click(within(dialog).getByRole("button", { name: "Volver al dashboard" }));
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/dashboard");
+  });
+
+  it("muestra el error de descarga dentro del diálogo sin cerrarlo", async () => {
+    const user = userEvent.setup();
+    mockFetch({ datos: LAST_SECTION_DATA, seccion_actual: 10, pdfOk: false });
+    renderForm();
+
+    await screen.findByText(/Sección 10:/);
+    await user.click(screen.getByRole("button", { name: /Finalizar/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Hecho, ya completaste el formulario" });
+    await user.click(within(dialog).getByRole("button", { name: "Descargar formulario" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("No se pudo descargar el PDF.");
+    expect(within(dialog).getByRole("button", { name: "Volver al dashboard" })).toBeInTheDocument();
+  });
+
+  it("mantiene el formulario abierto y muestra error si falla la finalización", async () => {
+    const user = userEvent.setup();
+    mockFetch({ datos: LAST_SECTION_DATA, seccion_actual: 10, saveOk: false });
+    renderForm();
+
+    await screen.findByText(/Sección 10:/);
+    await user.click(screen.getByRole("button", { name: /Finalizar/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Error al finalizar el formulario. Intenta de nuevo.");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Finalizar/ })).toBeEnabled();
+  });
+
   it("guarda el progreso al presionar 'Guardar progreso' y muestra confirmación", async () => {
     const user = userEvent.setup();
     const fetchMock = mockFetch();
@@ -181,10 +307,14 @@ describe("DS-160: guardado manual y descarga de PDF", () => {
 
   it("descarga el PDF generado por el backend al presionar 'Descargar PDF'", async () => {
     const user = userEvent.setup();
-    const fetchMock = mockFetch();
+    const fetchMock = mockFetch({ datos: { nombres: "Norman David", apellidos: "Aguirre López" } });
     const createObjectURL = vi.fn(() => "blob:mock-url");
     const revokeObjectURL = vi.fn();
-    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+    let downloadedName;
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function () {
+      downloadedName = this.download;
+    });
+    mockPdfObjectURL(createObjectURL, revokeObjectURL);
 
     renderForm();
     await screen.findByText(/Sección 1: Datos Personales/);
@@ -196,6 +326,7 @@ describe("DS-160: guardado manual y descarga de PDF", () => {
       expect(pdfCall).toBeDefined();
     });
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(downloadedName).toBe("Form_DS160_Norman_Aguirre.pdf");
   });
 
   it("muestra un mensaje si la descarga del PDF falla", async () => {

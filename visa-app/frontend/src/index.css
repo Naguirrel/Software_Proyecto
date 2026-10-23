@@ -371,6 +371,12 @@ img, video, canvas, svg {
   overflow-y: auto;
 }
 
+.vg-sidebar-bottom-section {
+  flex-shrink: 0;
+  min-width: 0;
+  width: 100%;
+}
+
 .vg-sidebar-label {
   opacity: 0;
   visibility: hidden;
@@ -643,8 +649,13 @@ img, video, canvas, svg {
 
 .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-bottom-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   padding: 10px 16px 12px !important;
+}
+
+.vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-bottom-section .vg-sidebar-label {
+  display: none;
 }
 
 .vg-sidebar:not(:hover):not(:focus-within):not(.vg-sidebar--expanded) .vg-sidebar-action,

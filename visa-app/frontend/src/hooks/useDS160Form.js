@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { buildApiUrl } from "../config/api";
 import { secciones } from "../data/ds160Sections";
 import { validarCampo, validarSeccion } from "../utils/ds160Validation";
+import { buildDs160PdfFilename } from "../utils/ds160PdfFilename";
 
 function getCorreo() {
   const sessionRaw = localStorage.getItem("visaguide_session");
@@ -26,12 +27,21 @@ export default function useDS160Form() {
   const [guardando, setGuardando] = useState(false);
   const [descargandoPdf, setDescargandoPdf] = useState(false);
   const [mensajeGuardado, setMensajeGuardado] = useState("");
+  const [formularioFinalizado, setFormularioFinalizado] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   const formDataRef = useRef(formData);
   const seccionActualRef = useRef(seccionActual);
   const dirtyRef = useRef(false);
   const autosaveControllerRef = useRef(null);
+  const autosaveTimeoutRef = useRef(null);
+  const mensajeTimeoutRef = useRef(null);
+
+  const mostrarMensajeTemporal = (mensaje) => {
+    window.clearTimeout(mensajeTimeoutRef.current);
+    setMensajeGuardado(mensaje);
+    mensajeTimeoutRef.current = window.setTimeout(() => setMensajeGuardado(""), 3000);
+  };
 
   formDataRef.current = formData;
   seccionActualRef.current = seccionActual;
@@ -42,6 +52,11 @@ export default function useDS160Form() {
 
   const debeMostrar = (campo) =>
     !campo.dependeDe || formData[campo.dependeDe.campo] === campo.dependeDe.valor;
+  const seccionesCompletadas = new Set(
+    secciones
+      .filter(({ campos }) => validarSeccion(campos, formData, debeMostrar).esValida)
+      .map(({ id }) => id)
+  );
 
   // Cargar datos al iniciar
   useEffect(() => {
@@ -78,7 +93,8 @@ export default function useDS160Form() {
   useEffect(() => {
     if (cargando || !dirtyRef.current || Object.keys(formData).length === 0) return;
 
-    const timeout = window.setTimeout(async () => {
+    autosaveTimeoutRef.current = window.setTimeout(async () => {
+      if (!dirtyRef.current) return;
       const correo = getCorreo();
       const token = getToken();
       if (!correo || !token) return;
@@ -98,7 +114,7 @@ export default function useDS160Form() {
       }
     }, 1500);
 
-    return () => window.clearTimeout(timeout);
+    return () => window.clearTimeout(autosaveTimeoutRef.current);
   }, [formData, seccionActual, cargando]);
 
   // Flush al salir de la página
@@ -132,6 +148,7 @@ export default function useDS160Form() {
     return () => {
       window.removeEventListener("pagehide", flushPendingChanges);
       autosaveControllerRef.current?.abort();
+      window.clearTimeout(mensajeTimeoutRef.current);
       flushPendingChanges();
     };
   }, []);
@@ -178,11 +195,9 @@ export default function useDS160Form() {
       });
       if (!res.ok) throw new Error();
       dirtyRef.current = false;
-      setMensajeGuardado("✓ Progreso guardado");
-      setTimeout(() => setMensajeGuardado(""), 3000);
+      mostrarMensajeTemporal("✓ Progreso guardado");
     } catch {
-      setMensajeGuardado("Error al guardar. Intenta de nuevo.");
-      setTimeout(() => setMensajeGuardado(""), 3000);
+      mostrarMensajeTemporal("Error al guardar. Intenta de nuevo.");
     } finally {
       setGuardando(false);
     }
@@ -192,8 +207,7 @@ export default function useDS160Form() {
     const correo = getCorreo();
     const token = getToken();
     if (!correo || !token) {
-      setMensajeGuardado("No se encontró una sesión activa.");
-      setTimeout(() => setMensajeGuardado(""), 3000);
+      mostrarMensajeTemporal("No se encontró una sesión activa.");
       return;
     }
 
@@ -213,14 +227,15 @@ export default function useDS160Form() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "ds160.pdf";
+      const sessionRaw = localStorage.getItem("visaguide_session");
+      const session = sessionRaw ? JSON.parse(sessionRaw) : {};
+      link.download = buildDs160PdfFilename(formData, session);
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setMensajeGuardado(error.message || "No se pudo descargar el PDF.");
-      setTimeout(() => setMensajeGuardado(""), 3000);
+      mostrarMensajeTemporal(error.message || "No se pudo descargar el PDF.");
     } finally {
       setDescargandoPdf(false);
     }
@@ -229,26 +244,32 @@ export default function useDS160Form() {
   const finalizarFormulario = async () => {
     const esValida = validarSeccionActual();
     if (!esValida) {
-      setMensajeGuardado("Completa los campos obligatorios antes de finalizar");
-      setTimeout(() => setMensajeGuardado(""), 3000);
+      mostrarMensajeTemporal("Completa los campos obligatorios antes de finalizar");
       return;
     }
 
     const correo = getCorreo();
     const token = getToken();
-    if (!correo || !token) return;
+    if (!correo || !token) {
+      mostrarMensajeTemporal("No se encontró una sesión activa.");
+      return;
+    }
     setGuardando(true);
     try {
-      await fetch(buildApiUrl("/ds160"), {
+      window.clearTimeout(autosaveTimeoutRef.current);
+      autosaveControllerRef.current?.abort();
+      const response = await fetch(buildApiUrl("/ds160"), {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders(token) },
         body: JSON.stringify({ correo, datos: formData, seccion_actual: seccionActual, completado: true }),
       });
+      if (!response.ok) throw new Error();
       dirtyRef.current = false;
-      alert("¡Formulario completado! Los datos han sido guardados.");
-      window.location.href = "/dashboard";
+      setFormularioFinalizado(true);
+      window.clearTimeout(mensajeTimeoutRef.current);
+      setMensajeGuardado("");
     } catch {
-      alert("Error al finalizar el formulario. Intenta de nuevo.");
+      mostrarMensajeTemporal("Error al finalizar el formulario. Intenta de nuevo.");
     } finally {
       setGuardando(false);
     }
@@ -258,8 +279,7 @@ export default function useDS160Form() {
     if (seccionActual < totalSecciones) {
       const esValida = validarSeccionActual();
       if (!esValida) {
-        setMensajeGuardado("Completa los campos obligatorios antes de continuar");
-        setTimeout(() => setMensajeGuardado(""), 3000);
+        mostrarMensajeTemporal("Completa los campos obligatorios antes de continuar");
         return;
       }
       const nuevaSeccion = seccionActual + 1;
@@ -286,10 +306,12 @@ export default function useDS160Form() {
     guardando,
     descargandoPdf,
     mensajeGuardado,
+    formularioFinalizado,
     cargando,
     seccion,
     totalSecciones,
     progreso,
+    seccionesCompletadas,
     // Funciones
     debeMostrar,
     handleChange,

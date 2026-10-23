@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { MessageSquare } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useIdioma from "../hooks/useIdioma";
@@ -31,6 +33,16 @@ function ExternalIcon() {
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15,3 21,3 21,9" />
       <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20.5 11.8a8.5 8.5 0 0 1-12.2 7.6L3 21l1.7-5.2a8.5 8.5 0 1 1 15.8-4Z" />
+      <path d="m8.2 8.1 1.3-.4 1.5 2.6-1 1.1c.6 1.2 1.6 2.2 2.8 2.8l1.1-1 2.6 1.5-.4 1.3c-.2.7-.9 1.1-1.6 1-3.8-.4-7.3-3.9-7.7-7.7-.1-.6.4-1.2 1.4-1.2Z" />
     </svg>
   );
 }
@@ -97,13 +109,29 @@ function TarjetaActual({ etapa, senior }) {
         {etapa.description}
       </p>
       {etapa.action && (
-        <button
-          className={`cron-btn-accion${senior ? " cron-btn-accion--senior" : ""}`}
-          onClick={() => (window.location.href = etapa.action.path)}
-        >
-          {etapa.action.label}
-          <ExternalIcon />
-        </button>
+        <div className="cron-card__actions">
+          {etapa.action.contactPath ? (
+            <Link className={`cron-btn-accion${senior ? " cron-btn-accion--senior" : ""}`} to={etapa.action.path}>
+              {etapa.action.label}
+              <MessageSquare size={17} aria-hidden="true" />
+            </Link>
+          ) : (
+            <button
+              className={`cron-btn-accion${senior ? " cron-btn-accion--senior" : ""}`}
+              onClick={() => (window.location.href = etapa.action.path)}
+            >
+              {etapa.action.label}
+              <ExternalIcon />
+            </button>
+          )}
+          {etapa.action.contactPath && (
+            <a className={`cron-btn-accion cron-btn-contact${senior ? " cron-btn-accion--senior" : ""}`}
+              href={etapa.action.contactPath}>
+              <WhatsAppIcon />
+              {t("timeline.contactUs")}
+            </a>
+          )}
+        </div>
       )}
     </article>
   );
