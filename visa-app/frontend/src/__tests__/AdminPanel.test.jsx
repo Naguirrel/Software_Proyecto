@@ -532,6 +532,22 @@ describe("panel de administracion", () => {
     );
   });
 
+  it("aplica los filtros de logs al confirmar y permite limpiarlos", async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, "", "/admin/activity-logs");
+    render(<App />);
+    await screen.findByText("user.login");
+    const logRequests = () => globalThis.fetch.mock.calls.filter(([url]) => String(url).includes("/admin/activity-logs?"));
+    const initialRequests = logRequests().length;
+    await user.type(screen.getByPlaceholderText("Buscar acción"), "login");
+    expect(logRequests()).toHaveLength(initialRequests);
+    await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    await waitFor(() => expect(logRequests().at(-1)[0]).toContain("action=login"));
+    expect(screen.getByText(/Filtros aplicados: Acción: login/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Limpiar" }));
+    await waitFor(() => expect(logRequests().at(-1)[0]).not.toContain("action=login"));
+  });
+
   it("rechaza una sesión local fabricada con correo de administrador", async () => {
     localStorage.setItem("visaguide_session", JSON.stringify({
       id: 1,
