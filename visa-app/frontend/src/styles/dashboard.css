@@ -235,6 +235,8 @@
   overflow-wrap: anywhere;
 }
 
+.dash-stat-card__documents { text-transform: capitalize; }
+
 .dash-stat-card__hint,
 .dash-stat-card__progress {
   grid-column: 1 / -1;

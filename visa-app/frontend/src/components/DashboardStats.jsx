@@ -47,10 +47,9 @@ export default function DashboardStats({ loading, error, stats }) {
         <article className="dash-stat-card">
           <span className="dash-stat-card__icon" aria-hidden="true"><FileCheck2 size={20} /></span>
           <span className="dash-stat-card__label">{t("stats.documents")}</span>
-          <strong className="dash-stat-card__value">{documentCount}</strong>
-          <span className="dash-stat-card__hint">
-            {t("stats.documentsHint", { count: documentCount })}
-          </span>
+          <strong className="dash-stat-card__stage dash-stat-card__documents">
+            {documentCount} {t("stats.documentsHint", { count: documentCount })}
+          </strong>
         </article>
 
         <article className="dash-stat-card">
