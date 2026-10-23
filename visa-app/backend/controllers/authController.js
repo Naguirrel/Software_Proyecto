@@ -171,10 +171,12 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       if (!passwordMatches) {
         const attempt = await authService.registerFailedLogin({ usuario: usuarioRow, correo, ip: req.ip });
         if (attempt.locked) {
-          try {
-            await notifyAccountLocked(usuarioRow, attempt.lockedUntil, req);
-          } catch (notifyError) {
-            console.error("ERROR NOTIFY ACCOUNT LOCKED:", notifyError);
+          if (attempt.lockCreated) {
+            try {
+              await notifyAccountLocked(usuarioRow, attempt.lockedUntil, req);
+            } catch (notifyError) {
+              console.error("ERROR NOTIFY ACCOUNT LOCKED:", notifyError);
+            }
           }
           return respondAccountLocked(res, attempt.lockedUntil);
         }
@@ -185,7 +187,10 @@ function createAuthController(authService, { activityLogService, testUsersReady,
         return res.status(403).json({ error: "Cuenta desactivada. Contacta a un administrador." });
       }
 
-      await authService.clearFailedLogins(usuarioRow);
+      const loginState = await authService.clearFailedLogins(usuarioRow);
+      if (loginState.locked) {
+        return respondAccountLocked(res, loginState.lockedUntil);
+      }
 
       const usuario = presentLoginUser(usuarioRow);
       
@@ -343,8 +348,8 @@ function createAuthController(authService, { activityLogService, testUsersReady,
   async function unlockAccount(req, res) {
     const { token } = req.body || {};
 
-    if (!token) {
-      return res.status(400).json({ error: "El token de desbloqueo es obligatorio" });
+    if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+      return res.status(400).json({ error: "El token de desbloqueo debe tener un formato válido" });
     }
 
     try {
