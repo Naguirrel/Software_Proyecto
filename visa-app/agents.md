@@ -428,7 +428,7 @@ Monte la ruta en `app.js` con `app.use(...)` antes de `notFoundHandler`/`errorHa
 ### Autenticacion y autorizacion
 
 - `POST /login` y `POST /register` devuelven `token`. El cliente lo envia como `Authorization: Bearer <token>`.
-- El token (`auth.js`) es `base64url(payload).HMAC-SHA256` firmado con `SESSION_SECRET`, con `sub`, `correo`, `rol` y `exp` (8 horas). No hay revocacion: cambiar la contrasena no invalida tokens emitidos.
+- El token (`auth.js`) es `base64url(payload).HMAC-SHA256` firmado con `SESSION_SECRET`, con `sub`, `correo`, `rol`, `sessionVersion` y `exp` (8 horas). `createSessionMiddleware` compara `sessionVersion` con `usuario.session_version`; restablecer la contrasena incrementa la version e invalida de inmediato todas las sesiones anteriores. Los tokens emitidos antes de esta migracion se interpretan como version 0 para permitir un despliegue gradual y dejan de funcionar tras el primer restablecimiento.
 - `createSessionMiddleware(pool)` (`requireSession`) valida el token y vuelve a leer el usuario en BD; rechaza cuentas con `activo = false`. Deja el usuario en `req.auth`.
 - `createRoleMiddleware(pool, roles)` genera `requireAdmin`, `requireAdvisor` (`asesor`) y `requireStaff` (`asesor` + `admin`).
 - En endpoints nuevos tome el usuario de `req.auth`, nunca de `correo`/`userId` enviados por el cliente, y valide propiedad del recurso.
@@ -729,7 +729,7 @@ Estado actual:
 
 - Contrasenas con bcrypt (10 rondas). `authService.verifyPassword` todavia acepta contrasenas legacy en texto plano y las migra a bcrypt al primer login.
 - Tokens de reset y verificacion: 32 bytes aleatorios; en BD solo se guarda su SHA-256. Reset valido 1 hora, verificacion 24 horas.
-- Token de sesion firmado con HMAC (ver "Autenticacion y autorizacion"); se guarda en `localStorage`.
+- Token de sesion firmado con HMAC (ver "Autenticacion y autorizacion"); se guarda en `localStorage` y su version se valida contra `usuario.session_version` en cada solicitud.
 - CORS restringido por `CORS_ALLOWED_ORIGINS` o por los defaults de `config/cors.js`; `credentials: false`.
 - Uploads: maximo 5 MB y 8 archivos; documentos solo `.pdf/.jpg/.jpeg/.png` y audio solo `.webm`, validando extension y MIME.
 - Queries parametrizadas en todo el backend.
@@ -745,11 +745,10 @@ Estado actual:
 Pendientes conocidos, en orden de prioridad (no los "arregle" de paso sin pedido del usuario, pero no los replique en codigo nuevo):
 
 1. Cualquier `asesor` puede ver y borrar documentos de todos los clientes via `/documentos/*` (`controllers/documentController.js` permite `asesor` sin revisar asignacion), aunque `/advisor/*` si filtra por asignacion (SP10-07).
-2. No hay revocacion de tokens: cambiar o restablecer la contrasena no invalida las sesiones activas (SP10-10).
-3. El conteo de intentos fallidos no es atomico: con peticiones concurrentes se pueden registrar mas de 5 intentos y enviar varios correos de desbloqueo (SP10-09).
-4. Los Nginx (`nginx/visa-app.duckdns.org.conf` y `frontend/nginx.conf`) no tienen `server_tokens off`, cabeceras de seguridad ni HSTS; las cabeceras de helmet solo cubren lo que responde Express (SP10-03, parte Nginx).
-5. El login no normaliza el correo a minusculas (el registro si), y `authService.verifyPassword` aun acepta contrasenas legacy en texto plano y las migra a bcrypt al primer login.
-6. Un valor de `SESSION_SECRET` estuvo versionado en el antiguo `docker-compose.override.yml`; debe rotarse donde se haya utilizado. El desarrollo ahora exige `docker-compose.dev.yml` explicitamente y recibe el secreto desde `.env`.
+2. El conteo de intentos fallidos no es atomico: con peticiones concurrentes se pueden registrar mas de 5 intentos y enviar varios correos de desbloqueo (SP10-09).
+3. Los Nginx (`nginx/visa-app.duckdns.org.conf` y `frontend/nginx.conf`) no tienen `server_tokens off`, cabeceras de seguridad ni HSTS; las cabeceras de helmet solo cubren lo que responde Express (SP10-03, parte Nginx).
+4. El login no normaliza el correo a minusculas (el registro si), y `authService.verifyPassword` aun acepta contrasenas legacy en texto plano y las migra a bcrypt al primer login.
+5. Un valor de `SESSION_SECRET` estuvo versionado en el antiguo `docker-compose.override.yml`; debe rotarse donde se haya utilizado. El desarrollo ahora exige `docker-compose.dev.yml` explicitamente y recibe el secreto desde `.env`.
 
 No registre secretos ni datos sensibles en consola. No commitee `.env`, `backend/.env`, `node_modules`, `dist` ni artefactos de coverage, y no ponga credenciales reales en los `.env.example`.
 

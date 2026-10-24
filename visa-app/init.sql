@@ -38,7 +38,14 @@ ALTER TABLE usuario
   ADD COLUMN IF NOT EXISTS idioma              VARCHAR(10)  DEFAULT 'es',
   ADD COLUMN IF NOT EXISTS email_verificado    BOOLEAN DEFAULT TRUE,
   ADD COLUMN IF NOT EXISTS bloqueado_hasta     TIMESTAMP,
-  ADD COLUMN IF NOT EXISTS intentos_reset_en   TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS intentos_reset_en   TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS session_version     INTEGER NOT NULL DEFAULT 0;
+
+UPDATE usuario SET session_version = 0 WHERE session_version IS NULL;
+
+ALTER TABLE usuario
+  ALTER COLUMN session_version SET DEFAULT 0,
+  ALTER COLUMN session_version SET NOT NULL;
 
 ALTER TABLE usuario
   ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE,

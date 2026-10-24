@@ -17,6 +17,7 @@ const ACTIVE_USER = {
   rol: "cliente",
   activo: true,
   email_verificado: true,
+  session_version: 0,
 };
 
 function encode(value) {
@@ -68,6 +69,7 @@ describe("seguridad de tokens y sesiones", () => {
       sub: ACTIVE_USER.id_usuario,
       correo: ACTIVE_USER.correo,
       rol: ACTIVE_USER.rol,
+      sessionVersion: 0,
       exp: issuedAt + (8 * 60 * 60 * 1000),
     });
   });
@@ -153,6 +155,35 @@ describe("seguridad de tokens y sesiones", () => {
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: "Sesión inválida o expirada" });
+  });
+
+  test("invalida un token cuando la versión de sesión del usuario cambió", async () => {
+    const token = issueSessionToken({ ...ACTIVE_USER, session_version: 4 });
+    const { app } = createApp({ databaseUser: { ...ACTIVE_USER, session_version: 5 } });
+
+    const response = await request(app)
+      .get("/protected")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: "Sesión inválida o expirada" });
+  });
+
+  test("mantiene tokens previos al despliegue mientras la versión siga en cero", async () => {
+    const payload = encode(JSON.stringify({
+      sub: ACTIVE_USER.id_usuario,
+      correo: ACTIVE_USER.correo,
+      rol: ACTIVE_USER.rol,
+      exp: Date.now() + 60_000,
+    }));
+    const legacyToken = `${payload}.${signPayload(payload)}`;
+    const { app } = createApp({ databaseUser: { ...ACTIVE_USER, session_version: 0 } });
+
+    const response = await request(app)
+      .get("/protected")
+      .set("Authorization", `Bearer ${legacyToken}`);
+
+    expect(response.status).toBe(200);
   });
 
   test("autoriza roles con el estado actual de la base de datos y no con un claim antiguo", async () => {

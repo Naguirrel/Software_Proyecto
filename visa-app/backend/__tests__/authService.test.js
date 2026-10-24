@@ -136,6 +136,7 @@ describe("authService - recuperación de contraseña", () => {
     const updateUsuario = queries.find((q) => q.normalized.includes("UPDATE usuario SET contrasena"));
     expect(updateUsuario.values[1]).toBe(5);
     expect(await bcrypt.compare("nueva1234", updateUsuario.values[0])).toBe(true);
+    expect(updateUsuario.normalized).toContain("session_version = COALESCE(session_version, 0) + 1");
 
     const markUsed = queries.find((q) => q.normalized.includes("UPDATE password_resets SET used_at"));
     expect(markUsed.values[0]).toBe(9);

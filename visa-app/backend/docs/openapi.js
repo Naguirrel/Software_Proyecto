@@ -827,6 +827,7 @@ paths["/questions/random"].get.parameters = [
   { name: "excludeText", in: "query", schema: { type: "string", minLength: 1, maxLength: 500 }, description: "Excluye una pregunta cuyo texto coincida tras TRIM y comparación sin distinguir mayúsculas/minúsculas. Acepta un solo texto." },
 ];
 paths["/login"].post.description = "Tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos (RNF-13) y se envía un correo con un enlace de desbloqueo. Durante el bloqueo responde 423 aunque la contraseña sea correcta.";
+paths["/reset-password"].post.description = "Restablece la contraseña, incrementa la versión de sesión del usuario e invalida todos los tokens de sesión emitidos previamente.";
 paths["/login"].post.responses[423] = {
   description: "Cuenta bloqueada temporalmente por intentos fallidos. Incluye bloqueadoHasta y minutosRestantes.",
   content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },

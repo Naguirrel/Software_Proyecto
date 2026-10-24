@@ -243,6 +243,46 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
     expect(after).toEqual(before);
   });
 
+  test("SEC-002: restablecer la contraseña invalida sesiones anteriores en PostgreSQL", async () => {
+    const user = await registerUser();
+    ctx.mailbox.length = 0;
+
+    await request(ctx.app)
+      .get("/validar-sesion")
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(200);
+
+    await request(ctx.app).post("/forgot-password").send({ correo: user.correo }).expect(200);
+    const resetToken = ctx.mailbox[0]?.text.match(/token=([a-f0-9]{64})/)?.[1];
+    expect(resetToken).toMatch(/^[a-f0-9]{64}$/);
+
+    await request(ctx.app).post("/reset-password").send({
+      token: resetToken,
+      nuevaContrasena: "clave-renovada-3",
+    }).expect(200);
+
+    await request(ctx.app)
+      .get("/validar-sesion")
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(401);
+
+    const account = await ctx.pool.query(
+      "SELECT session_version FROM usuario WHERE id_usuario = $1",
+      [user.id]
+    );
+    expect(account.rows[0].session_version).toBe(1);
+
+    const freshLogin = await request(ctx.app).post("/login").send({
+      correo: user.correo,
+      contrasena: "clave-renovada-3",
+    });
+    expect(freshLogin.status).toBe(200);
+    await request(ctx.app)
+      .get("/validar-sesion")
+      .set("Authorization", `Bearer ${freshLogin.body.token}`)
+      .expect(200);
+  });
+
   test("DB-001: PostgreSQL impone el límite de 2000 caracteres en ejemplos del banco", async () => {
     const valid = await ctx.pool.query(
       `INSERT INTO question_bank (question, category, difficulty, ejemplo_fuerte)

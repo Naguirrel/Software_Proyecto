@@ -19,7 +19,7 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
     await userSchemaReady;
     const result = await pool.query(
       `SELECT id_usuario, nombre, correo, perfil, COALESCE(rol, 'cliente') AS rol, activo, contrasena, email_verificado, idioma,
-              bloqueado_hasta, intentos_reset_en
+              bloqueado_hasta, intentos_reset_en, COALESCE(session_version, 0) AS session_version
        FROM usuario WHERE correo = $1`,
       [correo]
     );
@@ -110,7 +110,13 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
     }
 
     const contrasenaHash = await bcrypt.hash(nuevaContrasena, SALT_ROUNDS);
-    await pool.query("UPDATE usuario SET contrasena = $1 WHERE id_usuario = $2", [contrasenaHash, record.id_usuario]);
+    await pool.query(
+      `UPDATE usuario
+       SET contrasena = $1,
+           session_version = COALESCE(session_version, 0) + 1
+       WHERE id_usuario = $2`,
+      [contrasenaHash, record.id_usuario]
+    );
     await pool.query("UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE id = $1", [record.id]);
     // Quien restablece la contraseña demuestra que controla el correo: se levanta el bloqueo.
     await unlockAccount(record.id_usuario);

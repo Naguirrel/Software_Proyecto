@@ -49,6 +49,7 @@ function createInMemoryAuthDb() {
         rol: "cliente",
         activo: true,
         email_verificado: false,
+        session_version: 0,
       };
       state.users.push(user);
       return { rows: [{ ...user }] };
@@ -59,9 +60,12 @@ function createInMemoryAuthDb() {
       return { rows: [] };
     }
 
-    if (text.startsWith("UPDATE usuario SET contrasena = $1 WHERE id_usuario = $2")) {
+    if (text.startsWith("UPDATE usuario SET contrasena = $1")) {
       const user = findUser((row) => row.id_usuario === values[1]);
-      if (user) user.contrasena = values[0];
+      if (user) {
+        user.contrasena = values[0];
+        if (text.includes("session_version")) user.session_version += 1;
+      }
       return { rows: [] };
     }
 

@@ -120,13 +120,20 @@ async function ensureUserSchema() {
       ADD COLUMN IF NOT EXISTS rol                  VARCHAR(20)  DEFAULT 'cliente',
       ADD COLUMN IF NOT EXISTS email_verificado     BOOLEAN DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS bloqueado_hasta      TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS intentos_reset_en    TIMESTAMP
+      ADD COLUMN IF NOT EXISTS intentos_reset_en    TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS session_version      INTEGER NOT NULL DEFAULT 0
   `);
   await pool.query(`
     UPDATE usuario SET rol = 'cliente'
     WHERE rol IS NULL OR rol NOT IN ('cliente', 'asesor', 'admin')
   `);
   await pool.query("ALTER TABLE usuario ALTER COLUMN rol SET DEFAULT 'cliente', ALTER COLUMN rol SET NOT NULL");
+  await pool.query(`
+    UPDATE usuario SET session_version = 0 WHERE session_version IS NULL;
+    ALTER TABLE usuario
+      ALTER COLUMN session_version SET DEFAULT 0,
+      ALTER COLUMN session_version SET NOT NULL
+  `);
   await pool.query(`
     DO $$ BEGIN
       IF NOT EXISTS (
