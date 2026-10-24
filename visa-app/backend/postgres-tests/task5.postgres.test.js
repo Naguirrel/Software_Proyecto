@@ -243,6 +243,116 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
     expect(after).toEqual(before);
   });
 
+  test("SEC-003: restablecer la contraseña invalida sesiones anteriores en PostgreSQL", async () => {
+    const user = await registerUser();
+    ctx.mailbox.length = 0;
+
+    await request(ctx.app)
+      .get("/validar-sesion")
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(200);
+
+    await request(ctx.app).post("/forgot-password").send({ correo: user.correo }).expect(200);
+    const resetToken = ctx.mailbox[0]?.text.match(/token=([a-f0-9]{64})/)?.[1];
+    expect(resetToken).toMatch(/^[a-f0-9]{64}$/);
+
+    await request(ctx.app).post("/reset-password").send({
+      token: resetToken,
+      nuevaContrasena: "clave-renovada-3",
+    }).expect(200);
+
+    await request(ctx.app)
+      .get("/validar-sesion")
+      .set("Authorization", `Bearer ${user.token}`)
+      .expect(401);
+
+    const account = await ctx.pool.query(
+      "SELECT session_version FROM usuario WHERE id_usuario = $1",
+      [user.id]
+    );
+    expect(account.rows[0].session_version).toBe(1);
+
+    const freshLogin = await request(ctx.app).post("/login").send({
+      correo: user.correo,
+      contrasena: "clave-renovada-3",
+    });
+    expect(freshLogin.status).toBe(200);
+    await request(ctx.app)
+      .get("/validar-sesion")
+      .set("Authorization", `Bearer ${freshLogin.body.token}`)
+      .expect(200);
+  });
+
+  test("SEC-004: un token de recuperación solo puede consumirse una vez bajo concurrencia", async () => {
+    const user = await registerUser();
+    ctx.mailbox.length = 0;
+    await request(ctx.app).post("/forgot-password").send({ correo: user.correo }).expect(200);
+    const resetToken = ctx.mailbox[0]?.text.match(/token=([a-f0-9]{64})/)?.[1];
+    expect(resetToken).toMatch(/^[a-f0-9]{64}$/);
+
+    const candidates = ["clave-paralela-4", "clave-paralela-5"];
+    const responses = await Promise.all(candidates.map((nuevaContrasena) => (
+      request(ctx.app).post("/reset-password").send({ token: resetToken, nuevaContrasena })
+    )));
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 400]);
+    const winnerIndex = responses.findIndex((response) => response.status === 200);
+    const account = await ctx.pool.query(
+      "SELECT contrasena, session_version FROM usuario WHERE id_usuario = $1",
+      [user.id]
+    );
+    expect(account.rows[0].session_version).toBe(1);
+    expect(await bcrypt.compare(candidates[winnerIndex], account.rows[0].contrasena)).toBe(true);
+    expect(await bcrypt.compare(candidates[1 - winnerIndex], account.rows[0].contrasena)).toBe(false);
+
+    const tokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const resetRecord = await ctx.pool.query(
+      "SELECT used_at FROM password_resets WHERE token_hash = $1",
+      [tokenHash]
+    );
+    expect(resetRecord.rows[0].used_at).toBeInstanceOf(Date);
+  });
+
+  test("SEC-005: una falla al actualizar la cuenta revierte también el consumo del token", async () => {
+    const user = await registerUser();
+    ctx.mailbox.length = 0;
+    await request(ctx.app).post("/forgot-password").send({ correo: user.correo }).expect(200);
+    const resetToken = ctx.mailbox[0]?.text.match(/token=([a-f0-9]{64})/)?.[1];
+    expect(resetToken).toMatch(/^[a-f0-9]{64}$/);
+    const tokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const constraint = "task5_force_password_reset_rollback";
+
+    await ctx.pool.query(`ALTER TABLE usuario DROP CONSTRAINT IF EXISTS ${constraint}`);
+    await ctx.pool.query(
+      `ALTER TABLE usuario ADD CONSTRAINT ${constraint} CHECK (session_version = 0) NOT VALID`
+    );
+    try {
+      await request(ctx.app).post("/reset-password").send({
+        token: resetToken,
+        nuevaContrasena: "clave-rollback-6",
+      }).expect(500);
+
+      const account = await ctx.pool.query(
+        "SELECT contrasena, session_version FROM usuario WHERE id_usuario = $1",
+        [user.id]
+      );
+      const resetRecord = await ctx.pool.query(
+        "SELECT used_at FROM password_resets WHERE token_hash = $1",
+        [tokenHash]
+      );
+      expect(account.rows[0].session_version).toBe(0);
+      expect(await bcrypt.compare(TEST_PASSWORD, account.rows[0].contrasena)).toBe(true);
+      expect(resetRecord.rows[0].used_at).toBeNull();
+    } finally {
+      await ctx.pool.query(`ALTER TABLE usuario DROP CONSTRAINT IF EXISTS ${constraint}`);
+    }
+
+    await request(ctx.app).post("/reset-password").send({
+      token: resetToken,
+      nuevaContrasena: "clave-rollback-6",
+    }).expect(200);
+  });
+
   test("SEC-002: PostgreSQL serializa el bloqueo ante intentos de login concurrentes", async () => {
     const user = await registerUser();
     ctx.mailbox.length = 0;

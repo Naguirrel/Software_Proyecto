@@ -72,6 +72,43 @@ describe("integración: recuperación de contraseña", () => {
     expect(newLogin.status).toBe(200);
   });
 
+  test("restablecer la contraseña invalida todas las sesiones emitidas previamente (SP10-10)", async () => {
+    const registered = await registerUser(api);
+    const secondSession = await api.post("/login").send({
+      correo: USER.correo,
+      contrasena: USER.contrasena,
+    });
+    expect(secondSession.status).toBe(200);
+
+    expect((await api.get("/recurso-protegido")
+      .set("Authorization", `Bearer ${registered.token}`)).status).toBe(200);
+    expect((await api.get("/recurso-protegido")
+      .set("Authorization", `Bearer ${secondSession.body.token}`)).status).toBe(200);
+
+    context.mailbox.length = 0;
+    await api.post("/forgot-password").send({ correo: USER.correo });
+    const resetToken = extractTokenFromMail(context.mailbox[0]);
+    const reset = await api.post("/reset-password").send({
+      token: resetToken,
+      nuevaContrasena: "clave-nueva-2",
+    });
+    expect(reset.status).toBe(200);
+    expect(context.state.users[0].session_version).toBe(1);
+
+    expect((await api.get("/recurso-protegido")
+      .set("Authorization", `Bearer ${registered.token}`)).status).toBe(401);
+    expect((await api.get("/recurso-protegido")
+      .set("Authorization", `Bearer ${secondSession.body.token}`)).status).toBe(401);
+
+    const freshLogin = await api.post("/login").send({
+      correo: USER.correo,
+      contrasena: "clave-nueva-2",
+    });
+    expect(freshLogin.status).toBe(200);
+    expect((await api.get("/recurso-protegido")
+      .set("Authorization", `Bearer ${freshLogin.body.token}`)).status).toBe(200);
+  });
+
   test("el enlace de recuperación solo se puede usar una vez", async () => {
     const { mailbox } = context;
     await registerUser(api);
@@ -86,6 +123,30 @@ describe("integración: recuperación de contraseña", () => {
     expect(second.status).toBe(400);
     const login = await api.post("/login").send({ correo: USER.correo, contrasena: "clave-nueva-2" });
     expect(login.status).toBe(200);
+  });
+
+  test("dos restablecimientos simultáneos solo pueden consumir el token una vez", async () => {
+    const { mailbox, state } = context;
+    await registerUser(api);
+    mailbox.length = 0;
+    await api.post("/forgot-password").send({ correo: USER.correo });
+    const token = extractTokenFromMail(mailbox[0]);
+    const candidates = ["clave-concurrente-2", "clave-concurrente-3"];
+
+    const responses = await Promise.all(candidates.map((nuevaContrasena) => (
+      api.post("/reset-password").send({ token, nuevaContrasena })
+    )));
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 400]);
+    expect(state.users[0].session_version).toBe(1);
+    expect(state.passwordResets[0].used_at).toBeInstanceOf(Date);
+
+    const winnerIndex = responses.findIndex((response) => response.status === 200);
+    const freshLogin = await api.post("/login").send({
+      correo: USER.correo,
+      contrasena: candidates[winnerIndex],
+    });
+    expect(freshLogin.status).toBe(200);
   });
 
   test("el enlace de recuperación vence a la hora de emitido", async () => {

@@ -143,7 +143,7 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       res.json({
         message: "Usuario guardado en BD",
         data: usuario,
-        token: issueSessionToken(usuario),
+        token: issueSessionToken(usuarioRow),
       });
     } catch (error) {
       return sendErrorResponse(req, res, error, {
@@ -211,7 +211,7 @@ function createAuthController(authService, { activityLogService, testUsersReady,
         message: "Login exitoso",
         usuario,
         user: usuario,
-        token: issueSessionToken(usuario),
+        token: issueSessionToken(usuarioRow),
       });
     } catch (error) {
       return sendErrorResponse(req, res, error, {

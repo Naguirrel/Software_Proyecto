@@ -16,6 +16,11 @@ function sign(payload, secret) {
   return crypto.createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
+function normalizeSessionVersion(value) {
+  const version = Number(value);
+  return Number.isSafeInteger(version) && version >= 0 ? version : 0;
+}
+
 function issueSessionToken(user) {
   const secret = getSecret();
   if (!secret) throw new Error("SESSION_SECRET is required in production");
@@ -24,6 +29,7 @@ function issueSessionToken(user) {
     sub: user.id_usuario,
     correo: user.correo,
     rol: user.rol || "cliente",
+    sessionVersion: normalizeSessionVersion(user.session_version),
     exp: Date.now() + TOKEN_TTL_MS,
   }));
   return `${payload}.${sign(payload, secret)}`;
@@ -71,12 +77,19 @@ function createSessionMiddleware(pool) {
 
     try {
       const result = await pool.query(
-        `SELECT id_usuario, nombre, correo, perfil, COALESCE(rol, 'cliente') AS rol, activo, email_verificado, idioma
+        `SELECT id_usuario, nombre, correo, perfil, COALESCE(rol, 'cliente') AS rol, activo, email_verificado, idioma,
+                COALESCE(session_version, 0) AS session_version
          FROM usuario WHERE id_usuario = $1`,
         [session.sub]
       );
       const user = result.rows[0];
-      if (!user || user.activo === false) return res.status(401).json({ error: "Sesión inválida o expirada" });
+      if (
+        !user
+        || user.activo === false
+        || normalizeSessionVersion(session.sessionVersion) !== normalizeSessionVersion(user.session_version)
+      ) {
+        return res.status(401).json({ error: "Sesión inválida o expirada" });
+      }
       req.auth = user;
       return next();
     } catch (error) {
