@@ -110,18 +110,29 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
     }
 
     const contrasenaHash = await bcrypt.hash(nuevaContrasena, SALT_ROUNDS);
-    await pool.query(
-      `UPDATE usuario
-       SET contrasena = $1,
-           session_version = COALESCE(session_version, 0) + 1
-       WHERE id_usuario = $2`,
-      [contrasenaHash, record.id_usuario]
+    const consumedAt = new Date();
+    const updated = await pool.query(
+      `WITH consumed_token AS (
+         UPDATE password_resets
+         SET used_at = $2
+         WHERE token_hash = $1
+           AND used_at IS NULL
+           AND expires_at > $2
+         RETURNING id_usuario
+       )
+       UPDATE usuario AS target
+       SET contrasena = $3,
+           session_version = COALESCE(target.session_version, 0) + 1,
+           bloqueado_hasta = NULL,
+           intentos_reset_en = $2
+       FROM consumed_token
+       WHERE target.id_usuario = consumed_token.id_usuario
+       RETURNING target.id_usuario`,
+      [tokenHash, consumedAt, contrasenaHash]
     );
-    await pool.query("UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE id = $1", [record.id]);
-    // Quien restablece la contraseña demuestra que controla el correo: se levanta el bloqueo.
-    await unlockAccount(record.id_usuario);
 
-    return true;
+    // El CTE es una sola sentencia transaccional: solo una solicitud puede consumir el token.
+    return updated.rows.length === 1;
   }
 
   async function createEmailVerificationToken(usuario) {

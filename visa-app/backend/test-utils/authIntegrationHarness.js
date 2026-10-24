@@ -91,10 +91,26 @@ function createInMemoryAuthDb() {
       return { rows: record ? [{ ...record }] : [] };
     }
 
-    if (text.startsWith("UPDATE password_resets SET used_at")) {
-      const record = state.passwordResets.find((row) => row.id === values[0]);
-      if (record) record.used_at = new Date();
-      return { rows: [] };
+    if (text.startsWith("WITH consumed_token AS")) {
+      const [tokenHash, consumedAt, passwordHash] = values;
+      const record = state.passwordResets.find((row) => (
+        row.token_hash === tokenHash
+        && !row.used_at
+        && new Date(row.expires_at) > consumedAt
+      ));
+      if (!record) return { rows: [] };
+
+      const user = findUser((row) => row.id_usuario === record.id_usuario);
+      if (!user) return { rows: [] };
+
+      record.used_at = consumedAt;
+      Object.assign(user, {
+        contrasena: passwordHash,
+        session_version: (user.session_version || 0) + 1,
+        bloqueado_hasta: null,
+        intentos_reset_en: consumedAt,
+      });
+      return { rows: [{ id_usuario: user.id_usuario }] };
     }
 
     if (text.startsWith("INSERT INTO email_verifications")) {

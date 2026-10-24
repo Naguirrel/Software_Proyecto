@@ -125,6 +125,30 @@ describe("integración: recuperación de contraseña", () => {
     expect(login.status).toBe(200);
   });
 
+  test("dos restablecimientos simultáneos solo pueden consumir el token una vez", async () => {
+    const { mailbox, state } = context;
+    await registerUser(api);
+    mailbox.length = 0;
+    await api.post("/forgot-password").send({ correo: USER.correo });
+    const token = extractTokenFromMail(mailbox[0]);
+    const candidates = ["clave-concurrente-2", "clave-concurrente-3"];
+
+    const responses = await Promise.all(candidates.map((nuevaContrasena) => (
+      api.post("/reset-password").send({ token, nuevaContrasena })
+    )));
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 400]);
+    expect(state.users[0].session_version).toBe(1);
+    expect(state.passwordResets[0].used_at).toBeInstanceOf(Date);
+
+    const winnerIndex = responses.findIndex((response) => response.status === 200);
+    const freshLogin = await api.post("/login").send({
+      correo: USER.correo,
+      contrasena: candidates[winnerIndex],
+    });
+    expect(freshLogin.status).toBe(200);
+  });
+
   test("el enlace de recuperación vence a la hora de emitido", async () => {
     const { mailbox, state } = context;
     await registerUser(api);

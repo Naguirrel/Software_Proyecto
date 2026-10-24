@@ -98,6 +98,9 @@ describe("POST /reset-password", () => {
       if (normalized.includes("FROM password_resets")) {
         return { rows: [{ id: 1, id_usuario: 5, expires_at: new Date(Date.now() + 60000), used_at: null }] };
       }
+      if (normalized.startsWith("WITH consumed_token AS")) {
+        return { rows: [{ id_usuario: 5 }] };
+      }
       return { rows: [] };
     });
     const app = buildApp(pool);
