@@ -61,6 +61,13 @@ if (process.env.NODE_ENV !== "production") {
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
+const LOGIN_ATTEMPT_RETENTION_DAYS = Number(process.env.LOGIN_ATTEMPT_RETENTION_DAYS || 30);
+
+if (!Number.isInteger(LOGIN_ATTEMPT_RETENTION_DAYS)
+  || LOGIN_ATTEMPT_RETENTION_DAYS < 1
+  || LOGIN_ATTEMPT_RETENTION_DAYS > 365) {
+  throw new Error("LOGIN_ATTEMPT_RETENTION_DAYS debe ser un entero entre 1 y 365");
+}
 
 // Conexión a PostgreSQL
 const pool = new Pool({
@@ -221,6 +228,20 @@ async function ensureLoginSecuritySchema() {
     )
   `);
   await pool.query("CREATE INDEX IF NOT EXISTS login_attempts_usuario_idx ON login_attempts(id_usuario, created_at DESC)");
+  await pool.query("CREATE INDEX IF NOT EXISTS login_attempts_created_at_idx ON login_attempts(created_at)");
+  // Limpieza acotada para evitar crecimiento ilimitado y bloqueos prolongados
+  // durante el arranque. Los siguientes reinicios continúan drenando rezagos.
+  await pool.query(
+    `DELETE FROM login_attempts
+     WHERE id IN (
+       SELECT id
+       FROM login_attempts
+       WHERE created_at < $1
+       ORDER BY created_at ASC
+       LIMIT 10000
+     )`,
+    [new Date(Date.now() - LOGIN_ATTEMPT_RETENTION_DAYS * 24 * 60 * 60 * 1000)]
+  );
   await pool.query(`
     CREATE TABLE IF NOT EXISTS account_unlock_tokens (
       id SERIAL PRIMARY KEY,

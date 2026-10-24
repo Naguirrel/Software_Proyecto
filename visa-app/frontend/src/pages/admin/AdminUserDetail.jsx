@@ -11,6 +11,14 @@ import { openDocumentPreview } from "../../utils/documentPreview";
 const roleLabels = { cliente: "Solicitante", asesor: "Asesor", admin: "Administrador" };
 const documentStatusLabels = { approved: "Aprobado", review: "En revision", rejected: "Rechazado", correction: "Correccion", pending: "Pendiente" };
 
+function displayFullName(user) {
+  const name = String(user?.nombre || "").trim().replace(/\s+/g, " ");
+  const surname = String(user?.apellido || user?.apellidos || "").trim().replace(/\s+/g, " ");
+  if (!name) return surname || "Nombre no registrado";
+  if (!surname || name.toLocaleLowerCase("es") === surname.toLocaleLowerCase("es") || name.toLocaleLowerCase("es").endsWith(` ${surname.toLocaleLowerCase("es")}`)) return name;
+  return `${name} ${surname}`;
+}
+
 function getDocumentStatusLabel(status) {
   return documentStatusLabels[status] || status || "Pendiente";
 }
@@ -101,6 +109,7 @@ export default function AdminUserDetail() {
   const processDetail = processState.tramiteId === tramiteId ? processState.data : null;
 
   const user = detail?.usuario;
+  const fullName = displayFullName(user);
 
   const openEdit = () => {
     setEditForm({ nombre: user.nombre, correo: user.correo, telefono: user.telefono || "", ciudad: user.ciudad || "", pais: user.pais || "", rol: user.rol });
@@ -123,7 +132,7 @@ export default function AdminUserDetail() {
       <AdminPageHeader
         title="Detalle de Usuario"
         description="Perfil completo y actividad asociada al usuario."
-        action={<><Link className="admin-secondary-button" to="/admin/users"><ArrowLeft aria-hidden="true" size={18} />Volver</Link>{user && <button className="admin-primary-button" type="button" onClick={openEdit}><Pencil aria-hidden="true" size={18} />Editar</button>}</>}
+        action={<div className="admin-user-detail-actions"><Link className="admin-secondary-button" to="/admin/users"><ArrowLeft aria-hidden="true" size={18} />Volver a usuarios</Link>{user && <button className="admin-primary-button" type="button" onClick={openEdit}><Pencil aria-hidden="true" size={18} />Editar usuario</button>}</div>}
       />
       {notice && <p className="admin-feedback" role="status">{notice}</p>}
 
@@ -140,7 +149,7 @@ export default function AdminUserDetail() {
           <section className="admin-request-hero">
             <div className="admin-request-identity">
               <span className="admin-section-kicker">Usuario #{user.id}</span>
-              <h2>{user.nombre}</h2>
+              <h2>{fullName}</h2>
               <p>{user.correo}</p>
               <div>
                 <span className={`admin-status admin-status--${user.activo ? "approved" : "correction"}`}>{user.activo ? "Activo" : "Inactivo"}</span>
@@ -157,7 +166,7 @@ export default function AdminUserDetail() {
               </div>
             </div>
             <dl className="admin-request-details">
-              <div><dt>Nombre completo</dt><dd>{user.nombre}</dd></div>
+              <div><dt>Nombre completo</dt><dd>{fullName}</dd></div>
               <div><dt>Correo</dt><dd>{user.correo}</dd></div>
               <div><dt>Rol</dt><dd>{roleLabels[user.rol] || user.rol}</dd></div>
               <div><dt>Teléfono</dt><dd>{user.telefono || "Sin registrar"}</dd></div>

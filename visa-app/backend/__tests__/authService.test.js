@@ -310,3 +310,67 @@ describe("authService - verificación de email", () => {
     expect(markUsed.values[0]).toBe(9);
   });
 });
+
+describe("authService - transacciones de seguridad", () => {
+  function createTransactionalService(queryImplementation) {
+    const client = {
+      query: jest.fn(queryImplementation),
+      release: jest.fn(),
+    };
+    const pool = {
+      query: jest.fn(),
+      connect: jest.fn().mockResolvedValue(client),
+    };
+    const service = createAuthService(pool, {
+      userSchemaReady: schemaReady,
+      tramiteSchemaReady: schemaReady,
+      passwordResetSchemaReady: schemaReady,
+      emailVerificationSchemaReady: schemaReady,
+      loginSecuritySchemaReady: schemaReady,
+    });
+    return { service, pool, client };
+  }
+
+  test("revierte y libera el cliente cuando falla el registro de un intento", async () => {
+    const insertError = new Error("falló el INSERT");
+    const { service, client } = createTransactionalService(async (sql) => {
+      const normalized = String(sql).replace(/\s+/g, " ").trim();
+      if (normalized === "BEGIN" || normalized === "ROLLBACK") return { rows: [] };
+      if (normalized.includes("FROM usuario") && normalized.includes("FOR UPDATE")) {
+        return { rows: [{ bloqueado_hasta: null, intentos_reset_en: null }] };
+      }
+      if (normalized.startsWith("INSERT INTO login_attempts")) throw insertError;
+      return { rows: [] };
+    });
+
+    await expect(service.registerFailedLogin({
+      usuario: { id_usuario: 9 },
+      correo: "ana@example.com",
+      ip: "127.0.0.1",
+    })).rejects.toBe(insertError);
+
+    const statements = client.query.mock.calls.map(([sql]) => String(sql).replace(/\s+/g, " ").trim());
+    expect(statements).toContain("BEGIN");
+    expect(statements).toContain("ROLLBACK");
+    expect(statements).not.toContain("COMMIT");
+    expect(client.release).toHaveBeenCalledTimes(1);
+    expect(client.release).toHaveBeenCalledWith(undefined);
+  });
+
+  test("descarta el cliente si también falla el rollback", async () => {
+    const operationError = new Error("falló la operación");
+    const rollbackError = new Error("falló el rollback");
+    const { service, client } = createTransactionalService(async (sql) => {
+      const normalized = String(sql).replace(/\s+/g, " ").trim();
+      if (normalized === "BEGIN") return { rows: [] };
+      if (normalized === "ROLLBACK") throw rollbackError;
+      if (normalized.startsWith("UPDATE account_unlock_tokens")) throw operationError;
+      return { rows: [] };
+    });
+
+    await expect(service.unlockWithToken("a".repeat(64))).rejects.toBe(operationError);
+
+    expect(client.release).toHaveBeenCalledTimes(1);
+    expect(client.release).toHaveBeenCalledWith(rollbackError);
+  });
+});

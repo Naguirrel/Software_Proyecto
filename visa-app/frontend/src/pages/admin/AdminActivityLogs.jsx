@@ -39,6 +39,8 @@ export default function AdminActivityLogs() {
   const [logs, setLogs] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
   const [filters, setFilters] = useState({ action: "", userId: "", role: "" });
+  const [draftFilters, setDraftFilters] = useState(filters);
+  const [filterError, setFilterError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
@@ -92,12 +94,38 @@ export default function AdminActivityLogs() {
     return () => controller.abort();
   }, [query, revision]);
 
-  const updateFilter = (key, value) => {
+  const applyFilters = (event) => {
+    event.preventDefault();
+    const userId = draftFilters.userId.trim();
+    if (userId && !/^[1-9]\d*$/.test(userId)) {
+      setFilterError("Ingresa un ID de usuario válido.");
+      return;
+    }
+    setFilterError("");
+    const next = { action: draftFilters.action.trim(), userId, role: draftFilters.role };
+    if (Object.keys(next).every((key) => next[key] === filters[key]) && pagination.page === 1) {
+      reload();
+      return;
+    }
     setIsLoading(true);
     setError("");
-    setFilters((current) => ({ ...current, [key]: value }));
+    setFilters(next);
     setPagination((current) => ({ ...current, page: 1 }));
   };
+
+  const clearFilters = () => {
+    const empty = { action: "", userId: "", role: "" };
+    setDraftFilters(empty);
+    setFilters(empty);
+    setFilterError("");
+    if (Object.keys(empty).every((key) => empty[key] === filters[key]) && pagination.page === 1) return;
+    setError("");
+    setIsLoading(true);
+    setPagination((current) => ({ ...current, page: 1 }));
+  };
+
+  const activeFilters = [filters.action && `Acción: ${filters.action}`, filters.userId && `Usuario #${filters.userId}`, filters.role && `Rol: ${filters.role}`].filter(Boolean);
+  const filtersChanged = Object.keys(filters).some((key) => filters[key] !== draftFilters[key].trim());
 
   const changePage = (page) => {
     setIsLoading(true);
@@ -118,16 +146,16 @@ export default function AdminActivityLogs() {
         )}
       />
 
-      <section className="admin-panel-card">
-        <div className="admin-report-actions">
+      <section className="admin-panel-card admin-activity-filters">
+        <form className="admin-report-actions" onSubmit={applyFilters}>
           <label>
             <span>Acción</span>
             <span className="admin-search">
               <Search size={18} aria-hidden="true" />
               <input
                 type="search"
-                value={filters.action}
-                onChange={(event) => updateFilter("action", event.target.value)}
+                value={draftFilters.action}
+                onChange={(event) => setDraftFilters((current) => ({ ...current, action: event.target.value }))}
                 placeholder="Buscar acción"
               />
             </span>
@@ -135,23 +163,26 @@ export default function AdminActivityLogs() {
           <label>
             <span>Usuario</span>
             <input
-              type="number"
-              min="1"
-              value={filters.userId}
-              onChange={(event) => updateFilter("userId", event.target.value)}
+              type="text"
+              inputMode="numeric"
+              value={draftFilters.userId}
+              onChange={(event) => setDraftFilters((current) => ({ ...current, userId: event.target.value }))}
               placeholder="ID"
             />
           </label>
           <label>
             <span>Rol</span>
-            <select value={filters.role} onChange={(event) => updateFilter("role", event.target.value)}>
+            <select value={draftFilters.role} onChange={(event) => setDraftFilters((current) => ({ ...current, role: event.target.value }))}>
               <option value="">Todos</option>
               <option value="cliente">Cliente</option>
               <option value="asesor">Asesor</option>
               <option value="admin">Administrador</option>
             </select>
           </label>
-        </div>
+          <div className="admin-activity-filters__buttons"><button className="admin-primary-button" type="submit">Aplicar filtros</button><button className="admin-secondary-button" type="button" onClick={clearFilters} disabled={!activeFilters.length && !filtersChanged}>Limpiar</button></div>
+        </form>
+        {filterError && <p className="admin-activity-filters__error" role="alert">{filterError}</p>}
+        <p className="admin-activity-filters__summary" role="status">{activeFilters.length ? `Filtros aplicados: ${activeFilters.join(" · ")}.` : "Sin filtros aplicados."}{filtersChanged ? " Hay cambios sin aplicar." : ""}</p>
       </section>
 
       <AdminResourceState
@@ -159,11 +190,11 @@ export default function AdminActivityLogs() {
         error={error}
         retry={reload}
         isEmpty={!isLoading && !error && logs.length === 0}
-        empty="No hay logs de actividad para los filtros seleccionados."
+        empty={activeFilters.length ? "No hay logs de actividad para los filtros seleccionados." : "Todavía no hay logs de actividad."}
       />
 
       {!isLoading && !error && logs.length > 0 && (
-        <section className="admin-panel-card">
+        <section className="admin-panel-card admin-activity-results">
           <div className="admin-panel-card__header">
             <div>
               <h2>Actividad registrada</h2>

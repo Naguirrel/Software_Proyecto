@@ -243,7 +243,7 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
     expect(after).toEqual(before);
   });
 
-  test("SEC-002: restablecer la contraseña invalida sesiones anteriores en PostgreSQL", async () => {
+  test("SEC-003: restablecer la contraseña invalida sesiones anteriores en PostgreSQL", async () => {
     const user = await registerUser();
     ctx.mailbox.length = 0;
 
@@ -283,7 +283,7 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
       .expect(200);
   });
 
-  test("SEC-003: un token de recuperación solo puede consumirse una vez bajo concurrencia", async () => {
+  test("SEC-004: un token de recuperación solo puede consumirse una vez bajo concurrencia", async () => {
     const user = await registerUser();
     ctx.mailbox.length = 0;
     await request(ctx.app).post("/forgot-password").send({ correo: user.correo }).expect(200);
@@ -313,7 +313,7 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
     expect(resetRecord.rows[0].used_at).toBeInstanceOf(Date);
   });
 
-  test("SEC-004: una falla al actualizar la cuenta revierte también el consumo del token", async () => {
+  test("SEC-005: una falla al actualizar la cuenta revierte también el consumo del token", async () => {
     const user = await registerUser();
     ctx.mailbox.length = 0;
     await request(ctx.app).post("/forgot-password").send({ correo: user.correo }).expect(200);
@@ -351,6 +351,64 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
       token: resetToken,
       nuevaContrasena: "clave-rollback-6",
     }).expect(200);
+  });
+
+  test("SEC-002: PostgreSQL serializa el bloqueo ante intentos de login concurrentes", async () => {
+    const user = await registerUser();
+    ctx.mailbox.length = 0;
+
+    const responses = await Promise.all(
+      Array.from({ length: 12 }, () => request(ctx.app).post("/login").send({
+        correo: user.correo,
+        contrasena: "clave-incorrecta",
+      }))
+    );
+
+    expect(responses.filter((response) => response.status === 401)).toHaveLength(4);
+    expect(responses.filter((response) => response.status === 423)).toHaveLength(8);
+
+    const attempts = await ctx.pool.query(
+      "SELECT COUNT(*)::int AS total FROM login_attempts WHERE id_usuario = $1",
+      [user.id]
+    );
+    const account = await ctx.pool.query(
+      "SELECT bloqueado_hasta FROM usuario WHERE id_usuario = $1",
+      [user.id]
+    );
+
+    expect(attempts.rows[0].total).toBe(5);
+    expect(account.rows[0].bloqueado_hasta).toBeInstanceOf(Date);
+    expect(ctx.mailbox.filter((message) => message.subject.includes("bloqueada"))).toHaveLength(1);
+
+    const correctPassword = await request(ctx.app).post("/login").send({
+      correo: user.correo,
+      contrasena: TEST_PASSWORD,
+    });
+    expect(correctPassword.status).toBe(423);
+
+    const lockMail = ctx.mailbox.find((message) => message.subject.includes("bloqueada"));
+    const token = lockMail?.text.match(/desbloquear-cuenta\?token=([a-f0-9]{64})/)?.[1];
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+    const storedToken = await ctx.pool.query(
+      `SELECT used_at IS NULL AS unused, expires_at > $2 AS valid
+       FROM account_unlock_tokens
+       WHERE token_hash = $1`,
+      [crypto.createHash("sha256").update(token).digest("hex"), new Date()]
+    );
+    expect(storedToken.rows).toEqual([{ unused: true, valid: true }]);
+
+    const unlockResponses = await Promise.all(
+      Array.from({ length: 8 }, () => request(ctx.app).post("/desbloquear-cuenta").send({ token }))
+    );
+    expect(unlockResponses.map((response) => response.status).sort()).toEqual([
+      200, 400, 400, 400, 400, 400, 400, 400,
+    ]);
+
+    const loginAfterUnlock = await request(ctx.app).post("/login").send({
+      correo: user.correo,
+      contrasena: TEST_PASSWORD,
+    });
+    expect(loginAfterUnlock.status).toBe(200);
   });
 
   test("DB-001: PostgreSQL impone el límite de 2000 caracteres en ejemplos del banco", async () => {

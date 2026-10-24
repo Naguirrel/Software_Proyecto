@@ -64,6 +64,24 @@ describe("integración: bloqueo de cuenta tras intentos fallidos (RNF-13)", () =
     expect(actions).toContain("user.account_locked");
   });
 
+  test("serializa intentos concurrentes y crea un solo bloqueo con un solo aviso", async () => {
+    const { app, state, mailbox, activityLogService } = await setupUser();
+
+    const responses = await Promise.all(
+      Array.from({ length: 12 }, () => login(app, "clave-incorrecta"))
+    );
+
+    expect(responses.filter((response) => response.status === 401)).toHaveLength(4);
+    expect(responses.filter((response) => response.status === 423)).toHaveLength(8);
+    expect(state.loginAttempts).toHaveLength(5);
+    expect(mailbox.filter((message) => message.subject.includes("bloqueada"))).toHaveLength(1);
+    expect(
+      activityLogService.logActivity.mock.calls
+        .map(([entry]) => entry.action)
+        .filter((action) => action === "user.account_locked")
+    ).toHaveLength(1);
+  });
+
   test("durante el bloqueo rechaza incluso la contraseña correcta y no suma intentos", async () => {
     const { app, state, mailbox } = await setupUser();
     await failLogins(app, 5);
@@ -133,6 +151,26 @@ describe("integración: bloqueo de cuenta tras intentos fallidos (RNF-13)", () =
 
     const actions = activityLogService.logActivity.mock.calls.map(([entry]) => entry.action);
     expect(actions).toContain("user.account_unlocked");
+  });
+
+  test("consume atómicamente un token ante solicitudes concurrentes", async () => {
+    const { app, mailbox, activityLogService } = await setupUser();
+    await failLogins(app, 5);
+    const token = extractUnlockTokenFromMail(mailbox[0]);
+    activityLogService.logActivity.mockClear();
+
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, () => request(app).post("/desbloquear-cuenta").send({ token }))
+    );
+
+    expect(responses.filter((response) => response.status === 200)).toHaveLength(1);
+    expect(responses.filter((response) => response.status === 400)).toHaveLength(7);
+    expect(
+      activityLogService.logActivity.mock.calls
+        .map(([entry]) => entry.action)
+        .filter((action) => action === "user.account_unlocked")
+    ).toHaveLength(1);
+    expect((await login(app)).status).toBe(200);
   });
 
   test("rechaza tokens de desbloqueo vacíos, inventados o vencidos", async () => {
