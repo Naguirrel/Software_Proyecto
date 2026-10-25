@@ -10,7 +10,7 @@ function createQuestionBankController(questionBankService) {
 
   async function listQuestions(req, res) {
     try {
-      const questions = await questionBankService.listQuestions();
+      const questions = await questionBankService.listQuestions({ profile: req.auth?.perfil });
       return res.json({ questions });
     } catch (error) {
       return handleError(res, error);
@@ -28,7 +28,7 @@ function createQuestionBankController(questionBankService) {
 
   async function listRandomQuestions(req, res) {
     try {
-      const questions = await questionBankService.listRandomQuestions(req.query);
+      const questions = await questionBankService.listRandomQuestions({ ...req.query, profile: req.auth?.perfil });
       return res.json({ questions });
     } catch (error) {
       return handleError(res, error);

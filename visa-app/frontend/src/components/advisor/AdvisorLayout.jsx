@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BookOpenText, CheckCircle2, ClipboardCheck, FileText, LayoutDashboard,
   LogOut, Menu, MessageSquareText, Moon, Sun,
-  UserCircle, Users, X, MessagesSquare,
+  Users, X, MessagesSquare,
 } from "lucide-react";
 import VisaGuideLogo from "../VisaGuideLogo";
 import useTheme from "../../hooks/useTheme";
@@ -14,6 +14,7 @@ import AdvisorNotificationCenter from "./AdvisorNotificationCenter";
 import AdvisorNotificationToasts from "./AdvisorNotificationToasts";
 import { AdvisorNotificationsProvider } from "./AdvisorNotificationsContext";
 import { useAdvisorNotifications } from "./advisorNotificationsStore";
+import ProfileAvatar from "../ProfileAvatar";
 import "../../styles/admin.css";
 import "../../styles/advisor.css";
 
@@ -35,7 +36,6 @@ function AdvisorLayoutContent({ children }) {
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const initials = String(session.nombre || "Asesor").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
   const logout = () => {
     localStorage.removeItem("visaguide_session");
@@ -61,7 +61,7 @@ function AdvisorLayoutContent({ children }) {
           <button type="button" className="admin-sidebar__theme" onClick={toggleTheme} aria-pressed={isDark} data-tooltip={isDark ? "Modo claro" : "Modo oscuro"}>
             {isDark ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}<span>{isDark ? "Modo claro" : "Modo oscuro"}</span>
           </button>
-          <NavLink className={({ isActive }) => `admin-sidebar__profile${isActive ? " admin-sidebar__profile--active" : ""}`} to="/advisor/perfil" aria-current={location.pathname === "/advisor/perfil" ? "page" : undefined} data-tooltip="Mi perfil" onMouseEnter={() => preloadRoute("/advisor/perfil")} onFocus={() => preloadRoute("/advisor/perfil")}><UserCircle size={20} aria-hidden="true" /><span>Mi perfil</span></NavLink>
+          <NavLink className={({ isActive }) => `admin-sidebar__profile${isActive ? " admin-sidebar__profile--active" : ""}`} to="/advisor/perfil" aria-current={location.pathname === "/advisor/perfil" ? "page" : undefined} data-tooltip="Mi perfil" onMouseEnter={() => preloadRoute("/advisor/perfil")} onFocus={() => preloadRoute("/advisor/perfil")}><ProfileAvatar userId={session.id || session.id_usuario} name={session.nombre} version={session.avatarVersion} size={24} /><span>Mi perfil</span></NavLink>
           <button type="button" className="admin-sidebar__logout" data-tooltip="Cerrar sesión" onClick={logout}><LogOut size={20} aria-hidden="true" /><span>Cerrar sesión</span></button>
         </div>
       </aside>
@@ -72,7 +72,7 @@ function AdvisorLayoutContent({ children }) {
           <AdvisorGlobalSearch />
           <div className="admin-header__actions">
             <AdvisorNotificationCenter />
-            <NavLink className="admin-header__user" to="/advisor/perfil"><div><strong>{session.nombre || "Asesor"}</strong><small>Asesor</small></div><span>{initials}</span></NavLink>
+            <NavLink className="admin-header__user" to="/advisor/perfil"><div><strong>{session.nombre || "Asesor"}</strong><small>Asesor</small></div><ProfileAvatar userId={session.id || session.id_usuario} name={session.nombre} version={session.avatarVersion} size={38} /></NavLink>
           </div>
         </header>
         <main id="main-content" tabIndex="-1" className="admin-main advisor-main">{children || <Outlet />}</main>

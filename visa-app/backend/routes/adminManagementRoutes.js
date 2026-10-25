@@ -39,6 +39,7 @@ function presentUser(row) {
     asesor: row.asesor_nombre || null,
     asesorId: row.asesor_id || null,
     actividad: row.last_activity || row.updated_at || null,
+    avatarVersion: row.avatar_updated_at ? new Date(row.avatar_updated_at).getTime() : null,
   };
 }
 
@@ -444,11 +445,12 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
           u.nombre, u.correo, u.perfil FROM tramite t JOIN usuario u ON u.id_usuario = t.id_usuario
           WHERE t.id_asesor IS NULL ORDER BY t.created_at ASC NULLS FIRST, t.id_tramite ASC`),
         pool.query(`SELECT u.id_usuario AS id, u.nombre, u.correo, u.capacidad_asesor AS capacidad,
+          u.avatar_updated_at,
           u.disponible_asesor AS disponible, COUNT(t.id_tramite) AS asignados
           FROM usuario u LEFT JOIN tramite t ON t.id_asesor = u.id_usuario
           WHERE u.rol = 'asesor' AND u.activo = TRUE GROUP BY u.id_usuario ORDER BY u.nombre`),
       ]);
-      res.json({ casos: cases.rows, asesores: advisors.rows.map((item) => ({ ...item, capacidad: number(item.capacidad) || 50, asignados: number(item.asignados) })) });
+      res.json({ casos: cases.rows, asesores: advisors.rows.map((item) => ({ ...item, capacidad: number(item.capacidad) || 50, asignados: number(item.asignados), avatarVersion: item.avatar_updated_at ? new Date(item.avatar_updated_at).getTime() : null })) });
     } catch (error) {
       console.error("ERROR ADMIN ASSIGNMENTS:", error);
       res.status(500).json({ error: "No fue posible cargar las asignaciones" });

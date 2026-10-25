@@ -3,10 +3,10 @@ const upload = require("../upload");
 const createDocumentController = require("../controllers/documentController");
 const createDocumentService = require("../services/documentService");
 
-function createDocumentRoutes(pool, { documentSchemaReady, activityLogService, notificacionService, requireSession = (_req, _res, next) => next() }) {
+function createDocumentRoutes(pool, { documentSchemaReady, visaProfileSchemaReady, activityLogService, notificacionService, requireSession = (_req, _res, next) => next() }) {
   const router = express.Router();
 
-  const documentService = createDocumentService(pool, { documentSchemaReady, activityLogService, notificacionService });
+  const documentService = createDocumentService(pool, { documentSchemaReady, visaProfileSchemaReady, activityLogService, notificacionService });
   const documentController = createDocumentController(documentService);
 
   router.post("/upload", requireSession, upload.single("file"), documentController.upload);

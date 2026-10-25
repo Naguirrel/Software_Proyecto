@@ -4,14 +4,11 @@ import { useSearchParams } from "react-router-dom";
 import { AdvisorSearch, AdvisorState } from "../../components/advisor/AdvisorShared";
 import { advisorRequest } from "../../utils/advisorApi";
 import { formatAdvisorDate as formatDate } from "../../utils/advisorFormat";
+import ProfileAvatar from "../../components/ProfileAvatar";
 
 const CHAT_POLL_INTERVAL_MS = 4_000;
 const CONVERSATION_POLL_INTERVAL_MS = 10_000;
 const CHAT_PAGE_SIZE = 50;
-
-function initials(name) {
-  return String(name || "U").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-}
 
 function mergeMessages(current, incoming) {
   const byId = new Map(current.map((message) => [message.id, message]));
@@ -176,13 +173,13 @@ export default function AdvisorChat() {
       <AdvisorSearch value={query} onChange={setQuery} placeholder="Buscar…" />
       <AdvisorState loading={loading} error={loading ? error : ""} empty={!loading && !visible.length} />
       {visible.map((item) => <button type="button" key={item.userId} className={selectedUserId === item.userId ? "is-active" : ""} onClick={() => { setSelected(item); setSearchParams({ user: String(item.userId) }); }}>
-        <span className="advisor-avatar">{initials(item.name)}</span>
+        <ProfileAvatar userId={item.userId} name={item.name} version={item.avatarVersion} size={42} />
         <span><strong>{item.name}</strong><small>{item.lastMessage}</small><em>{item.stage}</em></span>
         {item.unreadCount > 0 && <b>{item.unreadCount}</b>}
       </button>)}
     </aside>
     <section className="advisor-chat__thread">{selected ? <>
-      <header><span className="advisor-avatar">{initials(selected.name)}</span><div><h2>{selected.name}</h2><p>{selected.profile} · {selected.stage} · actualización automática</p></div></header>
+      <header><ProfileAvatar userId={selected.userId} name={selected.name} version={selected.avatarVersion} size={46} /><div><h2>{selected.name}</h2><p>{selected.profile} · {selected.stage} · actualización automática</p></div></header>
       <div className="advisor-chat__messages" role="log" aria-live="polite">
         <AdvisorState loading={messagesLoading} error={!messagesLoading ? error : ""} />
         {hasMoreBefore && <button type="button" className="advisor-chat__load-older" onClick={loadOlder} disabled={loadingOlder}>{loadingOlder ? "Cargando…" : "Cargar mensajes anteriores"}</button>}

@@ -1,4 +1,5 @@
 const { SEED_QUESTION_EXAMPLES } = require("./questionBankSeedExamples");
+const { PROFILE_KEYS, normalizeProfileKey } = require("../config/visaProfiles");
 
 const CATEGORIES = [
   "General",
@@ -18,7 +19,7 @@ const MAX_EXCLUDED_TEXT_LENGTH = 500;
 const EXAMPLE_FIELDS = ["ejemplo_fuerte", "explicacion_fuerte", "ejemplo_debil", "explicacion_debil"];
 const MAX_EXAMPLE_TEXT_LENGTH = 2000;
 const QUESTION_COLUMNS = `id, question, category, difficulty, is_required, created_at, activo, uso_count,
-       ${EXAMPLE_FIELDS.join(", ")}`;
+       visa_profiles, ${EXAMPLE_FIELDS.join(", ")}`;
 
 const BASE_SEED_QUESTIONS = [
   {
@@ -138,8 +139,20 @@ const BASE_SEED_QUESTIONS = [
   { question: "¿Cómo se relaciona este viaje con sus planes personales o profesionales?", category: "General", difficulty: "Alta", is_required: false },
 ];
 
+const STUDENT_ONLY_QUESTIONS = new Set([
+  "¿Por qué eligió esta institución educativa o programa de estudios?",
+]);
+const VISITOR_ONLY_QUESTIONS = new Set([
+  "¿Tiene intención de trabajar o estudiar durante su visita?",
+]);
+
 const SEED_QUESTIONS = BASE_SEED_QUESTIONS.map((item) => ({
   ...item,
+  visa_profiles: STUDENT_ONLY_QUESTIONS.has(item.question)
+    ? ["estudiante"]
+    : VISITOR_ONLY_QUESTIONS.has(item.question)
+      ? PROFILE_KEYS.filter((profile) => profile !== "estudiante")
+      : [...PROFILE_KEYS],
   ...SEED_QUESTION_EXAMPLES[item.question],
 }));
 
@@ -158,6 +171,7 @@ function createQuestionBankService(pool) {
     await pool.query(`ALTER TABLE question_bank
       ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS uso_count INT DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS visa_profiles TEXT[] NOT NULL DEFAULT ARRAY['turismo_negocios','estudiante','renovacion','grupo_familiar','adulto_mayor']::text[],
       ADD COLUMN IF NOT EXISTS ejemplo_fuerte TEXT,
       ADD COLUMN IF NOT EXISTS explicacion_fuerte TEXT,
       ADD COLUMN IF NOT EXISTS ejemplo_debil TEXT,
@@ -168,7 +182,7 @@ function createQuestionBankService(pool) {
     await ensureSchema();
 
     const values = [];
-    const columnsPerRow = 4 + EXAMPLE_FIELDS.length;
+    const columnsPerRow = 5 + EXAMPLE_FIELDS.length;
     const placeholders = SEED_QUESTIONS.map((item, index) => {
       const offset = index * columnsPerRow;
       values.push(
@@ -176,30 +190,31 @@ function createQuestionBankService(pool) {
         item.category,
         item.difficulty,
         item.is_required,
+        item.visa_profiles,
         ...EXAMPLE_FIELDS.map((field) => item[field] ?? null)
       );
-      const examplePlaceholders = EXAMPLE_FIELDS.map((_field, fieldIndex) => `$${offset + 5 + fieldIndex}::text`);
-      return `($${offset + 1}::text, $${offset + 2}::text, $${offset + 3}::text, $${offset + 4}::boolean, ${examplePlaceholders.join(", ")})`;
+      const examplePlaceholders = EXAMPLE_FIELDS.map((_field, fieldIndex) => `$${offset + 6 + fieldIndex}::text`);
+      return `($${offset + 1}::text, $${offset + 2}::text, $${offset + 3}::text, $${offset + 4}::boolean, $${offset + 5}::text[], ${examplePlaceholders.join(", ")})`;
     });
     const exampleColumns = EXAMPLE_FIELDS.join(", ");
 
     // Inserta las preguntas faltantes y completa los ejemplos de las que ya existían.
     // Solo se completan preguntas sin ningún ejemplo, para no pisar lo que un admin editó.
     await pool.query(
-      `WITH seed_questions (question, category, difficulty, is_required, ${exampleColumns}) AS (
+      `WITH seed_questions (question, category, difficulty, is_required, visa_profiles, ${exampleColumns}) AS (
          VALUES ${placeholders.join(", ")}
        ),
        filled_examples AS (
          UPDATE question_bank existing
-         SET ${EXAMPLE_FIELDS.map((field) => `${field} = seed.${field}`).join(", ")}
+         SET visa_profiles = seed.visa_profiles,
+             ${EXAMPLE_FIELDS.map((field) => `${field} = CASE WHEN ${EXAMPLE_FIELDS.map((candidate) => `existing.${candidate} IS NULL`).join(" AND ")} THEN seed.${field} ELSE existing.${field} END`).join(", ")}
          FROM seed_questions seed
          WHERE LOWER(TRIM(existing.question)) = LOWER(TRIM(seed.question))
-           AND ${EXAMPLE_FIELDS.map((field) => `existing.${field} IS NULL`).join(" AND ")}
          RETURNING existing.id
        )
-       INSERT INTO question_bank (question, category, difficulty, is_required, ${exampleColumns})
+       INSERT INTO question_bank (question, category, difficulty, is_required, visa_profiles, ${exampleColumns})
        SELECT seed.question, seed.category, seed.difficulty, seed.is_required,
-              ${EXAMPLE_FIELDS.map((field) => `seed.${field}`).join(", ")}
+              seed.visa_profiles, ${EXAMPLE_FIELDS.map((field) => `seed.${field}`).join(", ")}
        FROM seed_questions seed
        WHERE NOT EXISTS (
          SELECT 1 FROM question_bank existing
@@ -269,20 +284,28 @@ function createQuestionBankService(pool) {
     return normalized;
   }
 
-  async function listQuestions({ includeInactive = false } = {}) {
+  async function listQuestions({ includeInactive = false, profile } = {}) {
     await ensureSchema();
 
-    const result = await pool.query(
-      `SELECT ${QUESTION_COLUMNS}
+    const profileKey = normalizeProfileKey(profile);
+    const filters = [];
+    const values = [];
+    if (!includeInactive) filters.push("activo = TRUE");
+    if (profileKey) {
+      values.push(profileKey);
+      filters.push(`$${values.length} = ANY(visa_profiles)`);
+    }
+
+    const sql = `SELECT ${QUESTION_COLUMNS}
        FROM question_bank
-       ${includeInactive ? "" : "WHERE activo = TRUE"}
-       ORDER BY created_at DESC, id DESC`
-    );
+       ${filters.length ? `WHERE ${filters.join(" AND ")}` : ""}
+       ORDER BY created_at DESC, id DESC`;
+    const result = values.length ? await pool.query(sql, values) : await pool.query(sql);
 
     return result.rows;
   }
 
-  async function listRandomQuestions({ count = "4", exclude = "", excludeText } = {}) {
+  async function listRandomQuestions({ count = "4", exclude = "", excludeText, profile } = {}) {
     const rawCount = String(count);
     if (!/^[1-9]\d*$/.test(rawCount) || Number(rawCount) > MAX_RANDOM_QUESTIONS) {
       const error = new Error(`count debe ser un entero entre 1 y ${MAX_RANDOM_QUESTIONS}`);
@@ -329,6 +352,10 @@ function createQuestionBankService(pool) {
 
     await ensureSchema();
     const requestedCount = Number(rawCount);
+    const profileKey = normalizeProfileKey(profile);
+    const profileFilter = profileKey ? "AND $5::text = ANY(visa_profiles)" : "";
+    const values = [excludedIds, excludedCategories, normalizedExcludedText, requestedCount];
+    if (profileKey) values.push(profileKey);
     const result = await pool.query(
       `WITH eligible AS (
          SELECT DISTINCT ON (LOWER(TRIM(question)))
@@ -338,13 +365,14 @@ function createQuestionBankService(pool) {
            AND id <> ALL($1::int[])
            AND (category IS NULL OR LOWER(TRIM(category)) <> ALL($2::text[]))
            AND ($3::text IS NULL OR LOWER(TRIM(question)) <> LOWER(TRIM($3::text)))
+           ${profileFilter}
          ORDER BY LOWER(TRIM(question)), id
        )
        SELECT ${QUESTION_COLUMNS}
        FROM eligible
        ORDER BY RANDOM()
        LIMIT $4`,
-      [excludedIds, excludedCategories, normalizedExcludedText, requestedCount]
+      values
     );
 
     if (result.rows.length < requestedCount) {

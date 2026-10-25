@@ -190,6 +190,8 @@ export default function Dashboard() {
     if (p === "turismo_negocios") return "B1/B2";
     if (p === "estudiante")       return "F/M";
     if (p === "renovacion")       return t("dashboard.visaRenovacion");
+    if (p === "grupo_familiar")   return "B1/B2 · Grupo familiar";
+    if (p === "adulto_mayor")     return "B1/B2 · Asistencia Senior";
     return "B1/B2";
   };
 
@@ -358,7 +360,7 @@ export default function Dashboard() {
             </section>
           </>
         )}
-        <InformationSection modoSenior={modoSenior} />
+        <InformationSection modoSenior={modoSenior} profile={session?.perfil} />
       </main>
     </div>
   );

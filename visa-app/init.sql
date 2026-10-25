@@ -39,7 +39,8 @@ ALTER TABLE usuario
   ADD COLUMN IF NOT EXISTS email_verificado    BOOLEAN DEFAULT TRUE,
   ADD COLUMN IF NOT EXISTS bloqueado_hasta     TIMESTAMP,
   ADD COLUMN IF NOT EXISTS intentos_reset_en   TIMESTAMP,
-  ADD COLUMN IF NOT EXISTS session_version     INTEGER NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS session_version     INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS visa_details        JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 UPDATE usuario SET session_version = 0 WHERE session_version IS NULL;
 
@@ -72,6 +73,48 @@ ALTER TABLE tramite
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 CREATE INDEX IF NOT EXISTS tramite_asesor_idx ON tramite(id_asesor);
+
+CREATE TABLE IF NOT EXISTS family_group_members (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+  full_name VARCHAR(160) NOT NULL,
+  relationship VARCHAR(40) NOT NULL,
+  date_of_birth DATE NOT NULL,
+  ds160_confirmation_number VARCHAR(20),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT family_group_members_relationship_check
+    CHECK (relationship IN ('conyuge','hijo_hija','padre_madre','hermano_hermana','otro'))
+);
+
+CREATE INDEX IF NOT EXISTS family_group_members_user_idx
+ON family_group_members(user_id, created_at, id);
+
+ALTER TABLE usuario
+  ADD COLUMN IF NOT EXISTS avatar_storage_key TEXT,
+  ADD COLUMN IF NOT EXISTS avatar_mime_type VARCHAR(80),
+  ADD COLUMN IF NOT EXISTS avatar_updated_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS advisor_change_requests (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+  current_advisor_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE RESTRICT,
+  category VARCHAR(40) NOT NULL CHECK (category IN ('mistreatment','poor_communication','lack_of_follow_up','conflict','other')),
+  message TEXT NOT NULL CHECK (char_length(message) BETWEEN 20 AND 2000),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','cancelled')),
+  resolution TEXT,
+  reviewed_by INT REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  new_advisor_id INT REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS advisor_change_requests_one_pending_idx
+ON advisor_change_requests(user_id) WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS advisor_change_requests_admin_queue_idx
+ON advisor_change_requests(status, created_at, id);
 
 CREATE TABLE IF NOT EXISTS advisor_chat_messages (
   id SERIAL PRIMARY KEY,
@@ -167,6 +210,7 @@ CREATE TABLE IF NOT EXISTS question_bank (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   activo BOOLEAN DEFAULT TRUE,
   uso_count INT DEFAULT 0,
+  visa_profiles TEXT[] NOT NULL DEFAULT ARRAY['turismo_negocios','estudiante','renovacion','grupo_familiar','adulto_mayor']::text[],
   ejemplo_fuerte TEXT,
   explicacion_fuerte TEXT,
   ejemplo_debil TEXT,
@@ -174,10 +218,14 @@ CREATE TABLE IF NOT EXISTS question_bank (
 );
 
 ALTER TABLE question_bank
+  ADD COLUMN IF NOT EXISTS visa_profiles TEXT[] NOT NULL DEFAULT ARRAY['turismo_negocios','estudiante','renovacion','grupo_familiar','adulto_mayor']::text[],
   ADD COLUMN IF NOT EXISTS ejemplo_fuerte TEXT,
   ADD COLUMN IF NOT EXISTS explicacion_fuerte TEXT,
   ADD COLUMN IF NOT EXISTS ejemplo_debil TEXT,
   ADD COLUMN IF NOT EXISTS explicacion_debil TEXT;
+
+CREATE INDEX IF NOT EXISTS question_bank_visa_profiles_idx
+ON question_bank USING GIN (visa_profiles);
 
 DO $$
 DECLARE

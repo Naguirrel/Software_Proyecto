@@ -159,6 +159,7 @@ function getStatusIcon(status) {
 function getAcceptType(type) {
   if (type === "pdf") return "application/pdf";
   if (type === "image") return "image/*";
+  if (type === "image_or_pdf") return "image/*,application/pdf";
   return undefined;
 }
 
@@ -266,6 +267,11 @@ export default function DocumentCard({
 
     if (doc.type === "image" && !selectedFile.type.startsWith("image/")) {
       setUploadError("Este documento requiere una imagen PNG o JPG.");
+      return false;
+    }
+
+    if (doc.type === "image_or_pdf" && selectedFile.type !== "application/pdf" && !selectedFile.type.startsWith("image/")) {
+      setUploadError("Este documento requiere una imagen PNG/JPG o un archivo PDF.");
       return false;
     }
 
@@ -408,11 +414,18 @@ export default function DocumentCard({
                 REQUERIDO
               </span>
             )}
+            {!doc.required && doc.requirement === "conditional" && (
+              <span className="document-requirement-badge document-requirement-badge--conditional">CONDICIONAL</span>
+            )}
+            {!doc.required && doc.requirement !== "conditional" && (
+              <span className="document-requirement-badge">RESPALDO OPCIONAL</span>
+            )}
           </div>
 
           <p className="document-card__meta">
             {doc.category} • Actualizado: {getUpdatedLabel(updatedAt, doc.updatedAt)}
           </p>
+          {doc.helpText && <p className="document-card__help">{doc.helpText}</p>}
 
           {doc.feedback && (
             <div className="document-feedback" role="status">

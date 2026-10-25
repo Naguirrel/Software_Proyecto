@@ -4,6 +4,7 @@ import { AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2 } from "luc
 import { buildApiUrl } from "./config/api";
 import { setIdiomaPreferido } from "./i18n/translations";
 import { getPasswordError, PASSWORD_HINT } from "./utils/passwordPolicy";
+import { setModoSenior } from "./utils/modoSenior";
 import AuthLayout from "./components/auth/AuthLayout";
 import RequireAdmin from "./components/admin/RequireAdmin";
 import RequireStaff from "./components/RequireStaff";
@@ -82,6 +83,7 @@ const SessionManager = {
       token: token || userData.token || null,
       loginTime: new Date().toISOString(),
     }));
+    if (userData.perfil === "adulto_mayor") setModoSenior(true);
     setIdiomaPreferido();
   },
   getSession: () => {

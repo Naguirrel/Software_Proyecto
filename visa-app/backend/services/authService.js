@@ -44,6 +44,7 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
     await userSchemaReady;
     const result = await pool.query(
       `SELECT id_usuario, nombre, correo, perfil, COALESCE(rol, 'cliente') AS rol, activo, contrasena, email_verificado, idioma,
+              avatar_updated_at,
               bloqueado_hasta, intentos_reset_en, COALESCE(session_version, 0) AS session_version
        FROM usuario WHERE correo = $1`,
       [correo]

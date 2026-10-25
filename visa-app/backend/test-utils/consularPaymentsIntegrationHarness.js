@@ -57,6 +57,11 @@ function createInMemoryConsularDb() {
       return { rows: [] };
     }
 
+    if (text.startsWith("SELECT u.perfil,") && text.includes("FROM usuario u WHERE u.id_usuario=$1")) {
+      const user = state.users.find((row) => row.id_usuario === values[0]);
+      return { rows: user ? [{ perfil: user.perfil, family_members: 0 }] : [] };
+    }
+
     if (text.includes("FROM usuario WHERE id_usuario = $1")) {
       const user = state.users.find((row) => row.id_usuario === values[0]);
       return { rows: user ? [{ ...user }] : [] };

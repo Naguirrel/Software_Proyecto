@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { buildApiUrl } from "../config/api";
-import { secciones } from "../data/ds160Sections";
+import { getDs160Sections } from "../data/ds160Sections";
 import { validarCampo, validarSeccion } from "../utils/ds160Validation";
 import { buildDs160PdfFilename } from "../utils/ds160PdfFilename";
 
@@ -20,7 +20,8 @@ function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export default function useDS160Form() {
+export default function useDS160Form(profile) {
+  const secciones = getDs160Sections(profile);
   const [seccionActual, setSeccionActual] = useState(1);
   const [formData, setFormData] = useState({});
   const [errores, setErrores] = useState({});

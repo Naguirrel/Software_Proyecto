@@ -80,7 +80,76 @@ const schemas = {
   ProfileRequest: {
     type: "object",
     required: ["perfil"],
-    properties: { perfil: objectSchema },
+    additionalProperties: false,
+    properties: {
+      perfil: {
+        type: "string",
+        enum: ["turismo_negocios", "estudiante", "renovacion", "grupo_familiar", "adulto_mayor"],
+      },
+    },
+  },
+  VisaProfileDetailsRequest: {
+    type: "object",
+    additionalProperties: false,
+    required: ["priorVisaClass", "priorVisaExpirationDate", "priorVisaFullValidity", "issuedAtAgeEighteenOrOlder", "refusalStatus", "hasPotentialIneligibility"],
+    properties: {
+      priorVisaClass: { type: "string", enum: ["B1/B2"] },
+      priorVisaExpirationDate: { type: "string", format: "date" },
+      priorVisaFullValidity: { type: "boolean" },
+      issuedAtAgeEighteenOrOlder: { type: "boolean" },
+      refusalStatus: { type: "string", enum: ["none", "overcome_or_waived", "unresolved"] },
+      hasPotentialIneligibility: { type: "boolean" },
+    },
+  },
+  FamilyMemberRequest: {
+    type: "object",
+    additionalProperties: false,
+    required: ["fullName", "relationship", "dateOfBirth"],
+    properties: {
+      fullName: { type: "string", minLength: 3, maxLength: 160 },
+      relationship: { type: "string", enum: ["conyuge", "hijo_hija", "padre_madre", "hermano_hermana", "otro"] },
+      dateOfBirth: { type: "string", format: "date" },
+      ds160ConfirmationNumber: { type: "string", nullable: true, pattern: "^AA[0-9A-Z]{6,14}$" },
+    },
+  },
+  VisaDocumentRequirement: {
+    type: "object",
+    required: ["id", "baseKey", "title", "type", "requirement", "required", "scope"],
+    properties: {
+      id: { type: "string" },
+      baseKey: { type: "string" },
+      title: { type: "string" },
+      category: { type: "string" },
+      type: { type: "string", enum: ["image", "pdf", "image_or_pdf", "any"] },
+      requirement: { type: "string", enum: ["required", "conditional", "recommended"] },
+      required: { type: "boolean" },
+      scope: { type: "string", enum: ["official", "supporting", "internal"] },
+      helpText: { type: "string" },
+      applicant: { type: "string", nullable: true },
+      familyMemberId: { type: "integer", nullable: true },
+    },
+  },
+  VisaProfileRequirementsResponse: {
+    type: "object",
+    required: ["profile", "label", "visaClass", "personCount", "documents", "officialChecklist"],
+    properties: {
+      profile: { type: "string", enum: ["turismo_negocios", "estudiante", "renovacion", "grupo_familiar", "adulto_mayor"] },
+      label: { type: "string" },
+      visaClass: { type: "string" },
+      applicationType: { type: "string" },
+      caseType: { type: "string", enum: ["individual", "family"] },
+      seniorDefault: { type: "boolean" },
+      interviewPolicy: { type: "string" },
+      guidance: { type: "string" },
+      governmentFeeUsdCentsPerPerson: { type: "integer" },
+      sevisFeeUsdCents: { type: "integer", nullable: true },
+      personCount: { type: "integer", minimum: 1 },
+      documents: { type: "array", items: { $ref: "#/components/schemas/VisaDocumentRequirement" } },
+      officialChecklist: { type: "array", items: objectSchema },
+      familyMembers: { type: "array", items: objectSchema },
+      details: objectSchema,
+      renewalEligibility: { ...objectSchema, nullable: true },
+    },
   },
   ProfileUpdateRequest: {
     type: "object",
@@ -91,6 +160,45 @@ const schemas = {
       pais: { type: "string" },
       notificacionesEmail: { type: "boolean" },
       idioma: { type: "string" },
+    },
+  },
+  AvatarUpload: {
+    type: "object",
+    required: ["avatar"],
+    additionalProperties: false,
+    properties: {
+      avatar: {
+        type: "string",
+        format: "binary",
+        description: "Fotografía JPG o PNG válida, máximo 2 MB.",
+      },
+    },
+  },
+  AdvisorChangeRequestCreate: {
+    type: "object",
+    required: ["category", "message"],
+    additionalProperties: false,
+    properties: {
+      category: {
+        type: "string",
+        enum: ["mistreatment", "poor_communication", "lack_of_follow_up", "conflict", "other"],
+      },
+      message: { type: "string", minLength: 20, maxLength: 2000 },
+    },
+  },
+  AdvisorChangeRequestResolution: {
+    type: "object",
+    required: ["decision", "resolution"],
+    additionalProperties: false,
+    properties: {
+      decision: { type: "string", enum: ["approved", "rejected"] },
+      resolution: { type: "string", minLength: 10, maxLength: 2000 },
+      newAdvisorId: {
+        type: "integer",
+        minimum: 1,
+        nullable: true,
+        description: "Obligatorio cuando decision es approved y debe ser distinto del asesor actual.",
+      },
     },
   },
   Ds160Request: {
@@ -678,6 +786,11 @@ Object.assign(schemas, {
       is_required: { type: "boolean" },
       activo: { type: "boolean" },
       uso_count: { type: "integer", minimum: 0 },
+      visa_profiles: {
+        type: "array",
+        description: "Perfiles de visa para los que la pregunta es pertinente.",
+        items: { type: "string", enum: ["turismo_negocios", "estudiante", "renovacion", "grupo_familiar", "adulto_mayor"] },
+      },
       created_at: { type: "string", format: "date-time" },
       ...questionExampleProperties,
     },
@@ -783,12 +896,23 @@ const endpoints = [
   ["post", "/reenviar-verificacion", "Autenticación", "Reenviar verificación", null, "EmailRequest"],
   ["post", "/desbloquear-cuenta", "Autenticación", "Desbloquear cuenta con el enlace del correo", null, "UnlockTokenRequest"],
   ["post", "/guardar-perfil", "Perfil y trámite", "Guardar perfil de visa", "session", "ProfileRequest"],
+  ["get", "/visa-profile/requirements", "Perfil y trámite", "Consultar requisitos según el tipo de visa", "session"],
+  ["put", "/visa-profile/details", "Perfil y trámite", "Guardar evaluación de renovación B1/B2", "session", "VisaProfileDetailsRequest"],
+  ["get", "/visa-profile/family-members", "Perfil y trámite", "Listar integrantes del grupo familiar", "session"],
+  ["post", "/visa-profile/family-members", "Perfil y trámite", "Agregar integrante al grupo familiar", "session", "FamilyMemberRequest", 201],
+  ["put", "/visa-profile/family-members/{id}", "Perfil y trámite", "Actualizar integrante del grupo familiar", "session", "FamilyMemberRequest"],
+  ["delete", "/visa-profile/family-members/{id}", "Perfil y trámite", "Eliminar integrante del grupo familiar", "session"],
   ["post", "/estado-tramite", "Perfil y trámite", "Consultar estado del trámite", "session"],
   ["get", "/estado-tramite", "Perfil y trámite", "Ruta heredada no permitida", "session"],
   ["get", "/workflow/me", "Perfil y trámite", "Consultar permisos y progreso del flujo del solicitante", "session"],
   ["post", "/usuario-perfil", "Perfil y trámite", "Consultar perfil del usuario", "session"],
   ["get", "/usuario-perfil", "Perfil y trámite", "Ruta heredada no permitida", "session"],
   ["put", "/usuario-perfil", "Perfil y trámite", "Actualizar perfil del usuario", "session", "ProfileUpdateRequest"],
+  ["get", "/identity/users/{id}/avatar", "Identidad", "Consultar fotografía de un usuario relacionado", "session", null, 200, "binary"],
+  ["put", "/identity/avatar", "Identidad", "Actualizar la fotografía propia", "session", "AvatarUpload", 200, null, "multipart/form-data"],
+  ["delete", "/identity/avatar", "Identidad", "Eliminar la fotografía propia", "session"],
+  ["get", "/advisor-change-requests/context", "Asignación", "Consultar asesor y solicitud de cambio del cliente", "session"],
+  ["post", "/advisor-change-requests", "Asignación", "Solicitar cambio de asesor", "session", "AdvisorChangeRequestCreate", 201],
   ["put", "/tramite", "Perfil y trámite", "Actualización manual de trámite bloqueada", "session"],
   ["get", "/ds160", "DS-160", "Ruta heredada no permitida"],
   ["post", "/ds160/load", "DS-160", "Cargar formulario DS-160", null, "UserEmailRequest"],
@@ -857,6 +981,8 @@ const endpoints = [
   ["post", "/admin/advisors", "Administración", "Crear asesor", "admin", "AdminUserRequest", 201],
   ["get", "/admin/assignments", "Administración", "Listar asignaciones", "admin"],
   ["post", "/admin/assignments", "Administración", "Asignar asesor", "admin", "AssignmentRequest"],
+  ["get", "/admin/advisor-change-requests", "Administración", "Listar solicitudes de cambio de asesor", "admin"],
+  ["put", "/admin/advisor-change-requests/{id}/resolve", "Administración", "Resolver y, si corresponde, reasignar asesor", "admin", "AdvisorChangeRequestResolution"],
   ["get", "/admin/ds160", "Administración", "Listar formularios DS-160", "admin"],
   ["put", "/admin/ds160/{id}", "Administración", "Revisar formulario DS-160", "admin", "GenericRequest"],
   ["get", "/admin/profile", "Administración", "Consultar perfil", "admin"],
@@ -1006,6 +1132,23 @@ paths["/workflow/me"].get.responses[200] = jsonSchemaResponse(
   "ClientWorkflowResponse"
 );
 paths["/workflow/me"].get.responses[404] = { $ref: "#/components/responses/NotFound" };
+
+paths["/visa-profile/requirements"].get.description = "Devuelve clase de visa, tarifas, documentos cargables y lista oficial por etapa para el perfil autenticado. En grupo familiar incluye requisitos por integrante; en estudiante incluye I-20 y SEVIS; en renovación incluye la evaluación preliminar. Las instrucciones consulares oficiales prevalecen.";
+paths["/visa-profile/requirements"].get.responses[200] = jsonSchemaResponse(
+  "Requisitos dinámicos del expediente",
+  "VisaProfileRequirementsResponse"
+);
+paths["/visa-profile/requirements"].get.responses[409] = {
+  description: "El usuario todavía no seleccionó un perfil de visa.",
+  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+};
+
+paths["/visa-profile/details"].put.description = "Guarda datos usados para una evaluación preliminar de renovación B1/B2. No garantiza exención de entrevista; la decisión es del sistema oficial o del consulado.";
+for (const path of ["/visa-profile/family-members", "/visa-profile/family-members/{id}"]) {
+  for (const operation of Object.values(paths[path])) {
+    operation.description = `${operation.description || ""} Solo está disponible cuando el perfil autenticado es grupo_familiar. Cada integrante conserva DS-160, documentos y tarifa individuales.`.trim();
+  }
+}
 
 paths["/admin/users/{id}/unlock"].post.description = "Requiere rol administrador. Elimina el bloqueo temporal y reinicia el contador de intentos fallidos de la cuenta indicada.";
 paths["/admin/users/{id}/unlock"].post.responses[200] = jsonSchemaResponse(

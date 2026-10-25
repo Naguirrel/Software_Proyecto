@@ -5,6 +5,7 @@ import AdminAdvancedFilters from "../../components/admin/AdminAdvancedFilters";
 import { EMPTY_ADMIN_FILTERS, advisorOptions, matchesAdminFilters } from "../../utils/adminFilters";
 import { AdminPageHeader, AdminResourceState, AdminSearch } from "../../components/admin/AdminShared";
 import useAdminResource, { adminRequest } from "../../hooks/useAdminResource";
+import AdvisorChangeQueue from "../../components/admin/AdvisorChangeQueue";
 
 function getWaitingTime(value) {
   if (!value) return "Fecha no disponible";
@@ -53,6 +54,7 @@ export default function AdminAssignments() {
     }
   };
   return <AdminLayout><AdminPageHeader title="Asignaciones" description="Asigna solicitudes pendientes a los asesores disponibles." />{notice && <p className="admin-feedback" role="status">{notice}</p>}
+    <AdvisorChangeQueue advisors={advisors} onResolved={resource.retry} />
     <AdminAdvancedFilters value={filters} onChange={(value) => { setFilters(value); setSelected(null); }} advisors={advisorOptions(advisors)} allowUnassigned={false}
       status={status} statuses={[{ value: "", label: "Todos" }, ...["En proceso", "Pendiente", "Aprobado", "Inactivo", "Completado"].map((value) => ({ value, label: value }))]}
       onStatusChange={(value) => { setStatus(value); setSelected(null); }} onReset={() => { setFilters(EMPTY_ADMIN_FILTERS); setStatus(""); setQuery(""); setSelected(null); }} />

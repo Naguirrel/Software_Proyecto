@@ -1897,3 +1897,32 @@ a.admin-insight-card:hover { border-color:var(--vg-red); box-shadow:0 12px 26px 
 
 @media (max-width:1050px) { .admin-email-reminders-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:760px) { .admin-reminder-intro { grid-template-columns:1fr; }.admin-email-reminders-summary { grid-template-columns:1fr; } }
+.admin-advisor-change-queue { margin-bottom: 24px; position: relative; }
+.admin-change-request-list { display: grid; gap: 8px; }
+.admin-change-request-list > button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 1px solid var(--vg-border); border-radius: 12px; background: var(--vg-card); color: var(--vg-text); text-align: left; cursor: pointer; }
+.admin-change-request-list > button > span { display: grid; gap: 2px; }
+.admin-change-request-list small, .admin-change-request-list em { color: var(--vg-text-muted); font-style: normal; }
+.admin-change-request-list > button > svg { color: #d97706; }
+.admin-change-review { position: fixed; z-index: 1600; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto; padding: 24px; border: 1px solid var(--vg-border); border-radius: 16px; background: var(--vg-card); color: var(--vg-text); box-shadow: 0 24px 80px rgba(0,0,0,.32); }
+.admin-change-review::before { content: ""; position: fixed; inset: -100vh -100vw; z-index: -1; background: rgba(0,0,0,.55); }
+.admin-change-review__close { position: absolute; right: 15px; top: 15px; border: 0; background: transparent; color: var(--vg-text-muted); cursor: pointer; }
+.admin-change-review__people { display: flex; align-items: center; gap: 14px; padding-right: 38px; }
+.admin-change-review__people span, .admin-change-review__people small { color: var(--vg-text-muted); }
+.admin-change-review__people h3 { margin: 3px 0; }
+.admin-change-review dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0; }
+.admin-change-review dl div { padding: 12px; border-radius: 10px; background: var(--vg-bg-alt); }
+.admin-change-review dt { color: var(--vg-text-muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.admin-change-review dd { margin: 5px 0 0; font-weight: 800; }
+.admin-change-review blockquote { margin: 0 0 18px; padding: 15px; border-left: 4px solid var(--vg-red); background: var(--vg-bg-alt); line-height: 1.55; }
+.admin-change-review > label { display: grid; gap: 7px; margin-top: 13px; font-weight: 800; }
+.admin-change-review textarea, .admin-change-review select { width: 100%; border: 1px solid var(--vg-border); border-radius: 9px; background: var(--vg-bg); color: var(--vg-text); padding: 11px; font: inherit; }
+.admin-change-review footer { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+.admin-change-review footer button { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; border: 0; border-radius: 9px; padding: 0 15px; background: var(--vg-red); color: white; font: inherit; font-weight: 800; cursor: pointer; }
+.admin-change-review footer button.is-reject { background: var(--vg-bg-alt); color: var(--vg-text); border: 1px solid var(--vg-border); }
+.admin-change-review footer button:disabled { opacity: .5; cursor: not-allowed; }
+.admin-change-review footer svg { width: 17px; height: 17px; }
+
+@media (max-width: 600px) {
+  .admin-change-review dl { grid-template-columns: 1fr; }
+  .admin-change-review footer { flex-direction: column-reverse; }
+}

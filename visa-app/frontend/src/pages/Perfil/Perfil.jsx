@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import useModoSenior from "../../hooks/useModoSenior";
 import useRequireAuth from "../../hooks/useRequireAuth";
@@ -6,18 +6,14 @@ import useIdioma from "../../hooks/useIdioma";
 import { apiRequest } from "../../utils/apiClient";
 import { buildSessionHeaders } from "../../utils/sessionAuth";
 import { setIdiomaPreferido, translateValue } from "../../i18n/translations";
+import AdvisorRelationshipCard from "../../components/AdvisorRelationshipCard";
+import ProfileAvatar from "../../components/ProfileAvatar";
+import { uploadProfileAvatar } from "../../utils/profileAvatar";
 import "../../styles/perfil.css";
 
 // ---------------------------------------------------------------------
 // Utilidades
 // ---------------------------------------------------------------------
-
-function getInitials(nombre) {
-  if (!nombre) return "?";
-  const partes = nombre.trim().split(/\s+/);
-  if (partes.length === 1) return partes[0][0].toUpperCase();
-  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-}
 
 function truncar(texto, max = 18) {
   if (!texto) return "";
@@ -121,6 +117,9 @@ export default function Perfil() {
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensajeOk, setMensajeOk] = useState("");
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const avatarInputRef = useRef(null);
   const [form, setForm] = useState({
     nombre: "",
     telefono: "",
@@ -254,6 +253,23 @@ export default function Perfil() {
     }
   };
 
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      setAvatarBusy(true);
+      setAvatarError("");
+      const result = await uploadProfileAvatar(file);
+      setUsuario((current) => current ? { ...current, avatarVersion: result.avatarVersion } : current);
+      setMensajeOk("Fotografía actualizada correctamente.");
+    } catch (error) {
+      setAvatarError(error.message);
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
   // -----------------------------------------------------------------
   // Estados de carga
   // -----------------------------------------------------------------
@@ -345,18 +361,16 @@ export default function Perfil() {
             <div style={s.userCardTop}>
               <div style={s.avatarRing}>
                 <div style={s.avatarCircle}>
-                  <span style={s.avatarInitials}>
-                    {getInitials(usuario.nombre)}
-                  </span>
+                  <ProfileAvatar userId={usuario.id} name={usuario.nombre} version={usuario.avatarVersion} size={112} />
                 </div>
+                <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png" hidden onChange={handleAvatarChange} />
                 <button
                   type="button"
                   style={s.avatarCameraBtn}
                   data-senior-priority="secondary"
                   aria-label={t("profile.changePhoto")}
-                  onClick={() =>
-                    alert(t("profile.photoSoon"))
-                  }
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarBusy}
                 >
                   <Icon.camera />
                 </button>
@@ -382,8 +396,10 @@ export default function Perfil() {
               )}
 
               <p style={{ ...s.userRole, fontSize: fz("14px", "16px") }}>
-                {t("profile.role")}
+                {t(`perfilLabel.${["turismo_negocios", "estudiante", "renovacion", "grupo_familiar", "adulto_mayor"].includes(usuario.perfil) ? usuario.perfil : "default"}`)}
               </p>
+
+              {avatarError && <p role="alert" style={s.avatarError}>{avatarError}</p>}
 
               <hr style={s.softDivider} />
 
@@ -499,6 +515,8 @@ export default function Perfil() {
                 </div>
               </div>
             </article>
+
+            <AdvisorRelationshipCard />
 
             {/* ----- Preferencias de cuenta ----- */}
             <article style={s.prefCard} data-senior-priority="secondary">
@@ -728,6 +746,7 @@ function getS() {
     color: "var(--vg-text-muted)",
     letterSpacing: "1px",
   },
+  avatarError: { color: "var(--vg-danger-text)", textAlign: "center", fontSize: "13px", margin: "10px 0 0" },
   avatarCameraBtn: {
     position: "absolute",
     bottom: "4px",

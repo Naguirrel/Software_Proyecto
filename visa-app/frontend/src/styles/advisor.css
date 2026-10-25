@@ -480,3 +480,14 @@
 @media (prefers-reduced-motion: reduce) {
   .advisor-shell *, .advisor-shell *::before, .advisor-shell *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+.advisor-person-cell {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.advisor-person-cell > span {
+  display: grid;
+  min-width: 0;
+}

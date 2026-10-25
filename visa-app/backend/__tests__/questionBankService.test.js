@@ -26,7 +26,7 @@ describe("question bank seed catalog", () => {
     expect(seedCall[0]).toContain("WHERE NOT EXISTS");
     expect(seedCall[0]).toContain("LOWER(TRIM(existing.question))");
     expect(seedCall[0]).toContain("::boolean");
-    expect(seedCall[1]).toHaveLength(SEED_QUESTIONS.length * (4 + EXAMPLE_FIELDS.length));
+    expect(seedCall[1]).toHaveLength(SEED_QUESTIONS.length * (5 + EXAMPLE_FIELDS.length));
     expect(pool.query.mock.calls.some(([sql]) => String(sql).includes("DELETE FROM question_bank"))).toBe(false);
   });
 
@@ -46,19 +46,20 @@ describe("question bank seed catalog", () => {
     await createQuestionBankService(pool).seedInitialQuestions();
 
     const [sql, values] = pool.query.mock.calls.find(([query]) => String(query).includes("WITH seed_questions"));
-    const firstRow = values.slice(0, 4 + EXAMPLE_FIELDS.length);
+    const firstRow = values.slice(0, 5 + EXAMPLE_FIELDS.length);
     expect(firstRow).toEqual([
       SEED_QUESTIONS[0].question,
       SEED_QUESTIONS[0].category,
       SEED_QUESTIONS[0].difficulty,
       SEED_QUESTIONS[0].is_required,
+      SEED_QUESTIONS[0].visa_profiles,
       ...EXAMPLE_FIELDS.map((field) => SEED_QUESTIONS[0][field]),
     ]);
     expect(sql).toContain("UPDATE question_bank existing");
     for (const field of EXAMPLE_FIELDS) {
       expect(sql).toContain(`existing.${field} IS NULL`);
     }
-    expect(sql).toContain("INSERT INTO question_bank (question, category, difficulty, is_required, ejemplo_fuerte");
+    expect(sql).toContain("INSERT INTO question_bank (question, category, difficulty, is_required, visa_profiles, ejemplo_fuerte");
   });
 });
 
@@ -89,6 +90,18 @@ describe("random interview questions", () => {
     expect(sql).toContain("ORDER BY RANDOM()");
     expect(sql).toContain("LIMIT $4");
     expect(values).toEqual([[], ["viaje"], null, 4]);
+  });
+
+  test("limita las preguntas aleatorias al perfil autenticado", async () => {
+    const pool = { query: jest.fn(async (sql) => ({
+      rows: String(sql).includes("FROM eligible") ? rows.slice(0, 4) : [],
+    })) };
+
+    await createQuestionBankService(pool).listRandomQuestions({ count: "4", profile: "estudiante" });
+
+    const [sql, values] = pool.query.mock.calls.find(([query]) => String(query).includes("FROM eligible"));
+    expect(sql).toContain("$5::text = ANY(visa_profiles)");
+    expect(values).toEqual([[], [], null, 4, "estudiante"]);
   });
 
   test("excludes IDs and categories using real bank fields", async () => {

@@ -67,7 +67,7 @@ describe("Sidebar", () => {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
     });
     expect(screen.getByText("Ana López")).toBeInTheDocument();
-    expect(screen.getByText("Solicitante B1/B2")).toBeInTheDocument();
+    expect(screen.getByText("Aplicante a visa B1/B2")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("top-actions")).toHaveTextContent("12:3"));
   });
 

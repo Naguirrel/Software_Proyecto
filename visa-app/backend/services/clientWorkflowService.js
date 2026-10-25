@@ -1,4 +1,10 @@
-const REQUIRED_DOCUMENT_KEYS = ["passport", "photo", "intake-form"];
+const {
+  getProfileConfig,
+  getRequiredDocumentKeys,
+  normalizeProfileKey,
+} = require("../config/visaProfiles");
+
+const REQUIRED_DOCUMENT_KEYS = getRequiredDocumentKeys("turismo_negocios");
 
 const STEP_DEFINITIONS = {
   profile: { label: "Completar perfil", path: "/perfil" },
@@ -38,18 +44,24 @@ function createClientWorkflowService(pool) {
     }
 
     const result = await pool.query(
-      `SELECT u.id_usuario, u.perfil,
+      `SELECT u.id_usuario, u.perfil, u.visa_details,
               t.id_tramite, t.id_asesor, t.estado, t.etapa_actual, t.progreso,
               EXISTS (
                 SELECT 1 FROM formulario_ds160 f
                 WHERE f.id_usuario = u.id_usuario AND f.completado = TRUE
               ) AS ds160_complete,
-              COUNT(DISTINCT d.documento_key) FILTER (
-                WHERE d.documento_key = ANY($2::varchar[])
-              )::int AS required_documents_uploaded,
-              COUNT(DISTINCT d.documento_key) FILTER (
-                WHERE d.documento_key = ANY($2::varchar[]) AND d.estado = 'approved'
-              )::int AS required_documents_approved,
+              COALESCE(ARRAY_AGG(DISTINCT d.documento_key)
+                FILTER (WHERE d.documento_key IS NOT NULL), ARRAY[]::varchar[]) AS uploaded_document_keys,
+              COALESCE(ARRAY_AGG(DISTINCT d.documento_key)
+                FILTER (WHERE d.documento_key IS NOT NULL AND d.estado = 'approved'), ARRAY[]::varchar[]) AS approved_document_keys,
+              COALESCE((
+                SELECT JSON_AGG(JSON_BUILD_OBJECT(
+                  'id', member.id,
+                  'full_name', member.full_name,
+                  'ds160_confirmation_number', member.ds160_confirmation_number
+                ) ORDER BY member.created_at, member.id)
+                FROM family_group_members member WHERE member.user_id=u.id_usuario
+              ), '[]'::json) AS family_members,
               EXISTS (
                 SELECT 1 FROM consular_payments p
                 WHERE p.user_id = u.id_usuario
@@ -70,8 +82,8 @@ function createClientWorkflowService(pool) {
        LEFT JOIN tramite t ON t.id_usuario = u.id_usuario
        LEFT JOIN documentos d ON d.usuario_id = u.id_usuario
        WHERE u.id_usuario = $1
-       GROUP BY u.id_usuario, u.perfil, t.id_tramite, t.id_asesor, t.estado, t.etapa_actual, t.progreso`,
-      [parsedUserId, REQUIRED_DOCUMENT_KEYS]
+       GROUP BY u.id_usuario, u.perfil, u.visa_details, t.id_tramite, t.id_asesor, t.estado, t.etapa_actual, t.progreso`,
+      [parsedUserId]
     );
 
     const row = result.rows[0];
@@ -81,13 +93,29 @@ function createClientWorkflowService(pool) {
       throw error;
     }
 
-    const profileComplete = Boolean(row.perfil);
+    const profile = normalizeProfileKey(row.perfil);
+    const profileConfig = getProfileConfig(profile);
+    const profileComplete = Boolean(profileConfig);
     const assigned = Boolean(row.id_asesor);
-    const ds160Complete = Boolean(row.ds160_complete);
-    const requiredDocumentsUploaded = Number(row.required_documents_uploaded) || 0;
-    const requiredDocumentsApproved = Number(row.required_documents_approved) || 0;
-    const documentsUploaded = requiredDocumentsUploaded === REQUIRED_DOCUMENT_KEYS.length;
-    const documentsApproved = requiredDocumentsApproved === REQUIRED_DOCUMENT_KEYS.length;
+    const familyMembers = Array.isArray(row.family_members) ? row.family_members : [];
+    const familyConfigured = profileConfig?.caseType !== "family" || familyMembers.length > 0;
+    const familyDs160Complete = profileConfig?.caseType !== "family"
+      || (familyConfigured && familyMembers.every((member) => Boolean(member.ds160_confirmation_number)));
+    const ds160Complete = Boolean(row.ds160_complete) && familyDs160Complete;
+    const requiredDocumentKeys = getRequiredDocumentKeys(profile, familyMembers);
+    const uploadedDocumentKeys = Array.isArray(row.uploaded_document_keys) ? row.uploaded_document_keys : [];
+    const approvedDocumentKeys = Array.isArray(row.approved_document_keys) ? row.approved_document_keys : [];
+    const hasDocumentArrays = Array.isArray(row.uploaded_document_keys) || Array.isArray(row.approved_document_keys);
+    const requiredDocumentsUploaded = hasDocumentArrays
+      ? requiredDocumentKeys.filter((key) => uploadedDocumentKeys.includes(key)).length
+      : Number(row.required_documents_uploaded) || 0;
+    const requiredDocumentsApproved = hasDocumentArrays
+      ? requiredDocumentKeys.filter((key) => approvedDocumentKeys.includes(key)).length
+      : Number(row.required_documents_approved) || 0;
+    const documentsUploaded = requiredDocumentKeys.length > 0
+      && requiredDocumentsUploaded >= requiredDocumentKeys.length;
+    const documentsApproved = requiredDocumentKeys.length > 0
+      && requiredDocumentsApproved >= requiredDocumentKeys.length;
     const paymentStarted = Boolean(row.payment_started);
     const consularPaid = Boolean(row.consular_paid);
     const appointmentScheduled = Boolean(row.appointment_scheduled);
@@ -110,10 +138,12 @@ function createClientWorkflowService(pool) {
           : gate(false, "Necesitas un asesor asignado antes de iniciar el DS-160.", "assignment"),
       payment: !assigned
         ? gate(false, "Necesitas un asesor asignado antes de continuar con el pago.", "assignment")
+        : !familyConfigured
+          ? gate(false, "Agrega a los integrantes del grupo familiar antes de continuar con el pago.", "documents")
         : !ds160Complete
           ? gate(false, "Completa el DS-160 antes de registrar el pago.", "ds160")
           : !documentsApproved
-            ? gate(false, "Los tres documentos obligatorios deben estar aprobados antes del pago.", "documents")
+            ? gate(false, `Los ${requiredDocumentKeys.length} documentos obligatorios del expediente deben estar aprobados antes del pago.`, "documents")
             : gate(true),
       appointment: !assigned
         ? gate(false, "Necesitas un asesor asignado antes de programar una cita.", "assignment")
@@ -137,6 +167,8 @@ function createClientWorkflowService(pool) {
     return {
       assigned,
       advisorId: row.id_asesor || null,
+      profile,
+      visaClass: profileConfig?.visaClass || null,
       currentStep,
       currentStepLabel: STEP_DEFINITIONS[currentStep]?.label || "Continuar trámite",
       process: row.id_tramite
@@ -149,8 +181,12 @@ function createClientWorkflowService(pool) {
         : null,
       requirements: {
         profileComplete,
+        familyConfigured,
+        familyMembers: familyMembers.length,
+        familyDs160Complete,
         ds160Complete,
-        requiredDocuments: REQUIRED_DOCUMENT_KEYS.length,
+        requiredDocuments: requiredDocumentKeys.length,
+        requiredDocumentKeys,
         requiredDocumentsUploaded,
         requiredDocumentsApproved,
         documentsUploaded,

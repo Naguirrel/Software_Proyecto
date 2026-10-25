@@ -19,6 +19,7 @@ function presentLoginUser(row) {
     rol: row.rol || "cliente",
     emailVerificado: row.email_verificado !== false,
     idioma: row.idioma === "en" ? "en" : "es",
+    avatarVersion: row.avatar_updated_at ? new Date(row.avatar_updated_at).getTime() : null,
   };
 }
 

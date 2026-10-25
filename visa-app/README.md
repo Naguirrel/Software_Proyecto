@@ -1,5 +1,7 @@
 # VisaGuide
 
+La guía funcional de requisitos y documentos dinámicos por categoría se encuentra en [docs/requisitos-por-tipo-de-visa.md](docs/requisitos-por-tipo-de-visa.md).
+
 [![CI](https://github.com/dquan123/Software_Proyecto/actions/workflows/ci.yml/badge.svg)](https://github.com/dquan123/Software_Proyecto/actions/workflows/ci.yml)
 
 Aplicación web para gestionar procesos de visa estadounidense.
@@ -56,6 +58,12 @@ docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" 
   < backend/migrations/003_question_bank_examples.sql
 docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
   < backend/migrations/004_notification_priority.sql
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/migrations/005_visa_profile_requirements.sql
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/migrations/006_question_bank_visa_profiles.sql
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/migrations/007_profile_identity_and_advisor_changes.sql
 ```
 
 ## Autenticación
@@ -78,6 +86,12 @@ manualmente se respetan. No existe el rol `superadmin` en el esquema actual.
 ## API
 
 La documentación interactiva está en `/api-docs` y el contrato OpenAPI en `/api-docs.json`.
+
+Las fotografías de perfil se sirven mediante rutas autenticadas bajo `/identity`; solo son
+visibles para el propio usuario, administradores y la pareja cliente–asesor asignada. Las
+solicitudes de cambio de asesor se crean en `/advisor-change-requests` y se revisan desde
+`/admin/advisor-change-requests`. Una aprobación reasigna el trámite y registra el cambio
+en el historial dentro de una sola transacción.
 
 ## Pruebas
 

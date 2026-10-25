@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiRequest } from "../utils/apiClient";
 import { setIdiomaPreferido } from "../i18n/translations";
+import { setModoSenior } from "../utils/modoSenior";
 
 export default function useRequireAuth() {
   const [isValidating, setIsValidating] = useState(true);
@@ -38,6 +39,7 @@ export default function useRequireAuth() {
 
         const currentSession = data.user ? { ...sessionData, ...data.user } : sessionData;
         localStorage.setItem("visaguide_session", JSON.stringify(currentSession));
+        if (currentSession.perfil === "adulto_mayor") setModoSenior(true);
         setIdiomaPreferido();
         setSession(currentSession);
       } catch (err) {
