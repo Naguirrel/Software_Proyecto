@@ -3,6 +3,7 @@ const PACKAGE_AMOUNT_MINOR = 230000;
 const PACKAGE_CURRENCY = "gtq";
 const CUSTOMER_PAID_STATUSES = new Set(["client_paid", "consular_processing", "consular_paid"]);
 const ACTIVE_STATUSES = ["transfer_pending", "client_paid", "consular_processing", "consular_paid"];
+const { getDocumentsForProfile, getProfileConfig, normalizeProfileKey } = require("../config/visaProfiles");
 
 function httpError(message, statusCode) {
   const error = new Error(message);
@@ -74,27 +75,39 @@ function createConsularPaymentService(pool, { notificacionService } = {}) {
       ON consular_payments(user_id) WHERE status IN ('transfer_pending','client_paid','consular_processing','consular_paid')`);
   }
 
-  function normalizeProfile(profile) {
-    const value = String(profile || "").trim().toLowerCase();
-    if (value.includes("estudiante") || value.includes("f/m") || value.includes("f1")) return "estudiante";
-    if (value.includes("renov")) return "renovacion";
-    if (value.includes("familiar") || value.includes("grupo")) return "grupo_familiar";
-    if (value.includes("mayor")) return "adulto_mayor";
-    return "turismo_negocios";
-  }
-
   async function getQuote(userId) {
-    const user = await pool.query("SELECT perfil FROM usuario WHERE id_usuario=$1", [userId]);
+    const user = await pool.query(`SELECT u.perfil,
+      (SELECT COUNT(*)::int FROM family_group_members member WHERE member.user_id=u.id_usuario) AS family_members
+      FROM usuario u WHERE u.id_usuario=$1`, [userId]);
     if (!user.rows.length) throw httpError("Usuario no encontrado", 404);
-    const profileKey = normalizeProfile(user.rows[0].perfil);
+    const profileKey = normalizeProfileKey(user.rows[0].perfil);
+    const profileConfig = getProfileConfig(profileKey);
+    if (!profileConfig) throw httpError("Selecciona un perfil de visa antes de consultar el pago", 409);
+    const personCount = profileConfig.caseType === "family"
+      ? 1 + Number(user.rows[0].family_members || 0)
+      : 1;
+    if (profileConfig.caseType === "family" && personCount < 2) {
+      throw httpError("Agrega al menos un integrante al expediente familiar antes de calcular el pago", 409);
+    }
     const result = await pool.query(`SELECT profile_key,label,package_amount_minor,package_currency,
       included_consular_fee_usd_cents
       FROM visa_fee_catalog WHERE profile_key=$1 AND active=TRUE`, [profileKey]);
     const row = result.rows[0];
     if (!row) throw httpError("No hay una tarifa configurada para este trámite", 409);
+    const packagePerPersonMinor = Number(row.package_amount_minor);
+    const governmentFeePerPersonUsdCents = Number(row.included_consular_fee_usd_cents);
     return { profileKey: row.profile_key, profileLabel: row.label,
-      packageAmountMinor: Number(row.package_amount_minor), packageCurrency: row.package_currency,
-      includedConsularFeeUsdCents: Number(row.included_consular_fee_usd_cents), personCount: 1 };
+      packageAmountMinor: packagePerPersonMinor * personCount, packagePerPersonMinor,
+      packageCurrency: row.package_currency,
+      includedConsularFeeUsdCents: governmentFeePerPersonUsdCents * personCount,
+      governmentFeePerPersonUsdCents, sevisFeeUsdCents: profileConfig.sevisFeeUsdCents || null,
+      personCount,
+      requiredDocuments: getDocumentsForProfile(profileKey)
+        .filter((document) => document.required)
+        .map(({ id, title }) => ({ id, title })),
+      familyDocumentNote: profileConfig.caseType === "family"
+        ? "Cada integrante debe presentar su propio pasaporte, fotografía y confirmación DS-160."
+        : null };
   }
 
   function presentPayment(row) {

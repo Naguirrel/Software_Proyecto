@@ -44,6 +44,9 @@ function presentProcess(row) {
       telefono: row.solicitante_telefono || "",
       ciudad: row.solicitante_ciudad || "",
       pais: row.solicitante_pais || "",
+      avatarVersion: row.solicitante_avatar_updated_at
+        ? new Date(row.solicitante_avatar_updated_at).getTime()
+        : null,
     },
   };
 }
@@ -127,7 +130,8 @@ module.exports = function createAdvisorRoutes(pool, {
         `, [advisorId]),
         pool.query(`
           SELECT t.*, u.nombre AS solicitante_nombre, u.correo AS solicitante_correo,
-                 u.perfil AS solicitante_perfil
+                 u.perfil AS solicitante_perfil,
+                 u.avatar_updated_at AS solicitante_avatar_updated_at
           FROM tramite t
           JOIN usuario u ON u.id_usuario = t.id_usuario
           WHERE t.id_asesor = $1 AND t.estado NOT IN ('Inactivo', 'Completado')
@@ -245,7 +249,8 @@ module.exports = function createAdvisorRoutes(pool, {
       const result = await pool.query(`
         SELECT t.*, u.nombre AS solicitante_nombre, u.correo AS solicitante_correo,
                u.perfil AS solicitante_perfil, u.telefono AS solicitante_telefono,
-               u.ciudad AS solicitante_ciudad, u.pais AS solicitante_pais
+               u.ciudad AS solicitante_ciudad, u.pais AS solicitante_pais,
+               u.avatar_updated_at AS solicitante_avatar_updated_at
         FROM tramite t JOIN usuario u ON u.id_usuario = t.id_usuario
         WHERE t.id_asesor = $1
         ORDER BY t.updated_at DESC NULLS LAST, t.id_tramite DESC
@@ -261,7 +266,8 @@ module.exports = function createAdvisorRoutes(pool, {
       const result = await pool.query(`
         SELECT t.*, u.nombre AS solicitante_nombre, u.correo AS solicitante_correo,
                u.perfil AS solicitante_perfil, u.telefono AS solicitante_telefono,
-               u.ciudad AS solicitante_ciudad, u.pais AS solicitante_pais
+               u.ciudad AS solicitante_ciudad, u.pais AS solicitante_pais,
+               u.avatar_updated_at AS solicitante_avatar_updated_at
         FROM tramite t JOIN usuario u ON u.id_usuario = t.id_usuario
         WHERE t.id_tramite = $1 AND t.id_asesor = $2 LIMIT 1
       `, [processId, req.auth.id_usuario]);
@@ -469,8 +475,9 @@ module.exports = function createAdvisorRoutes(pool, {
 
   router.get("/profile", async (req, res) => {
     try {
-      const result = await pool.query("SELECT id_usuario, nombre, correo, telefono, ciudad, pais, rol FROM usuario WHERE id_usuario = $1", [req.auth.id_usuario]);
-      return res.json({ user: result.rows[0] || null });
+      const result = await pool.query("SELECT id_usuario, nombre, correo, telefono, ciudad, pais, rol, avatar_updated_at FROM usuario WHERE id_usuario = $1", [req.auth.id_usuario]);
+      const user = result.rows[0] || null;
+      return res.json({ user: user ? { ...user, avatarVersion: user.avatar_updated_at ? new Date(user.avatar_updated_at).getTime() : null } : null });
     } catch (error) { return handleError(res, error, "No fue posible cargar el perfil"); }
   });
   router.put("/profile", async (req, res) => {
@@ -479,9 +486,10 @@ module.exports = function createAdvisorRoutes(pool, {
     try {
       const result = await pool.query(`UPDATE usuario SET nombre = $1, telefono = $2, ciudad = $3,
         pais = $4, updated_at = CURRENT_TIMESTAMP WHERE id_usuario = $5
-        RETURNING id_usuario, nombre, correo, telefono, ciudad, pais, rol`,
+        RETURNING id_usuario, nombre, correo, telefono, ciudad, pais, rol, avatar_updated_at`,
       [String(nombre).trim(), String(telefono).trim(), String(ciudad).trim(), String(pais).trim(), req.auth.id_usuario]);
-      return res.json({ user: result.rows[0] });
+      const user = result.rows[0];
+      return res.json({ user: { ...user, avatarVersion: user.avatar_updated_at ? new Date(user.avatar_updated_at).getTime() : null } });
     } catch (error) { return handleError(res, error, "No fue posible actualizar el perfil"); }
   });
 

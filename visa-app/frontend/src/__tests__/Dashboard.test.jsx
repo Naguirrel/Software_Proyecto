@@ -107,6 +107,19 @@ describe("Dashboard", () => {
     );
   });
 
+  it("adapta la información del proceso a una solicitud de estudiante", async () => {
+    authState.session = { ...authState.session, perfil: "estudiante" };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: async () => ({}) });
+
+    render(<Dashboard />);
+
+    expect(await screen.findByText("Continuemos con tu solicitud de visa F/M.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tu Formulario I-20 y SEVIS son indispensables" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Admisión académica" })).toBeInTheDocument();
+    expect(screen.queryByText(/obtener tu visa B1\/B2 sin contratiempos/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/90% de su decisión/i)).not.toBeInTheDocument();
+  });
+
   it("envía el token de sesión al cargar el DS-160 y muestra el porcentaje guardado", async () => {
     localStorage.setItem("visaguide_session", JSON.stringify({ ...authState.session, token: "token-ana" }));
     vi.spyOn(globalThis, "fetch").mockImplementation((url, options = {}) => {

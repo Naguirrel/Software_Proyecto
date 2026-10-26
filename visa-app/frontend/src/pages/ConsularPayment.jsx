@@ -9,17 +9,11 @@ import "../styles/consular.css";
 function authHeaders(session) { return { Authorization: `Bearer ${session.token}` }; }
 
 const PACKAGE_INCLUDES = [
-  "Pago de USD 185 ante la Embajada de Estados Unidos",
+  "Tarifa de solicitud de visa incluida por cada solicitante",
   "Llenado y confirmación del formulario DS-160",
   "Confirmación de la cita consular",
   "Asesoramiento durante el proceso",
   "Hasta 2 acercamientos de cita, sujetos a espacios liberados por la embajada",
-];
-
-const REQUIRED_INPUTS = [
-  "Foto clara de la hoja de datos del pasaporte",
-  "Fotografía digital para visa americana (puedes solicitarla en Foto Romano o Quick Foto)",
-  "Formulario enviado por tu asesor, llenado en computadora",
 ];
 
 export default function ConsularPayment() {
@@ -84,7 +78,13 @@ export default function ConsularPayment() {
         <section className="consular-card consular-card--primary">
           <div className="consular-card__top"><span>{summary?.profileLabel || "Trámite de visa"}</span><span className={`consular-status consular-status--${summary?.customerPaid ? "paid" : "pending"}`}>{summary?.customerPaid ? "Confirmado" : summary?.transferPending ? "Por validar" : "Pendiente"}</span></div>
           <strong className="consular-amount">{formatAmount(summary?.packageAmountMinor || 0)}</strong>
-          <p className="consular-muted">Precio fijo por persona. Incluye el pago consular de {formatAmount(summary?.includedConsularFeeUsdCents || 0, "usd")}.</p>
+          <p className="consular-muted">
+            {summary?.personCount > 1
+              ? `${summary.personCount} solicitantes · ${formatAmount(summary.packagePerPersonMinor || 0)} por persona.`
+              : "Precio fijo para un solicitante."}
+            {` Incluye ${formatAmount(summary?.governmentFeePerPersonUsdCents || 18500, "usd")} de tarifa gubernamental por persona.`}
+          </p>
+          {summary?.sevisFeeUsdCents && <div className="consular-notice"><strong>Pago SEVIS independiente</strong><span>La tarifa I-901 SEVIS de {formatAmount(summary.sevisFeeUsdCents, "usd")} se paga por separado en el sitio oficial de SEVP y no está incluida en este total.</span></div>}
           <div className="consular-package-list" data-senior-priority="secondary"><h2>El paquete incluye</h2><ol>{PACKAGE_INCLUDES.map((item) => <li key={item}>{item}</li>)}</ol></div>
           <dl className="consular-breakdown"><div><dt>Total a depositar o transferir</dt><dd>{formatAmount(summary?.packageAmountMinor || 0)}</dd></div></dl>
           {summary?.customerPaid ? <div className="consular-complete"><CheckCircle2 aria-hidden="true" /><div><strong>Transferencia confirmada</strong><span>{summary.consularPaid ? "El pago consular oficial ya fue registrado." : summary.latest?.status === "consular_processing" ? "Tu asesor está gestionando el pago consular." : "Tu asesor continuará con el trámite."}</span></div><Link className="consular-button" to="/citas">Ver seguimiento</Link></div> : summary?.transferPending ? <div className="consular-notice"><strong>Validación pendiente</strong><span>Tu asesor revisará el comprobante y confirmará la recepción del dinero.</span></div> : <form className="consular-form" onSubmit={submitTransfer}>
@@ -95,7 +95,7 @@ export default function ConsularPayment() {
           </form>}
         </section>
         <aside className="consular-card"><Building2 className="consular-feature-icon" aria-hidden="true" /><h2>Datos bancarios</h2>{summary?.bank?.configured ? <dl className="consular-bank-details"><div><dt>Banco</dt><dd>{summary.bank.bankName}</dd></div><div><dt>Cuenta a nombre de</dt><dd>{summary.bank.accountName}</dd></div><div><dt>Número de cuenta</dt><dd>{summary.bank.accountNumber} <button type="button" onClick={copyAccount} aria-label="Copiar número de cuenta"><Copy aria-hidden="true" /></button></dd></div>{summary.bank.accountType && <div><dt>Tipo de cuenta</dt><dd>{summary.bank.accountType}</dd></div>}</dl> : <div className="consular-notice"><strong>Datos proporcionados por el asesor</strong><span>{summary?.bank?.instructions}</span></div>}<p className="consular-muted">Transfiere exactamente el total mostrado y conserva el comprobante hasta que sea validado.</p></aside>
-        <section className="consular-card"><h2>Documentos que debes entregar</h2><ol className="consular-requirements">{REQUIRED_INPUTS.map((item) => <li key={item}>{item}</li>)}</ol><Link className="consular-button consular-button--secondary" to="/documents">Ir a documentos</Link></section>
+        <section className="consular-card"><h2>Documentos obligatorios para {summary?.profileLabel || "tu visa"}</h2><ol className="consular-requirements">{summary?.requiredDocuments?.map((item) => <li key={item.id}>{item.title}</li>)}</ol>{summary?.familyDocumentNote && <p className="consular-muted">{summary.familyDocumentNote}</p>}<Link className="consular-button consular-button--secondary" to="/documents">Ir a documentos</Link></section>
         <section className="consular-card consular-card--wide" data-senior-priority="secondary"><h2>Historial</h2>{summary?.payments?.length ? <div className="consular-history">{summary.payments.map((payment) => <div key={payment.id}><span>{new Date(payment.created_at).toLocaleDateString("es-GT")}</span><strong>{payment.status === "transfer_pending" ? "Por validar" : payment.status === "transfer_rejected" ? "Rechazado" : payment.status === "consular_paid" ? "Pagado al consulado" : "Transferencia confirmada"}</strong><span>{payment.transfer_reference || "Registro anterior"}</span></div>)}</div> : <p className="consular-empty">Todavía no has registrado transferencias.</p>}</section>
       </div>}
       <p className="consular-disclaimer">El comprobante enviado queda sujeto a validación. El trámite consular inicia únicamente después de confirmar que los fondos fueron recibidos.</p>

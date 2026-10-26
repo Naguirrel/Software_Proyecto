@@ -60,6 +60,10 @@ export function validarCampo(campo, valor, formData) {
       }
     }
 
+    if (v.pattern === "sevis" && !/^N\d{10}$/i.test(valorStr)) {
+      return "Ingresa un número SEVIS válido (N seguido de 10 dígitos)";
+    }
+
     // Fechas
     if (v.tipo === "fechaPasada") {
       const fecha = new Date(valor);

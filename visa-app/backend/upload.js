@@ -16,6 +16,14 @@ const INTERVIEW_AUDIO_TYPES = {
   ".webm": new Set(["audio/webm", "video/webm"]),
 };
 
+const AVATAR_FILE_TYPES = {
+  ".jpg": new Set(["image/jpeg"]),
+  ".jpeg": new Set(["image/jpeg"]),
+  ".png": new Set(["image/png"]),
+};
+const AVATAR_SIZE_LIMIT_MB = 2;
+const AVATAR_SIZE_LIMIT_BYTES = AVATAR_SIZE_LIMIT_MB * 1024 * 1024;
+
 const DANGEROUS_EXTENSIONS = new Set([
   ".bat",
   ".cmd",
@@ -62,6 +70,7 @@ function getNormalizedExtension(file) {
 
 function getAllowedTypesForField(file) {
   if (file.fieldname === "file") return DOCUMENT_FILE_TYPES;
+  if (file.fieldname === "avatar") return AVATAR_FILE_TYPES;
   if (file.fieldname?.startsWith("audio_")) return INTERVIEW_AUDIO_TYPES;
   return null;
 }
@@ -96,8 +105,9 @@ function handleUploadError(error, _req, res, next) {
 
   if (error instanceof multer.MulterError) {
     if (error.code === "LIMIT_FILE_SIZE") {
+      const limitMb = error.field === "avatar" ? AVATAR_SIZE_LIMIT_MB : FILE_SIZE_LIMIT_MB;
       return res.status(413).json({
-        error: `El archivo excede el límite de ${FILE_SIZE_LIMIT_MB} MB`,
+        error: `El archivo excede el límite de ${limitMb} MB`,
       });
     }
 
@@ -127,10 +137,23 @@ const upload = multer({
   },
 });
 
+const avatarUpload = multer({
+  storage,
+  fileFilter: validateUploadedFile,
+  limits: {
+    fileSize: AVATAR_SIZE_LIMIT_BYTES,
+    files: 1,
+  },
+});
+
 upload.handleUploadError = handleUploadError;
 upload.FILE_SIZE_LIMIT_MB = FILE_SIZE_LIMIT_MB;
 upload.FILE_SIZE_LIMIT_BYTES = FILE_SIZE_LIMIT_BYTES;
 upload.allowedDocumentExtensions = Object.keys(DOCUMENT_FILE_TYPES);
+upload.allowedAvatarExtensions = Object.keys(AVATAR_FILE_TYPES);
 upload.allowedInterviewAudioExtensions = Object.keys(INTERVIEW_AUDIO_TYPES);
+upload.avatarSingle = avatarUpload.single("avatar");
+upload.AVATAR_SIZE_LIMIT_MB = AVATAR_SIZE_LIMIT_MB;
+upload.AVATAR_SIZE_LIMIT_BYTES = AVATAR_SIZE_LIMIT_BYTES;
 
 module.exports = upload;

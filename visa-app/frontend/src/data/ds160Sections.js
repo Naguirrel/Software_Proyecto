@@ -199,3 +199,119 @@ export const secciones = [
 ];
 
 export const totalSecciones = secciones.length;
+
+const studentSection = {
+  id: 11,
+  titulo: "Información del programa de estudios",
+  campos: [
+    {
+      name: "studentVisaClass",
+      label: "CLASE DE VISA INDICADA EN TU I-20",
+      type: "select",
+      opciones: ["F-1", "M-1"],
+      required: true,
+      tip: "Selecciona exactamente la categoría que aparece en tu Formulario I-20.",
+    },
+    {
+      name: "sevisId",
+      label: "NÚMERO SEVIS",
+      type: "text",
+      placeholder: "Ej: N0012345678",
+      required: true,
+      validation: { minLength: 11, maxLength: 11, pattern: "sevis" },
+      tip: "Lo encuentras en la esquina superior de tu I-20. Comienza con la letra N y contiene 10 dígitos.",
+      porque: "Relaciona tu solicitud de visa con el registro creado por la institución en SEVIS.",
+    },
+    {
+      name: "schoolName",
+      label: "NOMBRE DE LA INSTITUCIÓN EN EE.UU.",
+      type: "text",
+      placeholder: "Tal como aparece en el I-20",
+      required: true,
+    },
+    {
+      name: "schoolSevisCode",
+      label: "CÓDIGO SEVIS DE LA INSTITUCIÓN",
+      type: "text",
+      placeholder: "Ej: BOS214F00123000",
+      required: true,
+    },
+    {
+      name: "programName",
+      label: "PROGRAMA O ÁREA DE ESTUDIO",
+      type: "text",
+      placeholder: "Ej: Bachelor of Science in Computer Science",
+      required: true,
+    },
+    {
+      name: "programStartDate",
+      label: "FECHA DE INICIO DEL PROGRAMA",
+      type: "date",
+      required: true,
+    },
+    {
+      name: "studyFundingSource",
+      label: "¿QUIÉN FINANCIARÁ TUS ESTUDIOS Y MANUTENCIÓN?",
+      type: "text",
+      placeholder: "Ej: Fondos propios, padres, beca de la universidad",
+      required: true,
+      porque: "El oficial puede pedir evidencia de que cuentas con recursos suficientes para estudiar sin empleo no autorizado.",
+    },
+  ],
+};
+
+const renewalSection = {
+  id: 11,
+  titulo: "Datos de la visa anterior",
+  campos: [
+    {
+      name: "previousVisaNumber",
+      label: "NÚMERO DE LA VISA ANTERIOR",
+      type: "text",
+      placeholder: "Número impreso en rojo en la visa",
+      required: true,
+    },
+    {
+      name: "previousVisaIssueDate",
+      label: "FECHA DE EMISIÓN DE LA VISA ANTERIOR",
+      type: "date",
+      required: true,
+      validation: { tipo: "fechaPasada" },
+    },
+    {
+      name: "previousVisaExpirationDate",
+      label: "FECHA DE VENCIMIENTO DE LA VISA ANTERIOR",
+      type: "date",
+      required: true,
+    },
+    {
+      name: "previousVisaSameClass",
+      label: "¿SOLICITAS LA MISMA CATEGORÍA B1/B2?",
+      type: "radio",
+      opciones: ["Sí", "No"],
+      required: true,
+      tip: "La plataforma evalúa renovación B1/B2. El portal oficial decide si debes presentarte a entrevista.",
+    },
+    {
+      name: "previousVisaLostOrStolen",
+      label: "¿LA VISA ANTERIOR FUE PERDIDA O ROBADA?",
+      type: "radio",
+      opciones: ["Sí", "No"],
+      required: true,
+    },
+    {
+      name: "previousVisaLostDetails",
+      label: "EXPLICA CUÁNDO Y DÓNDE OCURRIÓ",
+      type: "text",
+      placeholder: "Incluye si presentaste una denuncia",
+      required: true,
+      dependeDe: { campo: "previousVisaLostOrStolen", valor: "Sí" },
+    },
+  ],
+};
+
+export function getDs160Sections(profile) {
+  if (profile === "estudiante") return [...secciones, studentSection];
+  if (profile === "renovacion") return [...secciones, renewalSection];
+  return secciones;
+}

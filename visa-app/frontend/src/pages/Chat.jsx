@@ -6,6 +6,7 @@ import useRequireAuth from "../hooks/useRequireAuth";
 import { SkeletonCard } from "../components/SkeletonCard";
 import { apiRequest } from "../utils/apiClient";
 import { buildSessionHeaders } from "../utils/sessionAuth";
+import ProfileAvatar from "../components/ProfileAvatar";
 import "../styles/chat.css";
 
 function SendIcon() {
@@ -164,12 +165,7 @@ export default function Chat() {
             <section className="chat-panel">
               {/* Header del asesor */}
               <div className="chat-header">
-                <div className="chat-header__avatar">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" width="22" height="22">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
-                </div>
+                <ProfileAvatar userId={assignment?.id_asesor} name={assignment?.advisor_name || "Asesor"} version={assignment?.advisor_avatar_updated_at} size={46} className="chat-header__profile-avatar" />
                 <div className="chat-header__info">
                   <h2 className="chat-header__name">{assignment?.advisor_name || "Asesor pendiente"}</h2>
                   <p className="chat-header__role">{assignment?.advisor_name ? "Asesor consular asignado · actualización automática" : "Aún no tienes asesor asignado"}</p>

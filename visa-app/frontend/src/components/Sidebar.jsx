@@ -12,7 +12,6 @@ import {
   MessageSquare,
   Moon,
   Sun,
-  UserCircle,
   Users,
 } from "lucide-react";
 import { buildApiUrl } from "../config/api";
@@ -27,6 +26,7 @@ import { preloadRoute } from "../routes/lazyRoutes";
 import useClientWorkflow from "../hooks/useClientWorkflow";
 import SeniorModeToggle from "./SeniorModeToggle";
 import SeniorGuidance from "./SeniorGuidance";
+import ProfileAvatar from "./ProfileAvatar";
 
 const menuItems = [
   { id: "inicio", labelKey: "sidebar.inicio", Icon: LayoutGrid, path: "/dashboard" },
@@ -317,7 +317,13 @@ export default function Sidebar({ currentPage }) {
             onMouseEnter={() => preloadRoute("/perfil")}
             onFocus={() => preloadRoute("/perfil")}
           >
-            <UserCircle size={iconSize} strokeWidth={2} aria-hidden="true" />
+            <ProfileAvatar
+              userId={usuario?.id || usuario?.id_usuario}
+              name={usuario?.nombre}
+              version={usuario?.avatarVersion}
+              size={modoSenior ? 34 : 26}
+              className="vg-sidebar-profile-avatar"
+            />
             <div className="vg-sidebar-label" style={s.userInfo}>
               <p style={{ ...s.userName, fontSize: modoSenior ? "18px" : "14px" }}>
                 {usuario?.nombre || t("sidebar.user")}

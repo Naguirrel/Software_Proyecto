@@ -5,7 +5,7 @@ import Sidebar from "../components/Sidebar";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
 import useDS160Form from "../hooks/useDS160Form";
-import { secciones } from "../data/ds160Sections";
+import { getDs160Sections } from "../data/ds160Sections";
 import DS160Field from "../components/ds160/DS160Field";
 import { SaveIcon, DownloadIcon, CheckCircleIcon, InfoCircleIcon } from "../components/ds160/DS160Icons";
 import "../styles/ds160.css";
@@ -247,12 +247,13 @@ function getSt() {
 }
 
 export default function DS160Form() {
-  const { isValidating: authValidating } = useRequireAuth();
+  const { isValidating: authValidating, session } = useRequireAuth();
   const navigate = useNavigate();
   const modoSenior = useModoSenior();
   const descargarButtonRef = useRef(null);
   const dashboardButtonRef = useRef(null);
   const st = getSt();
+  const secciones = getDs160Sections(session?.perfil);
   const {
     seccionActual,
     formData,
@@ -273,7 +274,7 @@ export default function DS160Form() {
     finalizarFormulario,
     siguienteSeccion,
     anteriorSeccion,
-  } = useDS160Form();
+  } = useDS160Form(session?.perfil);
 
   useLayoutEffect(() => {
     if (formularioFinalizado) descargarButtonRef.current?.focus();

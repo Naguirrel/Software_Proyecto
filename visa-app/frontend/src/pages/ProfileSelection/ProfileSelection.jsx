@@ -5,6 +5,7 @@ import SeniorModeToggle from "../../components/SeniorModeToggle";
 import useRequireAuth from "../../hooks/useRequireAuth";
 import { apiRequest } from "../../utils/apiClient";
 import { buildSessionHeaders } from "../../utils/sessionAuth";
+import { setModoSenior } from "../../utils/modoSenior";
 
 function ProfileSelection() {
   const { isValidating, session } = useRequireAuth();
@@ -35,26 +36,27 @@ function ProfileSelection() {
     },
     {
       id: "renovacion",
-      title: "Renovación",
+      title: "Renovación B1/B2",
       description:
-        "Renovación de visa sin necesidad de entrevista consular.",
+        "Renueva tu visa con un DS-160 y pago nuevos. El portal oficial confirmará si necesitas entrevista.",
     },
     {
       id: "grupo_familiar",
       title: "Grupo Familiar",
       description:
-        "Solicitud conjunta para varios miembros de la familia.",
+        "Seguimiento compartido con DS-160, documentos y tarifa individual para cada integrante.",
     },
     {
       id: "adulto_mayor",
-      title: "Adulto Mayor (Senior)",
+      title: "Adulto Mayor (asistencia accesible)",
       description:
-        "Proceso simplificado con exención de entrevista por edad.",
+        "Activa el Modo Senior desde el inicio. La edad no elimina automáticamente la entrevista.",
     },
   ];
 
   const handleSelectProfile = (profileId) => {
     setSelectedProfile(profileId);
+    if (profileId === "adulto_mayor") setModoSenior(true);
     setErrorMessage("");
   };
 

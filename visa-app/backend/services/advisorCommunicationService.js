@@ -155,7 +155,8 @@ module.exports = function createAdvisorCommunicationService(pool, { notificacion
     const result = await pool.query(
       `SELECT t.id_tramite, t.id_usuario, t.id_asesor, t.etapa_actual, t.estado,
               u.nombre AS user_name, u.correo AS user_email, u.perfil,
-              advisor.nombre AS advisor_name, advisor.correo AS advisor_email
+              advisor.nombre AS advisor_name, advisor.correo AS advisor_email,
+              advisor.avatar_updated_at AS advisor_avatar_updated_at
        FROM tramite t
        JOIN usuario u ON u.id_usuario = t.id_usuario
        JOIN usuario advisor ON advisor.id_usuario = t.id_asesor
@@ -176,7 +177,8 @@ module.exports = function createAdvisorCommunicationService(pool, { notificacion
     const result = await pool.query(
       `SELECT t.id_tramite, t.id_usuario, t.id_asesor, t.etapa_actual, t.estado,
               u.nombre AS user_name, u.correo AS user_email, u.perfil,
-              advisor.nombre AS advisor_name, advisor.correo AS advisor_email
+              advisor.nombre AS advisor_name, advisor.correo AS advisor_email,
+              advisor.avatar_updated_at AS advisor_avatar_updated_at
        FROM tramite t
        JOIN usuario u ON u.id_usuario = t.id_usuario
        LEFT JOIN usuario advisor ON advisor.id_usuario = t.id_asesor
@@ -191,7 +193,7 @@ module.exports = function createAdvisorCommunicationService(pool, { notificacion
     await ensureSchema();
     const normalizedAdvisorId = toPositiveInteger(advisorId, "Asesor");
     const result = await pool.query(
-      `SELECT u.id_usuario AS user_id, u.nombre, u.correo, u.perfil,
+      `SELECT u.id_usuario AS user_id, u.nombre, u.correo, u.perfil, u.avatar_updated_at,
               t.etapa_actual, t.estado,
               latest.message AS last_message, latest.created_at AS last_message_at,
               COALESCE(unread.total, 0)::int AS unread_count
@@ -224,6 +226,7 @@ module.exports = function createAdvisorCommunicationService(pool, { notificacion
       lastMessage: row.last_message || "Sin mensajes todavía",
       lastMessageAt: row.last_message_at || null,
       unreadCount: Number(row.unread_count) || 0,
+      avatarVersion: row.avatar_updated_at ? new Date(row.avatar_updated_at).getTime() : null,
     }));
   }
 

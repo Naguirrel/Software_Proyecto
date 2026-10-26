@@ -2,32 +2,33 @@ import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import DocumentCard from "../components/DocumentCard";
 import StatusCard from "../components/StatusCard";
+import VisaProfileRequirements from "../components/VisaProfileRequirements";
 import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
+import { apiRequest } from "../utils/apiClient";
 import "../styles/documents.css";
 
-const REQUIRED_DOCUMENTS = [
+const FALLBACK_DOCUMENTS = [
   {
     id: "passport",
-    title: "Foto de la hoja de datos del pasaporte",
-    category: "Identificacion Oficial",
-    type: "image",
+    baseKey: "passport",
+    title: "Página de datos del pasaporte vigente",
+    category: "Documento oficial",
+    type: "image_or_pdf",
+    requirement: "required",
+    scope: "official",
     required: true,
   },
   {
     id: "photo",
-    title: "Fotografía digital para visa americana",
-    category: "Requisito Consular",
+    baseKey: "photo",
+    title: "Fotografía digital para visa estadounidense",
+    category: "Documento oficial",
     type: "image",
-    required: true,
-  },
-  {
-    id: "intake-form",
-    title: "Formulario enviado por tu asesor, llenado en computadora",
-    category: "Información para DS-160",
-    type: "pdf",
+    requirement: "required",
+    scope: "official",
     required: true,
   },
 ];
@@ -52,8 +53,8 @@ function formatDocumentDate(value) {
   });
 }
 
-function getInitialDocuments() {
-  return REQUIRED_DOCUMENTS.map((document) => ({
+function getInitialDocuments(definitions = FALLBACK_DOCUMENTS) {
+  return definitions.map((document) => ({
     ...document,
     status: "pending",
     updatedAt: "No subido",
@@ -63,8 +64,8 @@ function getInitialDocuments() {
   }));
 }
 
-function mergeSavedDocuments(savedDocuments) {
-  return REQUIRED_DOCUMENTS.map((document) => {
+function mergeSavedDocuments(definitions, savedDocuments) {
+  return definitions.map((document) => {
     const savedDocument = savedDocuments.find(
       (item) => item.documento_key === document.id || item.nombre === document.title
     );
@@ -97,6 +98,8 @@ export default function Documents() {
   const { isValidating, session } = useRequireAuth();
   const modoSenior = useModoSenior();
   const [documents, setDocuments] = useState(getInitialDocuments);
+  const [requirements, setRequirements] = useState(null);
+  const [requirementsRevision, setRequirementsRevision] = useState(0);
   const [loadingDocuments, setLoadingDocuments] = useState(true);
   const [documentsError, setDocumentsError] = useState("");
 
@@ -116,18 +119,29 @@ export default function Documents() {
         setLoadingDocuments(true);
         setDocumentsError("");
 
-        const response = await fetch(buildApiUrl("/documentos/listar"), {
-          method: "POST",
-          headers: buildSessionHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ usuario_id: session.id }),
-          signal: controller.signal,
-        });
+        const [profileRequirements, response] = await Promise.all([
+          apiRequest("/visa-profile/requirements", {
+            headers: buildSessionHeaders(),
+            signal: controller.signal,
+            fallbackMessage: "No se pudieron cargar los requisitos de tu visa.",
+          }),
+          fetch(buildApiUrl("/documentos/listar"), {
+            method: "POST",
+            headers: buildSessionHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ usuario_id: session.id }),
+            signal: controller.signal,
+          }),
+        ]);
         if (!response.ok) {
           throw new Error("No se pudieron cargar tus documentos.");
         }
 
         const data = await response.json();
-        setDocuments(mergeSavedDocuments(Array.isArray(data) ? data : []));
+        const definitions = Array.isArray(profileRequirements?.documents)
+          ? profileRequirements.documents
+          : FALLBACK_DOCUMENTS;
+        setRequirements(profileRequirements);
+        setDocuments(mergeSavedDocuments(definitions, Array.isArray(data) ? data : []));
       } catch (error) {
         if (error.name === "AbortError") return;
         setDocuments(getInitialDocuments());
@@ -139,10 +153,10 @@ export default function Documents() {
 
     fetchUserDocuments();
     return () => controller.abort();
-  }, [isValidating, session?.id]);
+  }, [isValidating, requirementsRevision, session?.id]);
 
   const statusCounts = useMemo(() => {
-    return documents.reduce(
+    return documents.filter((document) => document.required).reduce(
       (counts, document) => ({
         ...counts,
         [document.status]: (counts[document.status] || 0) + 1,
@@ -150,6 +164,15 @@ export default function Documents() {
       { approved: 0, review: 0, correction: 0, pending: 0 }
     );
   }, [documents]);
+
+  const groupedDocuments = useMemo(() => ({
+    required: documents.filter((document) => document.required),
+    supporting: documents.filter((document) => !document.required && document.scope === "supporting"),
+    internal: documents.filter((document) => !document.required && document.scope === "internal"),
+    conditional: documents.filter((document) => !document.required && document.requirement === "conditional"),
+  }), [documents]);
+
+  const refreshRequirements = async () => setRequirementsRevision((revision) => revision + 1);
 
   const handleDocumentStatusChange = (
     documentId,
@@ -226,8 +249,8 @@ export default function Documents() {
               <div>
                 <h1 className="documents-title">Gestor de Documentos</h1>
                 <p className="documents-subtitle" data-senior-priority="secondary">
-                  Sube y administra los documentos de soporte para tu entrevista.
-                  Los archivos requeridos son obligatorios para continuar.
+                  Los requisitos cambian según tu categoría. Distinguimos documentos oficiales,
+                  respaldos opcionales y formularios internos para evitar confusiones.
                 </p>
               </div>
 
@@ -255,6 +278,8 @@ export default function Documents() {
               </button>
             </section>
 
+            <VisaProfileRequirements requirements={requirements} onRefresh={refreshRequirements} />
+
             <section className="status-grid" aria-label="Resumen de documentos" data-senior-priority="secondary">
               {SUMMARY_CARDS.map((card) => (
                 <StatusCard
@@ -266,7 +291,7 @@ export default function Documents() {
               ))}
             </section>
 
-            <section className="documents-list" aria-label="Documentos requeridos">
+            <section className="documents-list" aria-label="Documentos del expediente">
               {loadingDocuments && (
                 <p className="documents-message">
                   Cargando estado de documentos...
@@ -279,7 +304,8 @@ export default function Documents() {
                 </p>
               )}
 
-              {documents.map((doc) => (
+              {!loadingDocuments && <header className="documents-section-heading"><h2>Documentos obligatorios</h2><p>Deben cargarse y ser aprobados para continuar al pago.</p></header>}
+              {groupedDocuments.required.map((doc) => (
                 <DocumentCard
                   key={doc.id}
                   doc={doc}
@@ -289,6 +315,15 @@ export default function Documents() {
                   onDeleteSuccess={handleDocumentDelete}
                 />
               ))}
+
+              {!loadingDocuments && groupedDocuments.conditional.length > 0 && <header className="documents-section-heading"><h2>Documentos condicionales</h2><p>Cárgalos únicamente cuando el portal oficial o tu asesor los solicite.</p></header>}
+              {groupedDocuments.conditional.map((doc) => <DocumentCard key={doc.id} doc={doc} usuarioId={session?.id} onStatusChange={handleDocumentStatusChange} onUploadSuccess={handleUploadSuccess} onDeleteSuccess={handleDocumentDelete} />)}
+
+              {!loadingDocuments && groupedDocuments.supporting.length > 0 && <header className="documents-section-heading"><h2>Documentos de respaldo</h2><p>Pueden ser solicitados según tu situación; no son obligatorios universales.</p></header>}
+              {groupedDocuments.supporting.map((doc) => <DocumentCard key={doc.id} doc={doc} usuarioId={session?.id} onStatusChange={handleDocumentStatusChange} onUploadSuccess={handleUploadSuccess} onDeleteSuccess={handleDocumentDelete} />)}
+
+              {!loadingDocuments && groupedDocuments.internal.length > 0 && <header className="documents-section-heading"><h2>Preparación interna VisaGuide</h2><p>Ayuda al asesor, pero no es documentación exigida por el consulado.</p></header>}
+              {groupedDocuments.internal.map((doc) => <DocumentCard key={doc.id} doc={doc} usuarioId={session?.id} onStatusChange={handleDocumentStatusChange} onUploadSuccess={handleUploadSuccess} onDeleteSuccess={handleDocumentDelete} />)}
             </section>
 
           </>

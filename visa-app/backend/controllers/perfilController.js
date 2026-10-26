@@ -29,16 +29,18 @@ function createPerfilController(perfilService, { activityLogService, notificacio
         metadata: { perfil },
       });
 
-      await perfilService.avanzarTramiteDS160(usuario.id_usuario);
+      const nextStage = await perfilService.avanzarTramiteDS160(usuario.id_usuario);
 
       // Notificar cambio de etapa
       try {
-        await notificacionService.crear({
+        await notificacionService.crearNotificacion({
           userId: usuario.id_usuario,
           titulo: "¡Perfil configurado!",
-          mensaje: "Tu perfil de visa ha sido guardado. El siguiente paso es completar el formulario DS-160.",
+          mensaje: nextStage?.assigned
+            ? "Tu perfil de visa ha sido guardado. El siguiente paso es completar el formulario DS-160."
+            : "Tu perfil de visa ha sido guardado. Puedes cargar documentos mientras asignamos a tu asesor.",
           tipo: "info",
-          etapaRelacionada: "ds160",
+          etapaRelacionada: nextStage?.assigned ? "ds160" : "assignment",
         });
       } catch (notifError) {
         console.error("Error al crear notificación:", notifError);
@@ -52,6 +54,39 @@ function createPerfilController(perfilService, { activityLogService, notificacio
       return sendErrorResponse(req, res, error, {
         fallback: "No fue posible guardar el perfil",
         context: "profile.save",
+      });
+    }
+  }
+
+  async function getVisaProfileRequirements(req, res) {
+    try {
+      return res.json(await perfilService.getProfileRequirements(req.auth.id_usuario));
+    } catch (error) {
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible cargar los requisitos del perfil",
+        context: "profile.requirements",
+      });
+    }
+  }
+
+  async function updateVisaDetails(req, res) {
+    try {
+      const result = await perfilService.updateVisaDetails(req.auth.id_usuario, req.body);
+      await activityLogService.logActivity({
+        req,
+        userId: req.auth.id_usuario,
+        role: "cliente",
+        action: "visa_profile.details_updated",
+        entityType: "usuario",
+        entityId: req.auth.id_usuario,
+        description: "Datos específicos del trámite actualizados",
+        metadata: { fields: Object.keys(req.body || {}) },
+      });
+      return res.json(result);
+    } catch (error) {
+      return sendErrorResponse(req, res, error, {
+        fallback: "No fue posible actualizar los datos del trámite",
+        context: "profile.details_update",
       });
     }
   }
@@ -110,6 +145,7 @@ function createPerfilController(perfilService, { activityLogService, notificacio
           ciudad: usuario.ciudad || "",
           pais: usuario.pais || "",
           perfil: usuario.perfil || null,
+          avatarVersion: usuario.avatar_updated_at ? new Date(usuario.avatar_updated_at).getTime() : null,
           preferencias: {
             notificacionesEmail: usuario.notificaciones_email !== false,
             idioma: usuario.idioma || "es",
@@ -182,6 +218,7 @@ function createPerfilController(perfilService, { activityLogService, notificacio
           ciudad: usuario.ciudad || "",
           pais: usuario.pais || "",
           perfil: usuario.perfil || null,
+          avatarVersion: usuario.avatar_updated_at ? new Date(usuario.avatar_updated_at).getTime() : null,
           preferencias: {
             notificacionesEmail: usuario.notificaciones_email !== false,
             idioma: usuario.idioma || "es",
@@ -206,6 +243,8 @@ function createPerfilController(perfilService, { activityLogService, notificacio
     guardarPerfil,
     estadoTramite,
     getUsuarioPerfil,
+    getVisaProfileRequirements,
+    updateVisaDetails,
     updateUsuarioPerfil,
     updateTramite,
   };

@@ -22,6 +22,8 @@ const createConsularRoutes = require("./routes/consularRoutes");
 const createAdvisorRoutes = require("./routes/advisorRoutes");
 const createAdvisorNotificationRoutes = require("./routes/advisorNotificationRoutes");
 const createChatRoutes = require("./routes/chatRoutes");
+const createProfileIdentityRoutes = require("./routes/profileIdentityRoutes");
+const createAdvisorChangeRequestRoutes = require("./routes/advisorChangeRequestRoutes");
 const { createWorkflowRoutes, createWorkflowStepMiddleware } = require("./routes/workflowRoutes");
 const { createRoleMiddleware, createSessionMiddleware, issueSessionToken } = require("./auth");
 const createInterviewSessionService = require("./services/interviewSessionService");
@@ -35,7 +37,7 @@ const developmentUsers = require("./config/developmentUsers");
 const createConsularPaymentService = require("./services/consularPaymentService");
 const createConsularAppointmentService = require("./services/consularAppointmentService");
 const { streamDs160Pdf } = require("./services/ds160PdfService");
-const { LOCAL_STORAGE_DIR, uploadStoredFile, deleteStoredFile } = require("./storage");
+const { LOCAL_STORAGE_DIR, uploadStoredFile, deleteStoredFile, getStoredFile } = require("./storage");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 const { createRequestContext } = require("./middleware/requestContext");
 const { createApiDocsSecurityHeaders, createSecurityHeaders } = require("./middleware/securityHeaders");
@@ -128,7 +130,16 @@ async function ensureUserSchema() {
       ADD COLUMN IF NOT EXISTS email_verificado     BOOLEAN DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS bloqueado_hasta      TIMESTAMP,
       ADD COLUMN IF NOT EXISTS intentos_reset_en    TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS session_version      INTEGER NOT NULL DEFAULT 0
+      ADD COLUMN IF NOT EXISTS session_version      INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS visa_details         JSONB NOT NULL DEFAULT '{}'::jsonb,
+      ADD COLUMN IF NOT EXISTS avatar_storage_key   TEXT,
+      ADD COLUMN IF NOT EXISTS avatar_mime_type     VARCHAR(80),
+      ADD COLUMN IF NOT EXISTS avatar_updated_at    TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS activo               BOOLEAN DEFAULT TRUE,
+      ADD COLUMN IF NOT EXISTS created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS capacidad_asesor     INT DEFAULT 50,
+      ADD COLUMN IF NOT EXISTS disponible_asesor    BOOLEAN DEFAULT TRUE
   `);
   await pool.query(`
     UPDATE usuario SET rol = 'cliente'
@@ -151,6 +162,28 @@ async function ensureUserSchema() {
         CHECK (rol IN ('cliente', 'asesor', 'admin'));
       END IF;
     END $$
+  `);
+}
+
+async function ensureVisaProfileSchema() {
+  await userSchemaReady;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS family_group_members (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+      full_name VARCHAR(160) NOT NULL,
+      relationship VARCHAR(40) NOT NULL,
+      date_of_birth DATE NOT NULL,
+      ds160_confirmation_number VARCHAR(30),
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT family_group_members_relationship_check
+        CHECK (relationship IN ('conyuge','hijo_hija','padre_madre','hermano_hermana','otro'))
+    )
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS family_group_members_user_idx
+    ON family_group_members(user_id, created_at, id)
   `);
 }
 
@@ -186,6 +219,37 @@ async function ensureTramiteSchema() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS process_change_history_process_idx
     ON process_change_history(process_id, changed_at DESC, id DESC)
+  `);
+}
+
+async function ensureIdentitySchema() {
+  await Promise.all([userSchemaReady, tramiteSchemaReady]);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS advisor_change_requests (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+      current_advisor_id INT NOT NULL REFERENCES usuario(id_usuario) ON DELETE RESTRICT,
+      category VARCHAR(40) NOT NULL CHECK (category IN (
+        'mistreatment', 'poor_communication', 'lack_of_follow_up', 'conflict', 'other'
+      )),
+      message TEXT NOT NULL CHECK (char_length(message) BETWEEN 20 AND 2000),
+      status VARCHAR(20) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'approved', 'rejected', 'cancelled')),
+      resolution TEXT,
+      reviewed_by INT REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+      reviewed_at TIMESTAMPTZ,
+      new_advisor_id INT REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS advisor_change_requests_one_pending_idx
+    ON advisor_change_requests(user_id) WHERE status = 'pending'
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS advisor_change_requests_admin_queue_idx
+    ON advisor_change_requests(status, created_at, id)
   `);
 }
 
@@ -271,7 +335,8 @@ async function ensureAdminSchema() {
   await pool.query("CREATE INDEX IF NOT EXISTS formulario_ds160_usuario_idx ON formulario_ds160(id_usuario)");
   await pool.query(`ALTER TABLE question_bank
     ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE,
-    ADD COLUMN IF NOT EXISTS uso_count INT DEFAULT 0`);
+    ADD COLUMN IF NOT EXISTS uso_count INT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS visa_profiles TEXT[] NOT NULL DEFAULT ARRAY['turismo_negocios','estudiante','renovacion','grupo_familiar','adulto_mayor']::text[]`);
   await pool.query(`CREATE TABLE IF NOT EXISTS admin_settings (
     id INT PRIMARY KEY,
     nombre_comercial VARCHAR(160), razon_social VARCHAR(200), sitio_web TEXT,
@@ -290,8 +355,14 @@ async function ensureAdminSchema() {
 const userSchemaReady = ensureUserSchema().catch((error) => {
   console.error("ERROR USER SCHEMA:", error);
 });
+const visaProfileSchemaReady = userSchemaReady.then(ensureVisaProfileSchema).catch((error) => {
+  console.error("ERROR VISA PROFILE SCHEMA:", error);
+});
 const tramiteSchemaReady = userSchemaReady.then(ensureTramiteSchema).catch((error) => {
   console.error("ERROR TRAMITE SCHEMA:", error);
+});
+const identitySchemaReady = Promise.all([userSchemaReady, tramiteSchemaReady]).then(ensureIdentitySchema).catch((error) => {
+  console.error("ERROR IDENTITY SCHEMA:", error);
 });
 const passwordResetSchemaReady = userSchemaReady.then(ensurePasswordResetSchema).catch((error) => {
   console.error("ERROR PASSWORD RESET SCHEMA:", error);
@@ -374,6 +445,8 @@ const workflowSchemaReady = Promise.all([
   documentSchemaReady,
   interviewSchemaReady,
   consularSchemaReady,
+  visaProfileSchemaReady,
+  identitySchemaReady,
 ]);
 const requireWorkflowStep = createWorkflowStepMiddleware(pool, { schemaReady: workflowSchemaReady });
 
@@ -400,6 +473,7 @@ app.use("/", createPerfilRoutes(pool, {
   activityLogService,
   notificacionService,
   requireSession,
+  visaProfileSchemaReady,
 }));
 app.use("/", createAuthRoutes(pool, {
   userSchemaReady,
@@ -416,8 +490,26 @@ app.use("/", createAuthRoutes(pool, {
 }));
 app.use("/notificaciones", createNotificacionRoutes(pool, { requireSession, requireAdmin }));
 app.use("/chat", createChatRoutes(pool, { requireSession, notificacionService }));
+app.use("/identity", createProfileIdentityRoutes(pool, {
+  requireSession,
+  schemaReady: identitySchemaReady,
+  upload,
+  uploadStoredFile,
+  deleteStoredFile,
+  getStoredFile,
+  activityLogService,
+}));
+const advisorChangeRoutes = createAdvisorChangeRequestRoutes(pool, {
+  requireSession,
+  requireAdmin,
+  schemaReady: identitySchemaReady,
+  notificacionService,
+  activityLogService,
+});
+app.use("/advisor-change-requests", advisorChangeRoutes.clientRouter);
+app.use("/admin/advisor-change-requests", advisorChangeRoutes.adminRouter);
 app.use("/workflow", createWorkflowRoutes(pool, { requireSession, schemaReady: workflowSchemaReady }));
-app.use("/", createDocumentRoutes(pool, { documentSchemaReady, activityLogService, notificacionService, requireSession }));
+app.use("/", createDocumentRoutes(pool, { documentSchemaReady, visaProfileSchemaReady, activityLogService, notificacionService, requireSession }));
 app.use("/", createDs160Routes(pool, { activityLogService, notificacionService, requireSession, requireWorkflowStep }));
 app.use("/", createConsularRoutes({
   requireSession,

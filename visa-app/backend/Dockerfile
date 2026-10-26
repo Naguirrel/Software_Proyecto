@@ -19,12 +19,14 @@ COPY . .
 # El volumen local toma los permisos de este directorio al crearse.
 RUN mkdir -p /app/local_uploads && chown -R node:node /app
 
-USER node
+COPY docker-entrypoint.sh /usr/local/bin/visaguide-entrypoint
+RUN chmod 755 /usr/local/bin/visaguide-entrypoint
 
 # Exponer puerto
 EXPOSE 3000
 
-# Comando para correr la app
+# El entrypoint prepara el volumen como root y ejecuta la aplicación como node.
+ENTRYPOINT ["/usr/local/bin/visaguide-entrypoint"]
 CMD ["node", "index.js"]
 
 #Backend Dockerfile

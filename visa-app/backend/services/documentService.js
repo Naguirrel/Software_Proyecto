@@ -1,5 +1,6 @@
 const path = require("path");
 const { uploadStoredFile, deleteStoredFile, getStoredFile } = require("../storage");
+const { getDocumentsForProfile, getProfileConfig, normalizeProfileKey } = require("../config/visaProfiles");
 
 function buildStoredDocumentUrl(documentId) {
   return `/documentos/${documentId}/archivo`;
@@ -73,7 +74,46 @@ function presentDocumento(row) {
   };
 }
 
-function createDocumentService(pool, { documentSchemaReady, activityLogService, notificacionService }) {
+function createDocumentService(pool, {
+  documentSchemaReady,
+  visaProfileSchemaReady,
+  activityLogService,
+  notificacionService,
+}) {
+
+  async function assertAllowedDocumentKey(usuarioId, documentoKey, { staff = false } = {}) {
+    if (!documentoKey || !visaProfileSchemaReady) return;
+    if (staff) return;
+    await visaProfileSchemaReady;
+    const user = await pool.query("SELECT perfil FROM usuario WHERE id_usuario = $1", [usuarioId]);
+    if (!user.rows.length) {
+      const error = new Error("Usuario no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
+    const profile = normalizeProfileKey(user.rows[0].perfil);
+    const config = getProfileConfig(profile);
+    if (!config) {
+      const error = new Error("Selecciona un perfil de visa antes de cargar documentos");
+      error.statusCode = 409;
+      throw error;
+    }
+    let members = [];
+    if (config.caseType === "family") {
+      const result = await pool.query(
+        "SELECT id,full_name FROM family_group_members WHERE user_id=$1",
+        [usuarioId]
+      );
+      members = result.rows;
+    }
+    const allowedKeys = new Set(getDocumentsForProfile(profile, members).map((document) => document.id));
+    const normalizedDocumentKey = documentoKey.replaceAll("_", "-");
+    if (!allowedKeys.has(documentoKey) && !allowedKeys.has(normalizedDocumentKey)) {
+      const error = new Error("El documento no corresponde a los requisitos de este perfil de visa");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
 
   async function insertDocumento({ nombre, tipo, archivoUrl, usuarioId, documentoKey, storageKey }) {
     await documentSchemaReady;
@@ -130,6 +170,10 @@ function createDocumentService(pool, { documentSchemaReady, activityLogService, 
       error.statusCode = 400;
       throw error;
     }
+
+    await assertAllowedDocumentKey(parsedUsuarioId, documento_key?.trim() || null, {
+      staff: req.auth?.rol === "admin" || req.auth?.rol === "asesor",
+    });
 
     const uploadedFile = await uploadStoredFile(file, { baseUrl });
 

@@ -11,7 +11,7 @@ describe("servicios consulares", () => {
   function paymentQuery(extra = () => null) {
     return jest.fn((sql) => {
       const normalized = String(sql).replace(/\s+/g, " ").trim();
-      if (normalized.startsWith("SELECT perfil FROM usuario")) return Promise.resolve({ rows: [{ perfil: "turismo_negocios" }] });
+      if (normalized.startsWith("SELECT u.perfil,")) return Promise.resolve({ rows: [{ perfil: "turismo_negocios", family_members: 0 }] });
       if (normalized.startsWith("SELECT profile_key")) return Promise.resolve({ rows: [quoteRow] });
       if (normalized.startsWith("SELECT id,status")) return Promise.resolve({ rows: [] });
       if (normalized.startsWith("INSERT INTO consular_payments")) return Promise.resolve({ rows: [{ id: 41, provider: "bank_transfer", status: "transfer_pending", amount_cents: 230000, currency: "gtq", package_amount_minor: 230000, package_currency: "gtq", included_consular_fee_usd_cents: 18500 }] });
