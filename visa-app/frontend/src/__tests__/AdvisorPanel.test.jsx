@@ -35,6 +35,7 @@ function renderAdvisor(path = "/advisor") {
           <Route path="/advisor" element={<AdvisorLayout />}>
             <Route index element={<AdvisorDashboard />} />
             <Route path="solicitudes" element={<h1>Mis solicitudes</h1>} />
+            <Route path="solicitudes/:id" element={<h1>Detalle de solicitud</h1>} />
             <Route path="perfil" element={<h1>Mi perfil</h1>} />
           </Route>
         </Routes>
@@ -113,6 +114,6 @@ describe("panel de asesor", () => {
     expect(await screen.findByRole("option", { name: /Ana López/ })).toBeInTheDocument();
     await user.keyboard("{ArrowDown}{Enter}");
 
-    expect(await screen.findByRole("heading", { name: "Mis solicitudes" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Detalle de solicitud" })).toBeInTheDocument();
   });
 });

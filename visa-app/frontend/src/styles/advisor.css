@@ -405,6 +405,12 @@
 .advisor-history li time { display: block; color: var(--vg-text-muted); font-size: 12px; }
 .advisor-form-review { display: grid; grid-template-columns: 1.35fr .8fr; gap: 22px; }
 .advisor-form-review__answers { max-height: 430px; overflow: auto; }
+.advisor-section-select { display: grid; gap: 6px; color: var(--vg-text); font-weight: 800; }
+.advisor-section-select select { width: 100%; min-height: 44px; border: 1px solid var(--vg-border); border-radius: 8px; background: var(--vg-card); color: var(--vg-text); padding: 8px; }
+.advisor-section-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 18px; color: var(--vg-text-muted); }
+.advisor-section-nav button { min-height: 40px; border: 1px solid var(--vg-border); border-radius: 8px; background: var(--vg-card); color: var(--vg-text); padding: 8px 12px; }
+.advisor-section-nav button:disabled { opacity: .5; }
+.advisor-section-nav button:focus-visible, .advisor-section-select select:focus-visible { outline: 3px solid var(--vg-red); outline-offset: 2px; }
 .advisor-form-review__answers dl { grid-template-columns: 1fr; }
 .advisor-form-review__controls { display: grid; align-content: start; gap: 15px; }
 .advisor-form-review__controls label { display: grid; gap: 7px; color: var(--vg-text); font-weight: 750; }

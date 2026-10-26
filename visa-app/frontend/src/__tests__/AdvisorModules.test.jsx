@@ -186,6 +186,23 @@ describe("módulos operativos del panel de asesor", () => {
     }));
   });
 
+  test("oculta formularios aprobados y permite consultarlos sin editarlos", async () => {
+    const form = { id: 9, name: "Ana López", email: "ana@example.com", profile: "turismo_negocios", currentSection: 1, completed: true, progress: 100, status: "aprobado", feedback: "Revisado", data: { nombres: "Ana", otrosNombres: "No", apellidos: "No aplica" }, updatedAt: "2026-10-08T14:30:00.000Z" };
+    advisorRequest.mockResolvedValue({ forms: [form] });
+    const user = userEvent.setup();
+    renderPage(<AdvisorDS160 />);
+    await screen.findByText("No hay resultados.");
+    expect(screen.queryByText("Ana López")).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText("Mostrar aprobados"));
+    expect(screen.getByRole("button", { name: "Revisar" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Consultar" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("No aplica")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Sin responder").length).toBeGreaterThan(0);
+    expect(within(dialog).queryByText("ESPECIFICA LOS OTROS NOMBRES")).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Guardar revisión" })).not.toBeInTheDocument();
+  });
+
   test("exige retroalimentación y califica una entrevista", async () => {
     const interview = {
       id: 14,
