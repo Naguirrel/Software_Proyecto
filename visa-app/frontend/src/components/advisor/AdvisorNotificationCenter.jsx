@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, Bell, CheckCheck, CircleAlert, FileText, MessageSquareText, Settings2, Trash2, UserPlus, X } from "lucide-react";
+import { Archive, CheckCheck, CircleAlert, FileText, MessageSquareText, Settings2, Trash2, UserPlus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAdvisorNotifications } from "./advisorNotificationsStore";
 import useIdioma from "../../hooks/useIdioma";
 import NotificationPriorityBadge from "../NotificationPriorityBadge";
 import { getNotificationPriority } from "../../utils/notificationPriority";
+import { BellIcon } from "../icons/VisaGuideIcons";
 
 const typeLabels = {
   all: "Todos los tipos",
@@ -114,7 +115,7 @@ export default function AdvisorNotificationCenter() {
       aria-controls="advisor-notification-panel"
       onClick={() => setOpen((value) => !value)}
     >
-      <Bell size={22} aria-hidden="true" />
+      <BellIcon size={22} />
       {unreadCount > 0 && <span className="advisor-notification-count" aria-hidden="true">{unreadCount > 99 ? "99+" : unreadCount}</span>}
     </button>
     {open && <section id="advisor-notification-panel" ref={panelRef} className="advisor-notification-panel" role="dialog" aria-modal="false" aria-labelledby="advisor-notification-title">

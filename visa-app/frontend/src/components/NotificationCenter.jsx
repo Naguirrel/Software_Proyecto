@@ -5,6 +5,7 @@ import { buildSessionHeaders } from "../utils/sessionAuth";
 import useIdioma from "../hooks/useIdioma";
 import NotificationPriorityBadge from "./NotificationPriorityBadge";
 import { getNotificationPriority } from "../utils/notificationPriority";
+import { BellIcon } from "./icons/VisaGuideIcons";
 
 export default function NotificationCenter({ userId, unreadCount = 0 }) {
   const { t } = useIdioma();
@@ -132,10 +133,7 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
         aria-controls="vg-notification-panel"
         onClick={togglePanel}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
+        <BellIcon size={22} strokeWidth={2} />
         {unreadCount > 0 && <span className="vg-notification-count" aria-hidden="true">{unreadCount > 99 ? "99+" : unreadCount}</span>}
       </button>
 

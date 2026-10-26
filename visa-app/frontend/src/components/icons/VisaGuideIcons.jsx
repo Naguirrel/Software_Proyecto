@@ -91,6 +91,26 @@ export function BellIcon(props) {
   return <IconBase data-icon="bell" {...props}><path d="M5 17h14l-1.5-2.2V10a5.5 5.5 0 0 0-11 0v4.8L5 17Z" /><path d="M10 20h4" /></IconBase>;
 }
 
+export function InformationIcon(props) {
+  return <IconBase data-icon="information" {...props}><circle cx="12" cy="12" r="9.5" /><path d="M12 10.5v6" /><path d="M12 7.3h.01" /></IconBase>;
+}
+
+export function TourismBusinessVisaIcon(props) {
+  return <IconBase data-icon="visa-tourism-business" {...props}><rect x="3" y="7" width="18" height="13" rx="2.5" /><path d="M8.5 7V5.5A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5V7M3 12h18M8 12v2M16 12v2" /></IconBase>;
+}
+
+export function StudentVisaIcon(props) {
+  return <IconBase data-icon="visa-student" {...props}><path d="m2.5 8.5 9.5-5 9.5 5-9.5 5-9.5-5Z" /><path d="M6 10.5V16c3.6 2.8 8.4 2.8 12 0v-5.5M21.5 8.5V14" /></IconBase>;
+}
+
+export function RenewalVisaIcon(props) {
+  return <IconBase data-icon="visa-renewal" {...props}><path d="M5 3h10l4 4v4M15 3v4h4M14.5 19H5V3" /><path d="M13.5 14.5a4.5 4.5 0 1 1 .7 5.6" /><path d="m13 18.2 1.2 1.9-2 .9" /></IconBase>;
+}
+
+export function FamilyVisaIcon(props) {
+  return <IconBase data-icon="visa-family" {...props}><circle cx="12" cy="7" r="3" /><circle cx="5.5" cy="9.5" r="2.2" /><circle cx="18.5" cy="9.5" r="2.2" /><path d="M6.5 21c.3-4.8 2.1-7.2 5.5-7.2s5.2 2.4 5.5 7.2M1.8 20c.2-3.2 1.4-5 3.7-5 1 0 1.8.3 2.4.8M16.1 15.8c.6-.5 1.4-.8 2.4-.8 2.3 0 3.5 1.8 3.7 5" /></IconBase>;
+}
+
 export function ProfileIcon(props) {
   return <IconBase data-icon="profile" {...props}><circle cx="12" cy="12" r="9.5" /><circle cx="12" cy="9" r="3" /><path d="M6.7 19c.7-3.1 2.5-4.6 5.3-4.6s4.6 1.5 5.3 4.6" /></IconBase>;
 }

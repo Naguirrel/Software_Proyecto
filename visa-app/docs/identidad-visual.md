@@ -28,6 +28,16 @@ Los paneles usan el mismo significado visual:
 - libro abierto: banco de preguntas;
 - lentes circulares: modo senior.
 
+La selección inicial de perfil asigna un símbolo específico a cada caso:
+
+- maletín: turismo o negocios B1/B2;
+- birrete: estudiante F/M;
+- documento con ciclo de actualización: renovación B1/B2;
+- grupo de tres personas: grupo familiar;
+- lentes circulares: adulto mayor con asistencia accesible.
+
+Las acciones globales utilizan el círculo de información y la campana propios del sistema. Ambos mantienen un área interactiva mínima de 42 px, distintivo numérico independiente del icono y nombre accesible en el control contenedor.
+
 Los iconos decorativos se ocultan de lectores de pantalla. El nombre accesible pertenece al enlace o botón que los contiene.
 
 ## Cambio de asesor

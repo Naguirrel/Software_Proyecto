@@ -36,11 +36,22 @@ describe("ProfileSelection", () => {
       return Promise.resolve({ ok: true, json: async () => ({ total: 0 }) });
     });
 
-    render(<ProfileSelection />);
+    const { container } = render(<ProfileSelection />);
 
     await waitFor(() =>
       expect(screen.getByText("Turismo / Negocios (B1/B2)")).toBeInTheDocument()
     );
+
+    expect(container.querySelector('[data-icon="visaguide-mark"]')).toBeInTheDocument();
+    [
+      "visa-tourism-business",
+      "visa-student",
+      "visa-renewal",
+      "visa-family",
+      "senior-glasses",
+    ].forEach((iconName) => {
+      expect(container.querySelector(`[data-icon="${iconName}"]`)).toBeInTheDocument();
+    });
 
     await user.click(screen.getByText("Turismo / Negocios (B1/B2)"));
     await user.click(screen.getByRole("button", { name: "Continuar" }));

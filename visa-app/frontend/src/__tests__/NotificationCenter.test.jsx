@@ -21,12 +21,13 @@ describe("NotificationCenter", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ notificaciones: [notification] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <NotificationCenter userId={7} unreadCount={1} />
       </MemoryRouter>
     );
 
+    expect(container.querySelector('[data-icon="bell"]')).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /abrir notificaciones/i }));
     await user.click(await screen.findByRole("button", { name: "Leer: Perfil actualizado" }));
 
