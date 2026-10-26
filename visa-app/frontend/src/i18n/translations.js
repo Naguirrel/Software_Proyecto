@@ -49,6 +49,7 @@ const es = {
   "notifications.error": "No se pudieron cargar las notificaciones.",
   "notifications.retry": "Reintentar",
   "notifications.empty": "Sin notificaciones",
+  "notifications.newArrived": "Nueva notificación recibida",
   "notifications.priority.alta": "Prioridad alta",
   "notifications.priority.baja": "Informativa",
 
@@ -316,6 +317,7 @@ const en = {
   "notifications.error": "Notifications could not be loaded.",
   "notifications.retry": "Retry",
   "notifications.empty": "No notifications",
+  "notifications.newArrived": "New notification received",
   "notifications.priority.alta": "High priority",
   "notifications.priority.baja": "Informational",
 
