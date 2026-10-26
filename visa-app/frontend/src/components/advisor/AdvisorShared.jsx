@@ -34,6 +34,14 @@ export function AdvisorAlert({ message, tone = "error", onDismiss, duration = 0 
   </div>;
 }
 
+export function AdvisorPagination({ page, pages, total, visible, onChange }) {
+  return <footer className="advisor-pagination"><span>Mostrando {visible} de {total} resultados</span><div>
+    <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)}>Anterior</button>
+    <span>Página {page} de {pages}</span>
+    <button type="button" disabled={page >= pages} onClick={() => onChange(page + 1)}>Siguiente</button>
+  </div></footer>;
+}
+
 export function AdvisorModal({ title, subtitle, onClose, children, footer }) {
   const titleId = useId();
   const descriptionId = useId();

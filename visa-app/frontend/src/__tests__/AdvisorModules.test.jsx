@@ -43,6 +43,7 @@ describe("módulos operativos del panel de asesor", () => {
   beforeEach(() => {
     advisorRequest.mockReset();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   test("actualiza el estado y la etapa de una solicitud asignada", async () => {
@@ -93,6 +94,23 @@ describe("módulos operativos del panel de asesor", () => {
     expect(await screen.findByRole("heading", { name: "Solicitud de Ana López" })).toBeInTheDocument();
     expect(screen.getByText("El solicitante aún no ha registrado el formulario.")).toBeInTheDocument();
     expect(advisorRequest).toHaveBeenCalledWith("/processes/18", expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  });
+
+  test("prioriza en proceso, oculta inactivos y filtra antes de paginar", async () => {
+    const entries = Array.from({ length: 12 }, (_, index) => ({ ...process, id: index + 1, estado: "Pendiente", solicitante: { ...applicant, nombre: `Cliente ${index + 1}` } }));
+    entries.push({ ...process, id: 50, estado: "En proceso", solicitante: { ...applicant, nombre: "Cliente prioritario" } });
+    entries.push({ ...process, id: 51, estado: "Inactivo", solicitante: { ...applicant, nombre: "Cliente inactivo" } });
+    advisorRequest.mockResolvedValue({ processes: entries });
+    const user = userEvent.setup();
+    renderPage(<AdvisorProcesses />);
+    expect(await screen.findByText("Cliente prioritario")).toBeInTheDocument();
+    expect(screen.queryByText("Cliente inactivo")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("row")[1]).toHaveTextContent("Cliente prioritario");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByLabelText("Incluir inactivas"));
+    expect(screen.getByText("Página 1 de 2")).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("Buscar por nombre o correo…"), "inactivo");
+    expect(screen.getByText("Cliente inactivo")).toBeInTheDocument();
   });
 
   test("exige observaciones al solicitar una corrección documental y guarda la revisión", async () => {

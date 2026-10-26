@@ -335,6 +335,13 @@
 .advisor-action { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; border: 1px solid var(--vg-border); border-radius: 9px; background: var(--vg-card); color: var(--vg-red); padding: 0 15px; font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
 .advisor-action:hover { border-color: var(--vg-red); }
 .advisor-results { border-top: 1px solid var(--vg-border); color: var(--vg-text-muted); padding: 16px 18px; font-size: 14px; font-weight: 650; }
+.advisor-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--vg-border); padding: 16px 18px; color: var(--vg-text-muted); font-size: 14px; }
+.advisor-pagination > div { display: flex; align-items: center; gap: 10px; }
+.advisor-pagination button, .advisor-toolbar button { min-height: 42px; border: 1px solid var(--vg-border); border-radius: 9px; background: var(--vg-card); color: var(--vg-text); padding: 8px 12px; cursor: pointer; }
+.advisor-pagination button:hover:not(:disabled), .advisor-toolbar button:hover { background: var(--vg-bg-alt); border-color: var(--vg-red); }
+.advisor-pagination button:disabled { opacity: .5; cursor: not-allowed; }
+.advisor-pagination button:focus-visible, .advisor-toolbar :is(button, input, select):focus-visible, .advisor-action:focus-visible { outline: 3px solid var(--vg-red); outline-offset: 2px; }
+.advisor-include-inactive { display: inline-flex; align-items: center; gap: 8px; color: var(--vg-text); }
 .advisor-back-link { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--vg-red); font-weight: 800; }
 .advisor-back-link:focus-visible, .advisor-detail-items a:focus-visible, .advisor-detail-summary a:focus-visible { outline: 3px solid var(--vg-red); outline-offset: 3px; }
 .advisor-detail-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
