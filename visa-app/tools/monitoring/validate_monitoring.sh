@@ -29,7 +29,7 @@ cleanup() {
 trap cleanup EXIT
 
 bash -n "$script_dir/monitor_server.sh" "$script_dir/run_monitoring_job.sh" \
-  "$script_dir/install_monitoring_cron.sh" "$script_dir/validate_monitoring.sh"
+  "$script_dir/install_monitoring_cron.sh" "$script_dir/availability_report.sh" "$script_dir/validate_monitoring.sh"
 printf 'OK: sintaxis Bash\n'
 
 cat > "$temp_dir/mock/sleep" <<'EOF'
@@ -160,3 +160,46 @@ env PATH="$test_path" DRY_RUN=1 MONITOR_ENV_FILE="$temp_dir/config" \
 grep -q '^\*/5 \* \* \* \*' "$temp_dir/dry-run"
 [[ ! -e "$temp_dir/crontab-called" ]]
 printf 'OK: DRY_RUN no modifico el crontab\n'
+
+# Reporte de disponibilidad: 200 muestras con 1 caida de 2 revisiones (99%) y lineas de otros datos.
+availability_sample() {
+  printf '[%s +0000] Revision del servidor\n%s: aplicacion HTTP=%s tiempo=0.1s\nOK: CPU=10.0%% (umbral 80%%)\nESTADO FINAL: %s\n' "$1" "$2" "$3" "$2"
+}
+: > "$temp_dir/availability.log"
+for minute in $(seq 0 199); do
+  day="2026-10-$(printf '%02d' $((20 + minute / 100)))"
+  stamp="$day $(printf '%02d:%02d:00' $((minute % 100 / 60)) $((minute % 60)))"
+  if [[ "$minute" -eq 50 || "$minute" -eq 51 ]]; then
+    availability_sample "$stamp" CRITICAL 503 >> "$temp_dir/availability.log"
+  else
+    availability_sample "$stamp" OK 200 >> "$temp_dir/availability.log"
+  fi
+done
+printf 'linea anterior sin formato\n' >> "$temp_dir/availability.log"
+
+result="$(bash "$script_dir/availability_report.sh" "$temp_dir/availability.log")"
+grep -q 'Muestras: 200' <<< "$result"
+grep -q 'Disponible: 198 | No disponible: 2 | Incidentes: 1' <<< "$result"
+grep -q 'Caida mas larga: 2 muestra(s), ~10 min' <<< "$result"
+grep -q 'Disponibilidad: 99.00% (meta 99%)' <<< "$result"
+grep -q 'RESULTADO: CUMPLE' <<< "$result"
+printf 'OK: disponibilidad calculada sobre el log\n'
+
+if AVAILABILITY_TARGET=99.5 bash "$script_dir/availability_report.sh" "$temp_dir/availability.log" > "$temp_dir/availability-out"; then
+  printf 'El reporte debio fallar con una meta de 99.5%%.\n' >&2
+  exit 1
+fi
+grep -q 'RESULTADO: NO CUMPLE' "$temp_dir/availability-out"
+printf 'OK: meta no alcanzada devuelve error\n'
+
+result="$(REPORT_SINCE=2026-10-21 bash "$script_dir/availability_report.sh" "$temp_dir/availability.log")"
+grep -q 'Muestras: 100' <<< "$result"
+grep -q 'Disponibilidad: 100.00%' <<< "$result"
+printf 'OK: filtro por fecha\n'
+
+if REPORT_SINCE=2026-11-01 bash "$script_dir/availability_report.sh" "$temp_dir/availability.log" 2> "$temp_dir/availability-err"; then
+  printf 'El reporte debio fallar sin muestras en el periodo.\n' >&2
+  exit 1
+fi
+grep -q 'no contiene revisiones' "$temp_dir/availability-err"
+printf 'OK: periodo sin datos devuelve error\n'
