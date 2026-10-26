@@ -7,7 +7,7 @@ const { createRoleMiddleware, createSessionMiddleware, issueSessionToken } = req
 const normalize = (sql) => String(sql).replace(/\s+/g, " ").trim();
 
 function createInMemoryDocumentsDb() {
-  const state = { users: [], documentos: [], nextDocumentId: 1, clock: 0 };
+  const state = { users: [], documentos: [], tramites: [], nextDocumentId: 1, clock: 0 };
   const tick = () => new Date(Date.UTC(2026, 0, 1) + state.clock++ * 1000);
 
   async function query(sql, values = []) {
@@ -16,6 +16,11 @@ function createInMemoryDocumentsDb() {
     if (text.includes("FROM usuario WHERE id_usuario = $1")) {
       const user = state.users.find((row) => row.id_usuario === values[0]);
       return { rows: user ? [{ ...user }] : [] };
+    }
+
+    if (text.startsWith("SELECT 1 FROM tramite WHERE id_usuario = $1 AND id_asesor = $2")) {
+      const assigned = state.tramites.some((row) => row.id_usuario === values[0] && row.id_asesor === values[1]);
+      return { rows: assigned ? [{ "?column?": 1 }] : [] };
     }
 
     if (text.startsWith("SELECT id, storage_key FROM documentos")) {
@@ -125,7 +130,14 @@ function createInMemoryDocumentsDb() {
     return { user, token: issueSessionToken(user) };
   }
 
-  return { state, addUser, pool: { query: jest.fn(query) } };
+  // Asigna (o reasigna) el trámite de un cliente a un asesor.
+  function assignAdvisor(userId, advisorId) {
+    const existing = state.tramites.find((row) => row.id_usuario === userId);
+    if (existing) existing.id_asesor = advisorId;
+    else state.tramites.push({ id_usuario: userId, id_asesor: advisorId });
+  }
+
+  return { state, addUser, assignAdvisor, pool: { query: jest.fn(query) } };
 }
 
 function createDocumentsIntegrationApp() {
