@@ -196,7 +196,7 @@ function createInterviewSessionService(pool) {
     return result.rows.map(presentSession);
   }
 
-  async function listUserSessions(userId) {
+  async function listUserSessions(userId, { advisorId } = {}) {
     await ensureSchema();
 
     const parsedUserId = Number(userId);
@@ -204,6 +204,19 @@ function createInterviewSessionService(pool) {
       const error = new Error("user_id debe ser numérico");
       error.statusCode = 400;
       throw error;
+    }
+
+    // Un asesor solo consulta las sesiones de los clientes que tiene asignados (SP10-07).
+    if (advisorId) {
+      const assigned = await pool.query(
+        "SELECT 1 FROM tramite WHERE id_usuario = $1 AND id_asesor = $2 LIMIT 1",
+        [parsedUserId, Number(advisorId)]
+      );
+      if (!assigned.rows.length) {
+        const error = new Error("No puedes acceder a las entrevistas de este usuario");
+        error.statusCode = 403;
+        throw error;
+      }
     }
 
     const result = await pool.query(
@@ -255,7 +268,7 @@ function createInterviewSessionService(pool) {
     return presentSession(result.rows[0]);
   }
 
-  async function getSessionAudio(id, questionId, { userId } = {}) {
+  async function getSessionAudio(id, questionId, { userId, advisorId } = {}) {
     await ensureSchema();
 
     const parsedId = Number(id);
@@ -267,12 +280,20 @@ function createInterviewSessionService(pool) {
 
     const values = [parsedId];
     if (userId) values.push(Number(userId));
-    const result = await pool.query(
-      `SELECT id, responses
+    let query = `SELECT id, responses
        FROM interview_sessions
-       WHERE id = $1${userId ? " AND user_id = $2" : ""}`,
-      values
-    );
+       WHERE id = $1${userId ? " AND user_id = $2" : ""}`;
+    if (advisorId) {
+      // Un asesor solo escucha el audio de las entrevistas de sus clientes asignados (SP10-07).
+      values.push(Number(advisorId));
+      query = `SELECT s.id, s.responses
+       FROM interview_sessions s
+       WHERE s.id = $1 AND EXISTS (
+         SELECT 1 FROM tramite t
+         WHERE t.id_usuario = s.user_id AND t.id_asesor = $${values.length}
+       )`;
+    }
+    const result = await pool.query(query, values);
 
     const session = result.rows[0];
     if (!session) {

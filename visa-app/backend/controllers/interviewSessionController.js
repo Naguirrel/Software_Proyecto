@@ -21,8 +21,12 @@ function createInterviewSessionController(interviewSessionService, { notificacio
     return parsed;
   }
 
-  function clientScope(req) {
-    return req.auth?.rol === "cliente" ? { userId: req.auth.id_usuario } : {};
+  // Qué sesiones puede ver quien consulta: el cliente solo las suyas, el asesor solo las de
+  // sus clientes asignados y el administrador todas (SP10-07).
+  function accessScope(req) {
+    if (req.auth?.rol === "admin") return {};
+    if (req.auth?.rol === "asesor") return { advisorId: req.auth.id_usuario };
+    return { userId: req.auth?.id_usuario };
   }
 
   function handleError(res, error) {
@@ -92,7 +96,8 @@ function createInterviewSessionController(interviewSessionService, { notificacio
   async function listUserSessions(req, res) {
     try {
       const sessions = await interviewSessionService.listUserSessions(
-        req.auth?.rol === "cliente" ? req.auth.id_usuario : req.params.userId
+        req.auth?.rol === "cliente" ? req.auth.id_usuario : req.params.userId,
+        req.auth?.rol === "asesor" ? { advisorId: req.auth.id_usuario } : {}
       );
       return res.json({ sessions });
     } catch (error) {
@@ -108,7 +113,10 @@ function createInterviewSessionController(interviewSessionService, { notificacio
       if (!userId) {
         return res.status(400).json({ error: "userId requerido en el body" });
       }
-      const sessions = await interviewSessionService.listUserSessions(userId);
+      const sessions = await interviewSessionService.listUserSessions(
+        userId,
+        req.auth?.rol === "asesor" ? { advisorId: req.auth.id_usuario } : {}
+      );
       return res.json({ sessions });
     } catch (error) {
       return handleError(res, error);
@@ -117,7 +125,7 @@ function createInterviewSessionController(interviewSessionService, { notificacio
 
   async function getSession(req, res) {
     try {
-      const session = await interviewSessionService.getSession(req.params.id, clientScope(req));
+      const session = await interviewSessionService.getSession(req.params.id, accessScope(req));
       return res.json({ session });
     } catch (error) {
       return handleError(res, error);
@@ -130,7 +138,7 @@ function createInterviewSessionController(interviewSessionService, { notificacio
       if (!sessionId) {
         return res.status(400).json({ error: "sessionId requerido en el body" });
       }
-      const session = await interviewSessionService.getSession(sessionId, clientScope(req));
+      const session = await interviewSessionService.getSession(sessionId, accessScope(req));
       return res.json({ session });
     } catch (error) {
       return handleError(res, error);
@@ -142,7 +150,7 @@ function createInterviewSessionController(interviewSessionService, { notificacio
       const audio = await interviewSessionService.getSessionAudio(
         req.params.id,
         req.params.questionId,
-        clientScope(req)
+        accessScope(req)
       );
 
       if (audio.redirectUrl) {
