@@ -20,7 +20,8 @@ COPY . .
 RUN mkdir -p /app/local_uploads && chown -R node:node /app
 
 COPY docker-entrypoint.sh /usr/local/bin/visaguide-entrypoint
-RUN chmod 755 /usr/local/bin/visaguide-entrypoint
+RUN sed -i 's/\r$//' /usr/local/bin/visaguide-entrypoint \
+    && chmod 755 /usr/local/bin/visaguide-entrypoint
 
 # Exponer puerto
 EXPOSE 3000

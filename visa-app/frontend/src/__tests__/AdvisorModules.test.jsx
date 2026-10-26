@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import AdvisorProcesses from "../pages/advisor/AdvisorProcesses";
+import AdvisorProcessDetail from "../pages/advisor/AdvisorProcessDetail";
 import AdvisorDocuments from "../pages/advisor/AdvisorDocuments";
 import AdvisorDS160 from "../pages/advisor/AdvisorDS160";
 import AdvisorInterviews from "../pages/advisor/AdvisorInterviews";
@@ -42,6 +43,7 @@ describe("módulos operativos del panel de asesor", () => {
   beforeEach(() => {
     advisorRequest.mockReset();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   test("actualiza el estado y la etapa de una solicitud asignada", async () => {
@@ -57,20 +59,19 @@ describe("módulos operativos del panel de asesor", () => {
     });
     const user = userEvent.setup();
 
-    renderPage(<AdvisorProcesses />);
+    render(<MemoryRouter initialEntries={["/advisor/solicitudes"]}><Routes><Route path="/advisor/solicitudes" element={<AdvisorProcesses />} /><Route path="/advisor/solicitudes/:id" element={<AdvisorProcessDetail />} /></Routes></MemoryRouter>);
     expect(await screen.findByText("Ana López")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Ver detalles" }));
-    const dialog = await screen.findByRole("dialog");
-    await waitFor(() => expect(within(dialog).getByLabelText("Estado")).toBeEnabled());
-    await user.selectOptions(within(dialog).getByLabelText("Estado"), "En proceso");
-    await user.selectOptions(within(dialog).getByLabelText("Etapa actual"), "Formulario DS-160");
-    await user.click(within(dialog).getByRole("button", { name: "Guardar cambios" }));
+    await user.click(screen.getByRole("link", { name: "Ver detalles" }));
+    expect(await screen.findByRole("heading", { name: "Solicitud de Ana López" })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Estado"), "En proceso");
+    await user.selectOptions(screen.getByLabelText("Etapa actual"), "Formulario DS-160");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => expect(advisorRequest).toHaveBeenCalledWith("/processes/18", {
       method: "PUT",
       body: JSON.stringify({ estado: "En proceso", etapaActual: "Formulario DS-160" }),
     }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Volver a solicitudes" })).toBeInTheDocument();
   });
 
   test("permite reintentar la carga de solicitudes después de un error", async () => {
@@ -85,6 +86,31 @@ describe("módulos operativos del panel de asesor", () => {
 
     expect(await screen.findByText("Ana López")).toBeInTheDocument();
     expect(advisorRequest).toHaveBeenCalledTimes(2);
+  });
+
+  test("carga el detalle al entrar directamente a su ruta", async () => {
+    advisorRequest.mockResolvedValue({ process, documents: [], ds160: null, interviews: [], history: [] });
+    render(<MemoryRouter initialEntries={["/advisor/solicitudes/18"]}><Routes><Route path="/advisor/solicitudes/:id" element={<AdvisorProcessDetail />} /></Routes></MemoryRouter>);
+    expect(await screen.findByRole("heading", { name: "Solicitud de Ana López" })).toBeInTheDocument();
+    expect(screen.getByText("El solicitante aún no ha registrado el formulario.")).toBeInTheDocument();
+    expect(advisorRequest).toHaveBeenCalledWith("/processes/18", expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  });
+
+  test("prioriza en proceso, oculta inactivos y filtra antes de paginar", async () => {
+    const entries = Array.from({ length: 12 }, (_, index) => ({ ...process, id: index + 1, estado: "Pendiente", solicitante: { ...applicant, nombre: `Cliente ${index + 1}` } }));
+    entries.push({ ...process, id: 50, estado: "En proceso", solicitante: { ...applicant, nombre: "Cliente prioritario" } });
+    entries.push({ ...process, id: 51, estado: "Inactivo", solicitante: { ...applicant, nombre: "Cliente inactivo" } });
+    advisorRequest.mockResolvedValue({ processes: entries });
+    const user = userEvent.setup();
+    renderPage(<AdvisorProcesses />);
+    expect(await screen.findByText("Cliente prioritario")).toBeInTheDocument();
+    expect(screen.queryByText("Cliente inactivo")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("row")[1]).toHaveTextContent("Cliente prioritario");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByLabelText("Incluir inactivas"));
+    expect(screen.getByText("Página 1 de 2")).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("Buscar por nombre o correo…"), "inactivo");
+    expect(screen.getByText("Cliente inactivo")).toBeInTheDocument();
   });
 
   test("exige observaciones al solicitar una corrección documental y guarda la revisión", async () => {
@@ -158,6 +184,23 @@ describe("módulos operativos del panel de asesor", () => {
       method: "PUT",
       body: JSON.stringify({ status: "correccion", feedback: "Corrige las fechas del viaje anterior." }),
     }));
+  });
+
+  test("oculta formularios aprobados y permite consultarlos sin editarlos", async () => {
+    const form = { id: 9, name: "Ana López", email: "ana@example.com", profile: "turismo_negocios", currentSection: 1, completed: true, progress: 100, status: "aprobado", feedback: "Revisado", data: { nombres: "Ana", otrosNombres: "No", apellidos: "No aplica" }, updatedAt: "2026-10-08T14:30:00.000Z" };
+    advisorRequest.mockResolvedValue({ forms: [form] });
+    const user = userEvent.setup();
+    renderPage(<AdvisorDS160 />);
+    await screen.findByText("No hay resultados.");
+    expect(screen.queryByText("Ana López")).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText("Mostrar aprobados"));
+    expect(screen.getByRole("button", { name: "Revisar" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Consultar" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("No aplica")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Sin responder").length).toBeGreaterThan(0);
+    expect(within(dialog).queryByText("ESPECIFICA LOS OTROS NOMBRES")).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Guardar revisión" })).not.toBeInTheDocument();
   });
 
   test("exige retroalimentación y califica una entrevista", async () => {

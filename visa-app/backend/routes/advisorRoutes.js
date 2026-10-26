@@ -5,6 +5,7 @@ const { createQuestionBankService } = require("../services/questionBankService")
 const createAdvisorCommunicationService = require("../services/advisorCommunicationService");
 const createProcessChangeHistoryService = require("../services/processChangeHistoryService");
 const { sendErrorResponse } = require("../middleware/errorResponse");
+const { getDocumentsForProfile } = require("../config/visaProfiles");
 
 const VALID_PROCESS_STATES = new Set(["En proceso", "Pendiente", "Aprobado", "Inactivo", "Completado"]);
 const PROCESS_STAGES = {
@@ -346,8 +347,42 @@ module.exports = function createAdvisorRoutes(pool, {
   });
 
   router.get("/documents", async (req, res) => {
-    try { return res.json({ documents: await documentService.listDocuments({ advisorId: req.auth.id_usuario }) }); }
+    try {
+      const [documents, applicants] = await Promise.all([
+        documentService.listDocuments({ advisorId: req.auth.id_usuario }),
+        pool.query(`SELECT u.id_usuario, u.nombre, u.correo, u.perfil,
+          COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id', member.id, 'full_name', member.full_name))
+            FROM family_group_members member WHERE member.user_id = u.id_usuario), '[]'::json) AS family_members
+          FROM usuario u WHERE EXISTS (SELECT 1 FROM tramite t WHERE t.id_usuario = u.id_usuario AND t.id_asesor = $1)`, [req.auth.id_usuario]),
+      ]);
+      const missingDocuments = applicants.rows.flatMap((user) => getDocumentsForProfile(user.perfil, user.family_members || [])
+        .filter((item) => item.required && !documents.some((document) => document.usuario_id === user.id_usuario && (document.documento_key === item.id || document.nombre === item.title)))
+        .map((item) => ({ key: item.id, nombre: item.title, usuario: { id: user.id_usuario, nombre: user.nombre, correo: user.correo } })));
+      return res.json({ documents, missingDocuments });
+    }
     catch (error) { return handleError(res, error, "No fue posible cargar los documentos"); }
+  });
+
+  router.post("/documents/reminders", async (req, res) => {
+    const userId = Number(req.body?.userId);
+    const key = String(req.body?.key || "");
+    if (!Number.isInteger(userId) || userId <= 0 || !key || key.length > 150) return res.status(400).json({ error: "Documento inválido" });
+    try {
+      const result = await pool.query(`SELECT u.id_usuario, u.perfil,
+        COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id', member.id, 'full_name', member.full_name))
+          FROM family_group_members member WHERE member.user_id = u.id_usuario), '[]'::json) AS family_members
+        FROM usuario u JOIN tramite t ON t.id_usuario = u.id_usuario
+        WHERE u.id_usuario = $1 AND t.id_asesor = $2 LIMIT 1`, [userId, req.auth.id_usuario]);
+      const user = result.rows[0];
+      if (!user) return res.status(404).json({ error: "Solicitud no encontrada" });
+      const definition = getDocumentsForProfile(user.perfil, user.family_members || []).find((item) => item.id === key && item.required);
+      if (!definition) return res.status(400).json({ error: "Documento requerido no encontrado" });
+      const uploaded = await pool.query("SELECT id FROM documentos WHERE usuario_id = $1 AND (documento_key = $2 OR nombre = $3) LIMIT 1", [userId, key, definition.title]);
+      if (uploaded.rows.length) return res.status(409).json({ error: "El documento ya fue cargado" });
+      const notification = await notificacionService?.crearNotificacion({ userId, titulo: "Documento pendiente de entrega", mensaje: `Por favor carga: ${definition.title}.`, tipo: "documento", etapaRelacionada: key, actionUrl: "/documents", dedupeKey: `advisor-document-reminder:${userId}:${key}:${new Date().toISOString().slice(0, 10)}`, prioridad: "normal" });
+      if (!notification) return res.status(409).json({ error: "El recordatorio ya se envió hoy o las notificaciones están desactivadas." });
+      return res.status(201).json({ message: "Recordatorio enviado al centro de notificaciones del cliente." });
+    } catch (error) { return handleError(res, error, "No fue posible enviar el recordatorio"); }
   });
 
   router.put("/documents/:id", async (req, res) => {

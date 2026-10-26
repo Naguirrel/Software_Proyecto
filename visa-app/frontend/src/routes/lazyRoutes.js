@@ -33,6 +33,7 @@ const routeLoaders = Object.freeze({
   adminEmailReminders: () => import("../pages/admin/AdminEmailReminders"),
   advisorDashboard: () => import("../pages/advisor/AdvisorDashboard"),
   advisorProcesses: () => import("../pages/advisor/AdvisorProcesses"),
+  advisorProcessDetail: () => import("../pages/advisor/AdvisorProcessDetail"),
   advisorDocuments: () => import("../pages/advisor/AdvisorDocuments"),
   advisorDs160: () => import("../pages/advisor/AdvisorDS160"),
   advisorInterviews: () => import("../pages/advisor/AdvisorInterviews"),
@@ -79,6 +80,7 @@ export function resolveRouteKey(path) {
   if (exactMatch) return exactMatch;
   if (/^\/admin\/users\/[^/]+$/.test(pathname)) return "adminUserDetail";
   if (/^\/admin\/processes\/[^/]+$/.test(pathname)) return "adminProcessDetail";
+  if (/^\/advisor\/solicitudes\/[^/]+$/.test(pathname)) return "advisorProcessDetail";
   return null;
 }
 

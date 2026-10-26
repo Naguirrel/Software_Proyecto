@@ -50,6 +50,15 @@ describe("autorización del panel de asesor", () => {
     expect(pool.query).toHaveBeenCalledWith(expect.stringContaining("WHERE t.id_asesor = $1"), [9]);
   });
 
+  test("no muestra el detalle de una solicitud ajena aunque se conozca su ID", async () => {
+    const { app, pool } = buildApp();
+    await request(app).get("/advisor/processes/77").set("x-role", "asesor").expect(404);
+    expect(pool.query).toHaveBeenCalledWith(
+      expect.stringContaining("t.id_tramite = $1 AND t.id_asesor = $2"),
+      [77, 9]
+    );
+  });
+
   test("valida los datos obligatorios del perfil", async () => {
     const { app } = buildApp();
     const response = await request(app).put("/advisor/profile").set("x-role", "asesor").send({ nombre: "" }).expect(400);

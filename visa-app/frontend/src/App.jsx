@@ -51,6 +51,7 @@ const AdminActivityLogs = lazy(() => import("./pages/admin/AdminActivityLogs"));
 const AdminEmailReminders = lazy(() => import("./pages/admin/AdminEmailReminders"));
 const AdvisorDashboard = lazy(() => import("./pages/advisor/AdvisorDashboard"));
 const AdvisorProcesses = lazy(() => import("./pages/advisor/AdvisorProcesses"));
+const AdvisorProcessDetail = lazy(() => import("./pages/advisor/AdvisorProcessDetail"));
 const AdvisorDocuments = lazy(() => import("./pages/advisor/AdvisorDocuments"));
 const AdvisorDS160 = lazy(() => import("./pages/advisor/AdvisorDS160"));
 const AdvisorInterviews = lazy(() => import("./pages/advisor/AdvisorInterviews"));
@@ -159,6 +160,7 @@ function App() {
         <Route path="/advisor" element={<RequireAdvisor><AdvisorLayout /></RequireAdvisor>}>
           <Route index element={<AdvisorDashboard />} />
           <Route path="solicitudes" element={<AdvisorProcesses />} />
+          <Route path="solicitudes/:id" element={<AdvisorProcessDetail />} />
           <Route path="documentos" element={<AdvisorDocuments />} />
           <Route path="ds160" element={<AdvisorDS160 />} />
           <Route path="entrevistas" element={<AdvisorInterviews />} />

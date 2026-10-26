@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { advisorRequest } from "../../utils/advisorApi";
 import { consumeAdvisorNotificationStream } from "../../utils/advisorNotificationStream";
 import { mergeNotification, orderNotifications } from "../../utils/advisorNotificationState";
@@ -28,6 +29,7 @@ function playNotificationSound() {
 }
 
 export function AdvisorNotificationsProvider({ children }) {
+  const location = useLocation();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -67,7 +69,16 @@ export function AdvisorNotificationsProvider({ children }) {
     }
     const muted = preferencesRef.current.muted_types?.includes(notification.tipo);
     if (announce && !muted && document.visibilityState !== "hidden") {
-      setToasts((current) => [notification, ...current.filter((toast) => toast.id !== notification.id)].slice(0, 3));
+      setToasts((current) => {
+        const next = [notification, ...current.filter((toast) => toast.id !== notification.id)].slice(0, 3);
+        for (const toast of current) {
+          if (!next.some((item) => item.id === toast.id)) {
+            window.clearTimeout(toastTimersRef.current.get(toast.id));
+            toastTimersRef.current.delete(toast.id);
+          }
+        }
+        return next;
+      });
       const currentTimer = toastTimersRef.current.get(notification.id);
       if (currentTimer) window.clearTimeout(currentTimer);
       toastTimersRef.current.set(notification.id, window.setTimeout(() => dismissToast(notification.id), 6_000));
@@ -81,6 +92,15 @@ export function AdvisorNotificationsProvider({ children }) {
     for (const timer of toastTimersRef.current.values()) window.clearTimeout(timer);
     toastTimersRef.current.clear();
   }, []);
+
+  useEffect(() => {
+    const clearOnNavigation = window.setTimeout(() => {
+      for (const timer of toastTimersRef.current.values()) window.clearTimeout(timer);
+      toastTimersRef.current.clear();
+      setToasts([]);
+    }, 0);
+    return () => window.clearTimeout(clearOnNavigation);
+  }, [location.pathname]);
 
   const loadNotifications = useCallback(async (query = "") => {
     const data = await advisorRequest(`/notifications${query ? `?${query}` : ""}`);

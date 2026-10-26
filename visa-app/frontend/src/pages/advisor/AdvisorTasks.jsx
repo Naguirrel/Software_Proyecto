@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { AdvisorModal, AdvisorPageHeader, AdvisorState, AdvisorTabs } from "../../components/advisor/AdvisorShared";
+import { AdvisorAlert, AdvisorModal, AdvisorPageHeader, AdvisorState, AdvisorTabs } from "../../components/advisor/AdvisorShared";
 import { advisorRequest } from "../../utils/advisorApi";
 import { formatAdvisorDate as formatDate } from "../../utils/advisorFormat";
 import useSessionStorageState from "../../hooks/useSessionStorageState";
@@ -191,7 +191,7 @@ export default function AdvisorTasks() {
       description="Organiza tu trabajo diario y seguimiento de solicitantes."
       action={<button className="advisor-button" type="button" onClick={openCreate}><Plus size={19} aria-hidden="true" /> Nueva tarea</button>}
     />
-    {error && !modalOpen && <p className="advisor-inline-error" role="alert">{error}</p>}
+    {!modalOpen && <AdvisorAlert message={error} onDismiss={() => setError("")} />}
     <section className="advisor-panel">
       <AdvisorTabs items={tabs} value={tab} onChange={setTab} label="Filtrar tareas" />
       <AdvisorState loading={loading} error={loading ? error : ""} empty={!loading && !filtered.length} onRetry={() => setRevision((value) => value + 1)} />
@@ -220,7 +220,7 @@ export default function AdvisorTasks() {
         <button className="advisor-button" type="button" onClick={save} disabled={saving || !draft.title.trim()}>{saving ? "Guardando…" : editingTask ? "Guardar cambios" : "Crear tarea"}</button>
       </>}
     >
-      {error && <p className="advisor-inline-error" role="alert">{error}</p>}
+      <AdvisorAlert message={error} onDismiss={() => setError("")} />
       <div className="advisor-form-grid">
         <label className="advisor-form-grid__wide">Título<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={240} /></label>
         <label>Fecha límite<input type="datetime-local" value={draft.dueAt} onChange={(event) => setDraft({ ...draft, dueAt: event.target.value })} /></label>

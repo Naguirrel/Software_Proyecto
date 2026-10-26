@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownUp, Filter } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
-import { AdvisorModal, AdvisorPageHeader, AdvisorSearch, AdvisorState } from "../../components/advisor/AdvisorShared";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { AdvisorModal, AdvisorPageHeader, AdvisorPagination, AdvisorSearch, AdvisorState } from "../../components/advisor/AdvisorShared";
 import { advisorRequest } from "../../utils/advisorApi";
 import { formatAdvisorDate } from "../../utils/advisorFormat";
 import useSessionStorageState from "../../hooks/useSessionStorageState";
@@ -19,10 +19,13 @@ function tone(status) {
 
 export default function AdvisorProcesses() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [processes, setProcesses] = useState([]);
   const [query, setQuery] = useSessionStorageState("advisor-process-query", "");
   const [status, setStatus] = useSessionStorageState("advisor-process-status", "Todos");
-  const [ascending, setAscending] = useState(false);
+  const [includeInactive, setIncludeInactive] = useSessionStorageState("advisor-process-inactive", false);
+  const [ascending, setAscending] = useSessionStorageState("advisor-process-ascending", false);
+  const [page, setPage] = useSessionStorageState("advisor-process-page", 1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
@@ -48,8 +51,16 @@ export default function AdvisorProcesses() {
 
   const filtered = useMemo(() => processes.filter((process) => {
     const text = `${process.solicitante.nombre} ${process.solicitante.correo} ${process.solicitante.perfil}`.toLowerCase();
-    return (status === "Todos" || process.estado === status) && text.includes(query.trim().toLowerCase());
-  }).sort((left, right) => ascending ? left.id - right.id : right.id - left.id), [ascending, processes, query, status]);
+    return (includeInactive || process.estado !== "Inactivo") && (status === "Todos" || process.estado === status) && text.includes(query.trim().toLowerCase());
+  }).sort((left, right) => {
+    const priority = (item) => item.estado === "En proceso" ? 0 : ["Inactivo", "Completado"].includes(item.estado) ? 2 : 1;
+    const rank = priority(left) - priority(right);
+    const dates = (Date.parse(left.updatedAt) || 0) - (Date.parse(right.updatedAt) || 0);
+    return rank || (ascending ? dates : -dates) || right.id - left.id;
+  }), [ascending, includeInactive, processes, query, status]);
+  const pages = Math.max(1, Math.ceil(filtered.length / 10));
+  const currentPage = Math.min(Math.max(1, page), pages);
+  const visible = filtered.slice((currentPage - 1) * 10, currentPage * 10);
 
   const openProcess = async (process) => {
     setSelected(process); setDetail(null); setDraft({ estado: process.estado, etapaActual: process.etapaActual }); setError("");
@@ -69,8 +80,8 @@ export default function AdvisorProcesses() {
 
   return <>
     <AdvisorPageHeader title="Solicitudes" description="Gestiona y da seguimiento a tus solicitantes." />
-    <section className="advisor-toolbar"><AdvisorSearch value={query} onChange={setQuery} placeholder="Buscar por nombre o correo…" /><div><label className="advisor-filter"><Filter size={18} aria-hidden="true" /><span className="visually-hidden">Estado</span><select value={status} onChange={(event) => setStatus(event.target.value)}>{states.map((item) => <option key={item}>{item}</option>)}</select></label><button type="button" onClick={() => setAscending((value) => !value)}><ArrowDownUp size={18} aria-hidden="true" /> Ordenar</button></div></section>
-    <section className="advisor-panel"><AdvisorState loading={loading} error={!selected ? error : ""} empty={!loading && !filtered.length} onRetry={() => setRevision((value) => value + 1)} />{!loading && filtered.length > 0 && <div className="advisor-table-wrap"><table className="advisor-table advisor-table--responsive"><thead><tr><th>Solicitante</th><th>Perfil / etapa</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{filtered.map((process) => <tr key={process.id}><td data-label="Solicitante"><div className="advisor-person-cell"><ProfileAvatar userId={process.solicitante.id} name={process.solicitante.nombre} version={process.solicitante.avatarVersion} size={42} /><span><strong>{process.solicitante.nombre}</strong><small>{process.solicitante.correo}</small></span></div></td><td data-label="Perfil / etapa"><strong>{process.solicitante.perfil}</strong><small>{process.etapaActual}</small></td><td data-label="Estado"><span className={`advisor-badge advisor-badge--${tone(process.estado)}`}>{process.estado}</span></td><td data-label="Acciones"><button className="advisor-action" type="button" onClick={() => openProcess(process)}>Ver detalles</button></td></tr>)}</tbody></table></div>}<footer className="advisor-results">Mostrando {filtered.length} solicitudes</footer></section>
+    <section className="advisor-toolbar"><AdvisorSearch value={query} onChange={(value) => { setQuery(value); setPage(1); }} placeholder="Buscar por nombre o correo…" /><div><label className="advisor-filter"><Filter size={18} aria-hidden="true" /><span className="visually-hidden">Estado</span><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>{states.filter((item) => includeInactive || item !== "Inactivo").map((item) => <option key={item}>{item}</option>)}</select></label><label className="advisor-checkbox advisor-include-inactive"><input type="checkbox" checked={includeInactive} onChange={(event) => { setIncludeInactive(event.target.checked); if (!event.target.checked && status === "Inactivo") setStatus("Todos"); setPage(1); }} /> Incluir inactivas</label><button type="button" onClick={() => { setAscending((value) => !value); setPage(1); }}><ArrowDownUp size={18} aria-hidden="true" /> {ascending ? "Más antiguas primero" : "Más recientes primero"}</button></div></section>
+    <section className="advisor-panel"><AdvisorState loading={loading} error={!selected ? error : ""} empty={!loading && !error && !filtered.length} onRetry={() => setRevision((value) => value + 1)} />{!loading && filtered.length > 0 && <div className="advisor-table-wrap"><table className="advisor-table advisor-table--responsive"><thead><tr><th>Solicitante</th><th>Perfil / etapa</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{visible.map((process) => <tr key={process.id}><td data-label="Solicitante"><div className="advisor-person-cell"><ProfileAvatar userId={process.solicitante.id} name={process.solicitante.nombre} version={process.solicitante.avatarVersion} size={42} /><span><strong>{process.solicitante.nombre}</strong><small>{process.solicitante.correo}</small></span></div></td><td data-label="Perfil / etapa"><strong>{process.solicitante.perfil}</strong><small>{process.etapaActual}</small></td><td data-label="Estado"><span className={`advisor-badge advisor-badge--${tone(process.estado)}`}>{process.estado}</span></td><td data-label="Acciones"><Link className="advisor-action" to={`/advisor/solicitudes/${process.id}`} state={{ returnTo: `${location.pathname}${location.search}` }}>Ver detalles</Link></td></tr>)}</tbody></table></div>}<AdvisorPagination page={currentPage} pages={pages} total={filtered.length} visible={visible.length} onChange={setPage} /></section>
     {selected && <AdvisorModal title={selected.solicitante.nombre} subtitle={selected.solicitante.correo} onClose={close} footer={<><button className="advisor-button advisor-button--secondary" type="button" onClick={close}>Cancelar</button><button className="advisor-button" type="button" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button></>}>
       <AdvisorState loading={!detail && !error} error={error} />
       {detail && <div className="advisor-process-detail"><dl><div><dt>Perfil</dt><dd>{detail.process.solicitante.perfil}</dd></div><div><dt>Teléfono</dt><dd>{detail.process.solicitante.telefono || "No registrado"}</dd></div><div><dt>Actualizado</dt><dd>{formatAdvisorDate(detail.process.updatedAt, true)}</dd></div></dl><div className="advisor-form-grid"><label>Estado<select value={draft.estado} onChange={(event) => setDraft({ ...draft, estado: event.target.value })}>{states.slice(1).map((item) => <option key={item}>{item}</option>)}</select></label><label>Etapa actual<select value={draft.etapaActual} onChange={(event) => setDraft({ ...draft, etapaActual: event.target.value })}>{stages.map((item) => <option key={item}>{item}</option>)}</select></label></div><div className="advisor-detail-counts"><span><strong>{detail.documents.length}</strong> documentos</span><span><strong>{detail.ds160 ? `${detail.ds160.progress}%` : "—"}</strong> DS-160</span><span><strong>{detail.interviews.length}</strong> entrevistas</span></div>{detail.history?.length > 0 && <section><h3>Historial reciente</h3><ul className="advisor-history">{detail.history.slice(0, 5).map((item) => <li key={item.id}>{item.fieldName || item.field_name}: {item.newValue || item.new_value}<time>{formatAdvisorDate(item.changedAt || item.changed_at, true)}</time></li>)}</ul></section>}</div>}
