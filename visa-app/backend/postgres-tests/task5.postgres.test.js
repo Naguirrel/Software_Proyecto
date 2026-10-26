@@ -6,6 +6,7 @@ const request = require("supertest");
 const { issueSessionToken, verifySessionToken } = require("../auth");
 const { createPostgresTask5Harness } = require("../test-utils/postgresTask5Harness");
 const { EXAMPLE_FIELDS, SEED_QUESTIONS, createQuestionBankService } = require("../services/questionBankService");
+const { PRIVACY_CONSENT } = require("../test-utils/privacyConsent");
 
 // Only the external R2 adapter is replaced. HTTP routes, SQL and local storage remain real.
 jest.mock("../r2", () => ({
@@ -48,6 +49,7 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
       nombre: "Usuario Tarea 5",
       correo,
       contrasena: TEST_PASSWORD,
+      ...PRIVACY_CONSENT,
     });
     expect(response.status).toBe(200);
     return { correo, response, id: response.body.data.id_usuario, token: response.body.token };
@@ -80,6 +82,7 @@ describe("Tarea 5: HTTP y PostgreSQL 15 real", () => {
       nombre: "Duplicado",
       correo: user.correo,
       contrasena: TEST_PASSWORD,
+      ...PRIVACY_CONSENT,
     });
     expect(duplicate.status).toBe(409);
     expect(duplicate.body.error).toBe("El correo ya está registrado");

@@ -1,8 +1,9 @@
 const request = require("supertest");
 const bcrypt = require("bcrypt");
 const { createAuthIntegrationApp } = require("../test-utils/authIntegrationHarness");
+const { PRIVACY_CONSENT } = require("../test-utils/privacyConsent");
 
-const NEW_USER = { nombre: "Ana Pérez", correo: "ana@example.com", contrasena: "clave-segura-123" };
+const NEW_USER = { nombre: "Ana Pérez", correo: "ana@example.com", contrasena: "clave-segura-123", ...PRIVACY_CONSENT };
 
 describe("integración: registro, login y sesión", () => {
   beforeEach(() => {

@@ -37,6 +37,7 @@ test.describe.serial("recorrido completo del cliente", () => {
     await page.getByLabel("Correo electrónico").fill(client.correo);
     await page.locator("#registro-contrasena").fill(client.contrasena);
     await page.locator("#registro-confirmacion").fill(client.contrasena);
+    await page.getByRole("checkbox", { name: /aviso de privacidad/i }).check();
     await page.getByRole("button", { name: /Crear cuenta/ }).click();
 
     await expect(page).toHaveURL(/\/seleccion-perfil/);

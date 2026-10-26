@@ -1,11 +1,12 @@
 const request = require("supertest");
+const { PRIVACY_CONSENT } = require("../test-utils/privacyConsent");
 const {
   createAuthIntegrationApp,
   extractTokenFromMail,
   extractUnlockTokenFromMail,
 } = require("../test-utils/authIntegrationHarness");
 
-const USER = { nombre: "Ana Pérez", correo: "ana@example.com", contrasena: "clave-correcta-1" };
+const USER = { nombre: "Ana Pérez", correo: "ana@example.com", contrasena: "clave-correcta-1", ...PRIVACY_CONSENT };
 const MINUTE_MS = 60 * 1000;
 
 async function setupUser() {
