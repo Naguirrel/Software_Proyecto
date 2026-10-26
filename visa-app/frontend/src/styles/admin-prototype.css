@@ -43,10 +43,7 @@
 .admin-sidebar__brand .visaguide-logo__mark {
   width: 48px;
   height: 48px;
-  border-radius: 12px;
-  background: var(--admin-navy);
-  color: #fff;
-  box-shadow: 0 7px 16px rgba(15, 23, 42, .13);
+  background: transparent;
 }
 
 .admin-sidebar__brand .visaguide-logo__name,
@@ -56,7 +53,7 @@
   line-height: 1.1;
 }
 
-.admin-sidebar__brand .visaguide-logo__accent { color: inherit; }
+.admin-sidebar__brand .visaguide-logo__accent { color: var(--vg-red); }
 .admin-sidebar__brand small,
 [data-theme="dark"] .admin-sidebar__brand small {
   color: var(--vg-text);

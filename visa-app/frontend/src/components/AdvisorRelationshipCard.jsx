@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Mail, MessageSquareWarning, Phone } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Mail, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../utils/apiClient";
 import { buildSessionHeaders } from "../utils/sessionAuth";
@@ -15,7 +15,7 @@ const REASONS = [
 ];
 
 const STATUS_LABELS = {
-  pending: "Pendiente de revisión administrativa",
+  pending: "Solicitud en revisión",
   approved: "Cambio aprobado",
   rejected: "Solicitud revisada",
   cancelled: "Solicitud cancelada",
@@ -98,15 +98,20 @@ export default function AdvisorRelationshipCard() {
           {pending ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
           <div>
             <strong>{STATUS_LABELS[request.status] || request.status}</strong>
-            {request.resolution && <span>{request.resolution}</span>}
+            {pending && <span>Un administrador revisará tu caso antes de realizar cualquier cambio.</span>}
+            {!pending && request.resolution && <span>{request.resolution}</span>}
           </div>
         </div>
       )}
 
       {advisor && !pending && !formOpen && (
-        <button className="advisor-change-trigger" type="button" onClick={() => setFormOpen(true)}>
-          <MessageSquareWarning aria-hidden="true" />Solicitar cambio de asesor
-        </button>
+        <div className="advisor-change-entry">
+          <strong>¿Algún problema con tu asesor?</strong>
+          <p>Si algo no está funcionando, cuéntanos qué ocurrió. Un administrador revisará tu caso de forma confidencial.</p>
+          <button className="advisor-change-trigger" type="button" onClick={() => setFormOpen(true)}>
+            Contar mi caso
+          </button>
+        </div>
       )}
 
       {formOpen && (
@@ -114,20 +119,20 @@ export default function AdvisorRelationshipCard() {
           <h3>Cuéntanos qué ocurrió</h3>
           <p>Administración revisará tu explicación de forma confidencial antes de tomar una decisión.</p>
           <label>
-            Motivo principal
+            Motivo
             <select value={category} onChange={(event) => setCategory(event.target.value)} required>
               <option value="">Selecciona un motivo</option>
               {REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
           <label>
-            Explicación
-            <textarea aria-label="Explicación" value={message} onChange={(event) => setMessage(event.target.value)} minLength="20" maxLength="2000" rows="5" required placeholder="Describe los hechos concretos y cualquier información que ayude a evaluar tu solicitud." />
-            <small>{message.length}/2000 caracteres</small>
+            Descripción
+            <textarea aria-label="Descripción" value={message} onChange={(event) => setMessage(event.target.value)} minLength="20" maxLength="2000" rows="5" required placeholder="Describe los hechos concretos y cualquier información que ayude a evaluar tu solicitud." />
+            <small>{message.length} / 2000</small>
           </label>
           <footer>
             <button type="button" onClick={() => { setFormOpen(false); setError(""); }} disabled={saving}>Cancelar</button>
-            <button type="submit" disabled={saving || category === "" || message.trim().length < 20}>{saving ? "Enviando…" : "Enviar solicitud"}</button>
+            <button type="submit" disabled={saving || category === "" || message.trim().length < 20}>{saving ? "Enviando…" : "Enviar caso para revisión"}</button>
           </footer>
         </form>
       )}

@@ -1,4 +1,4 @@
-import { Map } from "lucide-react";
+import { VisaGuideMark } from "./icons/VisaGuideIcons";
 import "./VisaGuideLogo.css";
 
 export default function VisaGuideLogo({
@@ -11,7 +11,7 @@ export default function VisaGuideLogo({
   return (
     <div className={`visaguide-logo visaguide-logo--${variant} ${className}`.trim()}>
       <span className="visaguide-logo__mark" aria-hidden="true">
-        <Map strokeWidth={2} aria-hidden="true" />
+        <VisaGuideMark />
       </span>
       <span className={`visaguide-logo__text ${textClassName}`.trim()}>
         <span className="visaguide-logo__name">

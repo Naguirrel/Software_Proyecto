@@ -1,18 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  Clock3,
-  CalendarDays,
-  CreditCard,
-  FileText,
-  Folder,
-  LayoutGrid,
   LockKeyhole,
   LogOut,
-  MessageSquare,
   Moon,
   Sun,
-  Users,
 } from "lucide-react";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
@@ -27,19 +19,29 @@ import useClientWorkflow from "../hooks/useClientWorkflow";
 import SeniorModeToggle from "./SeniorModeToggle";
 import SeniorGuidance from "./SeniorGuidance";
 import ProfileAvatar from "./ProfileAvatar";
+import {
+  CalendarIcon,
+  ChatIcon,
+  DashboardIcon,
+  FolderIcon,
+  FormIcon,
+  InterviewIcon,
+  PaymentIcon,
+  TimelineIcon,
+} from "./icons/VisaGuideIcons";
 
 const menuItems = [
-  { id: "inicio", labelKey: "sidebar.inicio", Icon: LayoutGrid, path: "/dashboard" },
-  { id: "ds160", labelKey: "sidebar.ds160", gate: "ds160", Icon: FileText, path: "/ds160" },
-  { id: "cronologia", labelKey: "sidebar.cronologia", Icon: Clock3, path: "/cronologia" },
-  { id: "documentos", labelKey: "sidebar.documentos", Icon: Folder, path: "/documents" },
-  { id: "pagos", labelKey: "sidebar.pagos", gate: "payment", Icon: CreditCard, path: "/pagos" },
-  { id: "citas", labelKey: "sidebar.citas", gate: "appointment", Icon: CalendarDays, path: "/citas" },
-  { id: "entrevista", labelKey: "sidebar.entrevista", gate: "interview", Icon: Users, path: "/entrevista" },
-  { id: "chat", labelKey: "sidebar.chat", gate: "chat", Icon: MessageSquare, path: "/chat" },
+  { id: "inicio", labelKey: "sidebar.inicio", Icon: DashboardIcon, path: "/dashboard" },
+  { id: "ds160", labelKey: "sidebar.ds160", gate: "ds160", Icon: FormIcon, path: "/ds160" },
+  { id: "cronologia", labelKey: "sidebar.cronologia", Icon: TimelineIcon, path: "/cronologia" },
+  { id: "documentos", labelKey: "sidebar.documentos", Icon: FolderIcon, path: "/documents" },
+  { id: "pagos", labelKey: "sidebar.pagos", gate: "payment", Icon: PaymentIcon, path: "/pagos" },
+  { id: "citas", labelKey: "sidebar.citas", gate: "appointment", Icon: CalendarIcon, path: "/citas" },
+  { id: "entrevista", labelKey: "sidebar.entrevista", gate: "interview", Icon: InterviewIcon, path: "/entrevista" },
+  { id: "chat", labelKey: "sidebar.chat", gate: "chat", Icon: ChatIcon, path: "/chat" },
 ];
 
-const staffMenuItem = { id: "gestion-consular", labelKey: "sidebar.gestionConsular", Icon: CreditCard, path: "/gestion-consular" };
+const staffMenuItem = { id: "gestion-consular", labelKey: "sidebar.gestionConsular", Icon: PaymentIcon, path: "/gestion-consular" };
 const UNASSIGNED_CLIENT_MENU_IDS = new Set(["inicio", "cronologia", "documentos"]);
 
 export default function Sidebar({ currentPage }) {

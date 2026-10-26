@@ -8,7 +8,7 @@ describe("VisaGuideLogo", () => {
 
     expect(container.firstChild).toHaveClass("visaguide-logo--full");
     expect(screen.getByText("Guevara Advisory Services")).toBeInTheDocument();
-    expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector('[data-icon="visaguide-mark"]')).toHaveAttribute("aria-hidden", "true");
 
     rerender(<VisaGuideLogo variant="compact" accent={false} />);
     expect(container.firstChild).toHaveClass("visaguide-logo--compact");

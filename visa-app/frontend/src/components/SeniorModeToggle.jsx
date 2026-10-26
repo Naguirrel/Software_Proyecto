@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Accessibility } from "lucide-react";
 import useModoSenior from "../hooks/useModoSenior";
 import { setModoSenior } from "../utils/modoSenior";
+import { SeniorGlassesIcon } from "./icons/VisaGuideIcons";
 
 export default function SeniorModeToggle({
   className = "",
@@ -33,7 +33,7 @@ export default function SeniorModeToggle({
         data-tooltip={`${label}: ${enabled ? "activado" : "desactivado"}`}
         title={`${label}: ${enabled ? "activado" : "desactivado"}`}
       >
-        <Accessibility size={iconSize} strokeWidth={2} aria-hidden="true" />
+        <SeniorGlassesIcon size={iconSize} strokeWidth={2} aria-hidden="true" />
         <span className={labelClassName || undefined}>
           {label}{showState ? ` · ${enabled ? "activado" : "desactivado"}` : ""}
         </span>

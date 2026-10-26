@@ -13,6 +13,7 @@ describe("SeniorModeToggle", () => {
     render(<SeniorModeToggle showState />);
 
     const toggle = screen.getByRole("button", { name: "Activar modo senior" });
+    expect(toggle.querySelector('[data-icon="senior-glasses"]')).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     expect(toggle).toHaveTextContent("Modo senior · desactivado");
 
