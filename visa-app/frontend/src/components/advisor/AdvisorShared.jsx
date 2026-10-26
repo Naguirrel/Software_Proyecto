@@ -20,6 +20,20 @@ export function AdvisorState({ loading, error, empty, onRetry }) {
   return null;
 }
 
+export function AdvisorAlert({ message, tone = "error", onDismiss, duration = 0 }) {
+  useEffect(() => {
+    if (!message || !duration || !onDismiss) return undefined;
+    const timer = window.setTimeout(onDismiss, duration);
+    return () => window.clearTimeout(timer);
+  }, [duration, message, onDismiss]);
+
+  if (!message) return null;
+  return <div className={`advisor-alert advisor-alert--${tone}`} role={tone === "error" ? "alert" : "status"}>
+    <span>{message}</span>
+    {onDismiss && <button type="button" aria-label="Cerrar aviso" onClick={onDismiss}><X size={18} aria-hidden="true" /></button>}
+  </div>;
+}
+
 export function AdvisorModal({ title, subtitle, onClose, children, footer }) {
   const titleId = useId();
   const descriptionId = useId();

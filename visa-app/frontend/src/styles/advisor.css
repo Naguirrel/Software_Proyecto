@@ -209,6 +209,12 @@
 .advisor-state button { margin-top: 10px; border: 0; background: transparent; color: var(--vg-red); font-weight: 800; cursor: pointer; }
 .advisor-inline-error, .advisor-success { border-radius: 10px; background: #fff1f2; padding: 12px 14px; }
 .advisor-success { color: #047857; background: #ecfdf5; }
+.advisor-alert { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: 12px 0; border: 1px solid var(--vg-border); border-radius: 10px; background: var(--vg-bg-alt); color: var(--vg-text); padding: 12px 14px; line-height: 1.45; }
+.advisor-alert--error { border-color: var(--vg-danger-text); background: var(--vg-danger-bg); color: var(--vg-danger-text); }
+.advisor-alert--success { border-color: #047857; background: color-mix(in srgb, #047857 10%, var(--vg-card)); color: var(--vg-text); }
+.advisor-alert button { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+.advisor-alert button:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.advisor-alert button:focus-visible { outline: 3px solid var(--vg-red); outline-offset: 2px; }
 
 .advisor-skeleton-state { display: grid; gap: 12px; text-align: left; }
 .advisor-skeleton-state span { display: block; height: 18px; overflow: hidden; border-radius: 7px; background: linear-gradient(90deg, var(--vg-bg-alt) 25%, var(--vg-border) 45%, var(--vg-bg-alt) 65%); background-size: 220% 100%; animation: advisor-shimmer 1.2s infinite linear; }

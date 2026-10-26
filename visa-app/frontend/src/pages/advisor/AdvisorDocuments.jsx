@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, FileText } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { AdvisorModal, AdvisorPageHeader, AdvisorSearch, AdvisorState, AdvisorTabs } from "../../components/advisor/AdvisorShared";
+import { AdvisorAlert, AdvisorModal, AdvisorPageHeader, AdvisorSearch, AdvisorState, AdvisorTabs } from "../../components/advisor/AdvisorShared";
 import { advisorRequest } from "../../utils/advisorApi";
 import { openDocumentPreview } from "../../utils/documentPreview";
 import { formatAdvisorDate as formatDate } from "../../utils/advisorFormat";
@@ -67,7 +67,7 @@ export default function AdvisorDocuments() {
     <AdvisorTabs items={tabs} value={tab} onChange={setTab} label="Filtrar documentos" />
     <section className="advisor-panel"><div className="advisor-panel-toolbar"><AdvisorSearch value={query} onChange={setQuery} placeholder="Buscar por solicitante o documento…" /></div><AdvisorState loading={loading} error={!selected ? error : ""} empty={!loading && !filtered.length} onRetry={() => setRevision((value) => value + 1)} />{!loading && filtered.length > 0 && <div className="advisor-table-wrap"><table className="advisor-table advisor-table--responsive"><thead><tr><th>Documento</th><th>Solicitante</th><th>Fecha</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{filtered.map((document) => { const state = normalizedStatus(document.estado); return <tr key={document.id}><td data-label="Documento"><span className="advisor-document"><FileText aria-hidden="true" /><span><strong>{document.nombre}</strong><small>{document.documento_key || document.tipo}</small></span></span></td><td data-label="Solicitante"><strong>{document.usuario?.nombre}</strong><small>{document.usuario?.correo}</small></td><td data-label="Fecha">{formatDate(document.actualizado_en || document.creado_en)}</td><td data-label="Estado"><span className={`advisor-badge advisor-badge--${state}`}>{labels[state]}</span></td><td data-label="Acción"><button className="advisor-action" type="button" onClick={() => open(document)}>Revisar</button></td></tr>; })}</tbody></table></div>}</section>
     {selected && <AdvisorModal title={selected.nombre} subtitle={selected.usuario?.nombre} onClose={close} footer={<><button className="advisor-button advisor-button--secondary" type="button" onClick={() => openDocumentPreview(selected)}><Eye size={18} aria-hidden="true" /> Abrir archivo</button><button className="advisor-button" type="button" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar revisión"}</button></>}>
-      {error && <p className="advisor-inline-error" role="alert">{error}</p>}
+      <AdvisorAlert message={error} onDismiss={() => setError("")} />
       <div className="advisor-form-grid"><label>Resultado<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="approved">Aprobar</option><option value="correction">Solicitar corrección</option></select></label><label className="advisor-form-grid__wide">Observaciones<textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} rows="5" placeholder="Indica observaciones claras para el solicitante." /></label></div>
     </AdvisorModal>}
   </>;
