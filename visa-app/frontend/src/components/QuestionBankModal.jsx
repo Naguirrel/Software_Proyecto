@@ -1,10 +1,15 @@
 import { useState } from "react";
+import { buildQuestionPayload, EXAMPLE_FIELDS, MAX_EXAMPLE_LENGTH } from "../utils/questionExamples";
 
 const DEFAULT_FORM = {
   question: "",
   category: "General",
   difficulty: "Media",
   is_required: false,
+  ejemplo_fuerte: "",
+  explicacion_fuerte: "",
+  ejemplo_debil: "",
+  explicacion_debil: "",
 };
 
 function getInitialForm(question) {
@@ -15,6 +20,10 @@ function getInitialForm(question) {
     category: question.category || "General",
     difficulty: question.difficulty || "Media",
     is_required: Boolean(question.is_required),
+    ejemplo_fuerte: question.ejemplo_fuerte || "",
+    explicacion_fuerte: question.explicacion_fuerte || "",
+    ejemplo_debil: question.ejemplo_debil || "",
+    explicacion_debil: question.explicacion_debil || "",
   };
 }
 
@@ -39,7 +48,7 @@ export default function QuestionBankModal({
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    onSubmit(form);
+    onSubmit(buildQuestionPayload(form, mode));
   };
 
   const title = mode === "edit" ? "Editar pregunta" : "Nueva pregunta";
@@ -120,6 +129,27 @@ export default function QuestionBankModal({
               <small>Se priorizará en simuladores y sesiones guiadas.</small>
             </span>
           </label>
+
+          <fieldset className="question-modal__examples">
+            <legend>Ejemplos de respuesta (opcional)</legend>
+            <p>Se muestran al cliente en el simulador de entrevista como referencia.</p>
+            {EXAMPLE_FIELDS.map(({ name, label, placeholder }) => (
+              <label key={name}>
+                {label}
+                <textarea
+                  name={name}
+                  value={form[name]}
+                  onChange={handleChange}
+                  placeholder={placeholder}
+                  rows={3}
+                  maxLength={MAX_EXAMPLE_LENGTH}
+                />
+                <small className="question-modal__counter">
+                  {form[name].length}/{MAX_EXAMPLE_LENGTH}
+                </small>
+              </label>
+            ))}
+          </fieldset>
 
           <div className="question-modal__footer">
             <button
