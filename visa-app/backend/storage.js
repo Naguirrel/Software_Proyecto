@@ -18,7 +18,8 @@ function sanitizeFilename(filename) {
 }
 
 function canUseLocalFallback() {
-  return process.env.NODE_ENV !== "production";
+  return process.env.NODE_ENV !== "production"
+    || process.env.LOCAL_STORAGE_FALLBACK === "true";
 }
 
 async function uploadLocalFile(file, baseUrl) {

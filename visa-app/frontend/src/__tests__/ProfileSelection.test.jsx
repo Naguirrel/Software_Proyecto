@@ -15,6 +15,7 @@ describe("ProfileSelection", () => {
         token: "signed-session-token",
         nombre: "Norman Aguirre",
         correo: "norman@example.com",
+        rol: "cliente",
       })
     );
 
@@ -65,5 +66,39 @@ describe("ProfileSelection", () => {
       headers: { "Content-Type": "application/json", Authorization: "Bearer signed-session-token" },
       body: JSON.stringify({ perfil: "turismo_negocios" }),
     }));
+  });
+
+  it("activa Senior solo al elegir Adulto Mayor y no muestra un interruptor manual", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("modoSenior", "true");
+    localStorage.setItem(
+      "visaguide_session",
+      JSON.stringify({
+        id: 2,
+        token: "signed-session-token",
+        nombre: "Cliente de prueba",
+        correo: "cliente@example.com",
+        rol: "cliente",
+      })
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ valid: true }),
+    });
+
+    render(<ProfileSelection />);
+
+    await waitFor(() => expect(screen.getByText("Adulto Mayor (asistencia accesible)")).toBeInTheDocument());
+    await waitFor(() => expect(document.documentElement).not.toHaveClass("modo-senior"));
+    expect(screen.queryByRole("button", { name: /^Modo senior ·/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByText("Adulto Mayor (asistencia accesible)"));
+    expect(document.documentElement).toHaveClass("modo-senior");
+    expect(localStorage.getItem("modoSenior")).toBe("true");
+
+    await user.click(screen.getByText("Estudiante (F/M)"));
+    expect(document.documentElement).not.toHaveClass("modo-senior");
+    expect(localStorage.getItem("modoSenior")).toBe("false");
   });
 });

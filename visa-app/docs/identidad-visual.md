@@ -1,6 +1,6 @@
 # Identidad visual de VisaGuide
 
-La identidad oficial usa el símbolo de mapa plegado con ruta de verificación y el nombre `VisaGuide`. No se utiliza un eslogan dentro del logotipo de producto; los subtítulos identifican únicamente el contexto (`Solicitante`, `Asesor`, `Administrador` o la organización).
+La identidad oficial usa el símbolo de mapa plegado con ruta de verificación y el nombre `VisaGuide`. No se utiliza un eslogan dentro del logotipo de producto. La navegación del cliente muestra únicamente la marca; los subtítulos se reservan para contextos de personal (`Asesor`, `Administrador`) o para identificar la organización.
 
 ## Marca
 

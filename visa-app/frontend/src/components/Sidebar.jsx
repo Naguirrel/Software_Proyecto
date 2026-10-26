@@ -213,7 +213,6 @@ export default function Sidebar({ currentPage }) {
           variant="full"
           className="vg-sidebar-logo"
           textClassName="vg-sidebar-label"
-          subtitle={t("sidebar.subtitle")}
         />
 
         {/* Nav */}

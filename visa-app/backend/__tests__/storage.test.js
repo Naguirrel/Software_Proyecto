@@ -28,6 +28,8 @@ describe("development local document storage", () => {
 
   afterEach(async () => {
     delete process.env.LOCAL_UPLOAD_DIR;
+    delete process.env.LOCAL_STORAGE_FALLBACK;
+    process.env.NODE_ENV = "test";
     await fs.rm(directory, { recursive: true, force: true });
   });
 
@@ -60,5 +62,29 @@ describe("development local document storage", () => {
     await reloadedStorage.deleteStoredFile(uploaded.key);
     await expect(fs.access(storedPath)).rejects.toThrow();
     expect((await request(downloadApp).get(downloadPath)).status).toBe(404);
+  });
+
+  test("rechaza el fallback local en producción cuando no se habilita explícitamente", async () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.LOCAL_STORAGE_FALLBACK;
+
+    await expect(storage.uploadStoredFile(
+      { originalname: "avatar.png", buffer: Buffer.from("imagen") },
+      { baseUrl: "http://backend.example.test" }
+    )).rejects.toThrow("Missing R2 environment variables");
+  });
+
+  test("permite el volumen local de Docker cuando el fallback está habilitado explícitamente", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.LOCAL_STORAGE_FALLBACK = "true";
+
+    const uploaded = await storage.uploadStoredFile(
+      { originalname: "avatar.png", buffer: Buffer.from("imagen") },
+      { baseUrl: "http://backend.example.test" }
+    );
+
+    expect(uploaded).toEqual(expect.objectContaining({ provider: "local" }));
+    await expect(fs.readFile(path.join(directory, path.basename(uploaded.key)), "utf8"))
+      .resolves.toBe("imagen");
   });
 });

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import "./ProfileSelection.css";
 import useModoSenior from "../../hooks/useModoSenior";
-import SeniorModeToggle from "../../components/SeniorModeToggle";
 import useRequireAuth from "../../hooks/useRequireAuth";
 import { apiRequest } from "../../utils/apiClient";
 import { buildSessionHeaders } from "../../utils/sessionAuth";
@@ -22,6 +21,12 @@ function ProfileSelection() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const modoSenior = useModoSenior();
+
+  useEffect(() => {
+    // La selección inicia en modo estándar. Adulto Mayor es el único perfil
+    // que activa automáticamente la experiencia senior durante el onboarding.
+    setModoSenior(false);
+  }, []);
 
   useEffect(() => {
     if (!isValidating && (session?.perfil || localStorage.getItem("perfilUsuario"))) {
@@ -69,7 +74,7 @@ function ProfileSelection() {
 
   const handleSelectProfile = (profileId) => {
     setSelectedProfile(profileId);
-    if (profileId === "adulto_mayor") setModoSenior(true);
+    setModoSenior(profileId === "adulto_mayor");
     setErrorMessage("");
   };
 
@@ -135,7 +140,6 @@ function ProfileSelection() {
         <VisaGuideLogo className="profile-brand" />
         <div className="profile-header__actions">
           <span className="onboarding-step" data-senior-priority="secondary">Configuración de cuenta</span>
-          <SeniorModeToggle showState />
         </div>
       </header>
       <main id="main-content" tabIndex="-1" className="profile-main">
