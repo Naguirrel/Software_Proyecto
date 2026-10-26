@@ -37,7 +37,7 @@ function createInMemoryAuthDb() {
     }
 
     if (text.startsWith("INSERT INTO usuario")) {
-      const [nombre, correo, contrasena] = values;
+      const [nombre, correo, contrasena, privacidadVersion] = values;
       if (findUser((row) => row.correo === correo)) {
         const error = new Error('duplicate key value violates unique constraint "usuario_correo_key"');
         error.code = "23505";
@@ -54,6 +54,8 @@ function createInMemoryAuthDb() {
         activo: true,
         email_verificado: false,
         session_version: 0,
+        privacidad_version: privacidadVersion ?? null,
+        privacidad_aceptada_en: privacidadVersion ? new Date() : null,
       };
       state.users.push(user);
       return { rows: [{ ...user }] };

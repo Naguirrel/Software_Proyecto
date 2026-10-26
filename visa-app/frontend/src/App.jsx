@@ -4,6 +4,7 @@ import { AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2 } from "luc
 import { buildApiUrl } from "./config/api";
 import { setIdiomaPreferido } from "./i18n/translations";
 import { getPasswordError, PASSWORD_HINT } from "./utils/passwordPolicy";
+import { PRIVACY_NOTICE_VERSION } from "./config/privacyNotice";
 import { setModoSenior } from "./utils/modoSenior";
 import AuthLayout from "./components/auth/AuthLayout";
 import RequireAdmin from "./components/admin/RequireAdmin";
@@ -27,6 +28,7 @@ const InterviewSimulator = lazy(() => import("./pages/InterviewSimulator"));
 const QuestionBank = lazy(() => import("./pages/QuestionBank"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Notificaciones = lazy(() => import("./pages/Notificaciones"));
+const PrivacyNotice = lazy(() => import("./pages/PrivacyNotice"));
 const ConsularPayment = lazy(() => import("./pages/ConsularPayment"));
 const ConsularAppointments = lazy(() => import("./pages/ConsularAppointments"));
 const ConsularManagement = lazy(() => import("./pages/ConsularManagement"));
@@ -125,6 +127,7 @@ function App() {
         <Route path="/"                               element={<Navigate to="/login" replace />} />
         <Route path="/login"                          element={<Login />} />
         <Route path="/registro"                       element={<Registro />} />
+        <Route path="/privacidad"                     element={<PrivacyNotice />} />
         <Route path="/recuperar-contrasena"           element={<ForgotPassword />} />
         <Route path="/restablecer-contrasena"         element={<ResetPassword />} />
         <Route path="/verificar-email"                element={<VerifyEmail />} />
@@ -432,6 +435,8 @@ function Registro() {
   const [isLoading, setIsLoading]                 = useState(false);
   const [showPassword, setShowPassword]           = useState(false);
   const [showConfirmation, setShowConfirmation]   = useState(false);
+  const [aceptaPrivacidad, setAceptaPrivacidad]   = useState(false);
+  const [privacidadError, setPrivacidadError]     = useState(false);
 
   useEffect(() => {
     const check = async () => {
@@ -448,11 +453,13 @@ function Registro() {
   }, [error, success]);
 
   const validate = () => {
+    setPrivacidadError(false);
     if (!nombre.trim()) { setError("El nombre es obligatorio"); return false; }
     if (!correo.trim() || !correo.includes("@") || !correo.includes(".")) { setError("Ingresa un correo válido"); return false; }
     const passwordError = getPasswordError(contrasena);
     if (passwordError) { setError(passwordError); return false; }
     if (contrasena !== confirmarContrasena) { setError("Las contraseñas no coinciden"); return false; }
+    if (!aceptaPrivacidad) { setPrivacidadError(true); setError("Debes aceptar el aviso de privacidad para crear tu cuenta"); return false; }
     return true;
   };
 
@@ -463,7 +470,7 @@ function Registro() {
     try {
       const res = await fetch(buildApiUrl("/register"), {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, correo, contrasena }),
+        body: JSON.stringify({ nombre, correo, contrasena, acepta_privacidad: true, version_privacidad: PRIVACY_NOTICE_VERSION }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -493,6 +500,21 @@ function Registro() {
         <div className="auth-field"><label htmlFor="registro-correo">Correo electrónico</label><input id="registro-correo" type="email" autoComplete="email" placeholder="tu@correo.com" value={correo} onChange={(e) => setCorreo(e.target.value)} disabled={isLoading} /></div>
         <PasswordField id="registro-contrasena" label="Contraseña" hint={PASSWORD_HINT} value={contrasena} onChange={setContrasena} visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} disabled={isLoading} />
         <PasswordField id="registro-confirmacion" label="Confirmar contraseña" value={confirmarContrasena} onChange={setConfirmarContrasena} visible={showConfirmation} onToggle={() => setShowConfirmation((visible) => !visible)} disabled={isLoading} />
+        <div className={`auth-consent${privacidadError ? " auth-consent--error" : ""}`}>
+          <input
+            id="registro-privacidad"
+            type="checkbox"
+            checked={aceptaPrivacidad}
+            onChange={(event) => { setAceptaPrivacidad(event.target.checked); if (event.target.checked) setPrivacidadError(false); }}
+            aria-required="true"
+            aria-invalid={privacidadError || undefined}
+            disabled={isLoading}
+          />
+          <label htmlFor="registro-privacidad">
+            He leído y acepto el{" "}
+            <Link to="/privacidad" target="_blank" rel="noopener noreferrer">aviso de privacidad<span className="visually-hidden"> (se abre en una pestaña nueva)</span></Link>
+          </label>
+        </div>
         <button className="auth-submit" type="submit" disabled={isLoading}>
           {isLoading ? <><Loader2 className="auth-spinner" aria-hidden="true" /> Creando cuenta...</> : <>Crear cuenta <ArrowRight aria-hidden="true" /></>}
         </button>

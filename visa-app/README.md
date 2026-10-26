@@ -64,6 +64,7 @@ docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" 
   < backend/migrations/006_question_bank_visa_profiles.sql
 docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
   < backend/migrations/007_profile_identity_and_advisor_changes.sql
+docker compose -f docker-compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   < backend/migrations/008_privacy_consent.sql
 ```
 
 ## Autenticación

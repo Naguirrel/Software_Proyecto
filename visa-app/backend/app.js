@@ -139,7 +139,9 @@ async function ensureUserSchema() {
       ADD COLUMN IF NOT EXISTS created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS capacidad_asesor     INT DEFAULT 50,
-      ADD COLUMN IF NOT EXISTS disponible_asesor    BOOLEAN DEFAULT TRUE
+      ADD COLUMN IF NOT EXISTS disponible_asesor    BOOLEAN DEFAULT TRUE,
+      ADD COLUMN IF NOT EXISTS privacidad_aceptada_en TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS privacidad_version    VARCHAR(20)
   `);
   await pool.query(`
     UPDATE usuario SET rol = 'cliente'

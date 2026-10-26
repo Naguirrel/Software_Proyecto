@@ -51,6 +51,7 @@ describe("formularios de registro y restablecimiento", () => {
     await user.type(screen.getByLabelText("Correo electrónico"), "ana@example.com");
     await user.type(screen.getByLabelText("Contraseña"), contrasena);
     await user.type(screen.getByLabelText("Confirmar contraseña"), contrasena);
+    await user.click(screen.getByRole("checkbox", { name: /aviso de privacidad/i }));
     await user.click(screen.getByRole("button", { name: /Crear cuenta/i }));
   }
 
@@ -93,7 +94,7 @@ describe("formularios de registro y restablecimiento", () => {
     await fillRegistration(user, "abcdefg1");
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/register"), expect.objectContaining({
-      body: JSON.stringify({ nombre: "Ana López", correo: "ana@example.com", contrasena: "abcdefg1" }),
+      body: JSON.stringify({ nombre: "Ana López", correo: "ana@example.com", contrasena: "abcdefg1", acepta_privacidad: true, version_privacidad: "1.0" }),
     })));
   });
 

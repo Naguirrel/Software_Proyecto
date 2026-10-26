@@ -40,7 +40,9 @@ ALTER TABLE usuario
   ADD COLUMN IF NOT EXISTS bloqueado_hasta     TIMESTAMP,
   ADD COLUMN IF NOT EXISTS intentos_reset_en   TIMESTAMP,
   ADD COLUMN IF NOT EXISTS session_version     INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS visa_details        JSONB NOT NULL DEFAULT '{}'::jsonb;
+  ADD COLUMN IF NOT EXISTS visa_details        JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS privacidad_aceptada_en TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS privacidad_version   VARCHAR(20);
 
 UPDATE usuario SET session_version = 0 WHERE session_version IS NULL;
 

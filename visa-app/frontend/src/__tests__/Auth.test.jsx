@@ -189,13 +189,14 @@ describe("pantallas de autenticación", () => {
     await user.type(screen.getByLabelText("Correo electrónico"), "ana@example.com");
     await user.type(screen.getByLabelText("Contraseña"), "clave123");
     await user.type(screen.getByLabelText("Confirmar contraseña"), "clave123");
+    await user.click(screen.getByRole("checkbox", { name: /aviso de privacidad/i }));
     await user.click(screen.getByRole("button", { name: /Crear cuenta/i }));
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Este correo ya está registrado"));
     expect(fetchMock).toHaveBeenCalledWith(buildApiUrl("/register"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre: "Ana López", correo: "ana@example.com", contrasena: "clave123" }),
+      body: JSON.stringify({ nombre: "Ana López", correo: "ana@example.com", contrasena: "clave123", acepta_privacidad: true, version_privacidad: "1.0" }),
     });
   });
 
@@ -247,6 +248,7 @@ describe("pantallas de autenticación", () => {
     await user.type(screen.getByLabelText("Correo electrónico"), newUser.correo);
     await user.type(screen.getByLabelText("Contraseña"), "clave123");
     await user.type(screen.getByLabelText("Confirmar contraseña"), "clave123");
+    await user.click(screen.getByRole("checkbox", { name: /aviso de privacidad/i }));
     await user.click(screen.getByRole("button", { name: /Crear cuenta/i }));
 
     await waitFor(() => expect(window.location.pathname).toBe("/seleccion-perfil"));
@@ -282,6 +284,7 @@ describe("pantallas de autenticación", () => {
     await user.type(screen.getByLabelText("Correo electrónico"), newUser.correo);
     await user.type(screen.getByLabelText("Contraseña"), "clave123");
     await user.type(screen.getByLabelText("Confirmar contraseña"), "clave123");
+    await user.click(screen.getByRole("checkbox", { name: /aviso de privacidad/i }));
     await user.click(screen.getByRole("button", { name: /Crear cuenta/i }));
 
     await waitFor(() => expect(window.location.pathname).toBe("/seleccion-perfil"));

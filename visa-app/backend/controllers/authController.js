@@ -3,6 +3,7 @@ const { createSafeEmailSender } = require("../services/emailReminderService");
 const { accountLocked } = require("../templates/emailTemplates");
 const { sendErrorResponse } = require("../middleware/errorResponse");
 const { validatePassword } = require("../services/passwordPolicy");
+const { PRIVACY_NOTICE_VERSION, validatePrivacyConsent } = require("../config/privacyNotice");
 
 function getFrontendBaseUrl(env = process.env) {
   if (env.FRONTEND_URL) return env.FRONTEND_URL.replace(/\/+$/, "");
@@ -113,11 +114,17 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       return res.status(400).json({ error: passwordError });
     }
 
+    const privacyError = validatePrivacyConsent(req.body);
+    if (privacyError) {
+      return res.status(400).json({ error: privacyError });
+    }
+
     try {
       const usuarioRow = await authService.createUser({
         nombre: String(nombre).trim(),
         correo: normalizedEmail,
         contrasena,
+        privacidadVersion: PRIVACY_NOTICE_VERSION,
       });
       const usuario = presentLoginUser(usuarioRow);
       
@@ -133,6 +140,7 @@ function createAuthController(authService, { activityLogService, testUsersReady,
         entityType: "usuario",
         entityId: usuario.id_usuario,
         description: "Usuario registrado",
+        metadata: { privacyNoticeVersion: PRIVACY_NOTICE_VERSION },
       });
 
       try {

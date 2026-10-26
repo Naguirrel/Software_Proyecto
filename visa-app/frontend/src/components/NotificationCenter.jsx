@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { NOTIFICATION_POLL_INTERVAL_MS } from "../hooks/useUnreadNotifications";
 import { useNavigate } from "react-router-dom";
 import { buildApiUrl } from "../config/api";
 import { buildSessionHeaders } from "../utils/sessionAuth";
@@ -26,13 +27,16 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
     if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
-  const loadNotifications = async () => {
+  // `silent` actualiza la lista abierta sin mostrar "Cargando" ni borrar lo que ya se ve.
+  const loadNotifications = async ({ silent = false } = {}) => {
     if (!userId) {
       setNotifications([]);
       return;
     }
-    setLoading(true);
-    setError("");
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     requestControllerRef.current?.abort();
     const controller = new AbortController();
     requestControllerRef.current = controller;
@@ -46,12 +50,13 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
       if (!response.ok) throw new Error("notifications.error");
       const data = await response.json();
       setNotifications(data.notificaciones || []);
+      if (silent) setError("");
     } catch (requestError) {
-      if (requestError.name !== "AbortError") {
+      if (requestError.name !== "AbortError" && !silent) {
         setError("notifications.error");
       }
     } finally {
-      if (!controller.signal.aborted) setLoading(false);
+      if (!controller.signal.aborted && !silent) setLoading(false);
     }
   };
 
@@ -122,8 +127,34 @@ export default function NotificationCenter({ userId, unreadCount = 0 }) {
 
   useEffect(() => () => requestControllerRef.current?.abort(), []);
 
+  // Con el panel abierto, la lista se mantiene al día: cuando cambia el contador de no leídas
+  // y, por si acaso, cada 30 s mientras la pestaña está visible.
+  const loadSilentlyRef = useRef(null);
+  loadSilentlyRef.current = () => loadNotifications({ silent: true });
+  useEffect(() => {
+    if (!open) return undefined;
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") loadSilentlyRef.current();
+    }, NOTIFICATION_POLL_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
+  }, [open]);
+  useEffect(() => {
+    if (open) loadSilentlyRef.current();
+    // Solo debe reaccionar a un cambio del contador, no a que el panel se abra.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unreadCount]);
+
+  // Aviso para lectores de pantalla cuando llega una notificación nueva.
+  const previousUnreadRef = useRef(unreadCount);
+  const [announcement, setAnnouncement] = useState("");
+  useEffect(() => {
+    if (unreadCount > previousUnreadRef.current) setAnnouncement(t("notifications.newArrived"));
+    previousUnreadRef.current = unreadCount;
+  }, [unreadCount, t]);
+
   return (
     <div className="vg-notification-center">
+      <span className="visually-hidden" role="status" aria-live="polite">{announcement}</span>
       <button
         ref={triggerRef}
         type="button"
