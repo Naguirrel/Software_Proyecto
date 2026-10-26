@@ -6,8 +6,6 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
-import { buildApiUrl } from "../config/api";
-import { buildSessionHeaders } from "../utils/sessionAuth";
 import useModoSenior from "../hooks/useModoSenior";
 import useTheme from "../hooks/useTheme";
 import useIdioma from "../hooks/useIdioma";
@@ -16,6 +14,7 @@ import VisaGuideLogo from "./VisaGuideLogo";
 import EmailVerificationNotice from "./EmailVerificationNotice";
 import { preloadRoute } from "../routes/lazyRoutes";
 import useClientWorkflow from "../hooks/useClientWorkflow";
+import useUnreadNotifications from "../hooks/useUnreadNotifications";
 import SeniorModeToggle from "./SeniorModeToggle";
 import SeniorGuidance from "./SeniorGuidance";
 import ProfileAvatar from "./ProfileAvatar";
@@ -63,7 +62,7 @@ export default function Sidebar({ currentPage }) {
   };
 
   const [usuario, setUsuario] = useState(readUsuario);
-  const [noLeidas, setNoLeidas] = useState(0);
+  const { unreadCount: noLeidas } = useUnreadNotifications(usuario?.id);
   const isClient = usuario?.rol === "cliente";
   const { workflow } = useClientWorkflow({ enabled: isClient });
   const navigationItems = usuario?.rol === "asesor"
@@ -91,31 +90,6 @@ export default function Sidebar({ currentPage }) {
     window.addEventListener("storage", syncUsuario);
     return () => window.removeEventListener("storage", syncUsuario);
   }, []);
-
-  useEffect(() => {
-    if (!usuario?.id) return;
-
-    const fetchNoLeidas = async () => {
-      try {
-        const res = await fetch(buildApiUrl("/notificaciones/no-leidas"), {
-          method: "POST",
-          headers: buildSessionHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ userId: usuario.id }),
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        setNoLeidas(data.total || 0);
-      } catch {
-        // silencioso: el badge simplemente no aparece si falla
-      }
-    };
-
-    fetchNoLeidas();
-
-    const handleActualizar = () => fetchNoLeidas();
-    window.addEventListener("notificacionesLeidas", handleActualizar);
-    return () => window.removeEventListener("notificacionesLeidas", handleActualizar);
-  }, [usuario?.id]);
 
   // Close sidebar on resize to desktop
   useEffect(() => {
