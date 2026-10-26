@@ -249,6 +249,32 @@ describe("question answer examples", () => {
     expect(values.slice(4)).toEqual(["No sé, tal vez alguien me ayude.", null, 7]);
   });
 
+  test("saves all four examples sent by the admin form and clears the empty ones (SP10-19)", async () => {
+    const pool = createPool();
+    await createQuestionBankService(pool).updateQuestion("7", {
+      ...basePayload,
+      ejemplo_fuerte: "  Voy a un congreso y regreso el lunes.  ",
+      explicacion_fuerte: "",
+      ejemplo_debil: "",
+      explicacion_debil: "   ",
+    });
+
+    const [sql, values] = writeCall(pool, "UPDATE");
+    for (const field of EXAMPLE_FIELDS) {
+      expect(sql).toContain(`${field} = $`);
+    }
+    expect(sql).toContain("WHERE id = $9");
+    expect(values.slice(4)).toEqual(["Voy a un congreso y regreso el lunes.", null, null, null, 7]);
+  });
+
+  test("accepts examples of exactly 2000 characters and rejects 2001 on update", async () => {
+    const service = createQuestionBankService(createPool());
+
+    await expect(service.updateQuestion("7", { ...basePayload, ejemplo_fuerte: "a".repeat(2000) })).resolves.toBeDefined();
+    await expect(service.updateQuestion("7", { ...basePayload, ejemplo_fuerte: "a".repeat(2001) }))
+      .rejects.toMatchObject({ statusCode: 400, message: "ejemplo_fuerte no puede superar 2000 caracteres" });
+  });
+
   test("rejects non-text or too long examples with 400", async () => {
     const service = createQuestionBankService(createPool());
 
