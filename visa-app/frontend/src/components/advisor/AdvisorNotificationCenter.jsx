@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Archive, CheckCheck, CircleAlert, FileText, MessageSquareText, Settings2, Trash2, UserPlus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAdvisorNotifications } from "./advisorNotificationsStore";
@@ -56,6 +57,29 @@ export default function AdvisorNotificationCenter() {
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
   const closeRef = useRef(null);
+  const [panelPosition, setPanelPosition] = useState({ top: 72, left: 12, maxHeight: 500 });
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const positionPanel = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = Math.min(430, window.innerWidth - 24);
+      const top = Math.min(rect.bottom + 8, window.innerHeight - 80);
+      setPanelPosition({
+        top,
+        left: Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12)),
+        maxHeight: Math.max(68, window.innerHeight - top - 12),
+      });
+    };
+    positionPanel();
+    window.addEventListener("resize", positionPanel);
+    window.addEventListener("scroll", positionPanel, true);
+    return () => {
+      window.removeEventListener("resize", positionPanel);
+      window.removeEventListener("scroll", positionPanel, true);
+    };
+  }, [open]);
 
   const close = (restoreFocus = true) => {
     setOpen(false);
@@ -118,7 +142,7 @@ export default function AdvisorNotificationCenter() {
       <BellIcon size={22} />
       {unreadCount > 0 && <span className="advisor-notification-count" aria-hidden="true">{unreadCount > 99 ? "99+" : unreadCount}</span>}
     </button>
-    {open && <section id="advisor-notification-panel" ref={panelRef} className="advisor-notification-panel" role="dialog" aria-modal="false" aria-labelledby="advisor-notification-title">
+    {open && createPortal(<section id="advisor-notification-panel" ref={panelRef} className="advisor-notification-panel" style={panelPosition} role="dialog" aria-modal="false" aria-labelledby="advisor-notification-title">
       <header>
         <div><h2 id="advisor-notification-title">Notificaciones</h2><span className={`advisor-live-status advisor-live-status--${status}`}>{status === "live" ? "En tiempo real" : status === "connecting" ? "Conectando…" : "Reconectando…"}</span></div>
         <div className="advisor-notification-header-actions">
@@ -152,6 +176,6 @@ export default function AdvisorNotificationCenter() {
         </li>; })}</ul>}
         {hasMore && <button type="button" className="advisor-notification-load-more" onClick={() => loadMore().catch((requestError) => setActionError(requestError.message))}>Cargar notificaciones anteriores</button>}
       </div>
-    </section>}
+    </section>, document.body)}
   </div>;
 }
