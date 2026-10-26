@@ -6,6 +6,7 @@ import useModoSenior from "../hooks/useModoSenior";
 import useRequireAuth from "../hooks/useRequireAuth";
 import { apiRequest } from "../utils/apiClient";
 import { buildSessionHeaders } from "../utils/sessionAuth";
+import { buildQuestionExamples, getAnalysisSide } from "../utils/interviewExamples";
 import "../styles/interview.css";
 
 const INTRO_QUESTION = {
@@ -268,7 +269,11 @@ export default function InterviewSimulator() {
 
       setQuestions([
         INTRO_QUESTION,
-        ...selected.map((item) => ({ id: `bank-${item.id}`, text: item.question })),
+        ...selected.map((item) => ({
+          id: `bank-${item.id}`,
+          text: item.question,
+          examples: buildQuestionExamples(item),
+        })),
       ]);
       setQuestionStatus("ready");
     } catch (loadError) {
@@ -677,17 +682,11 @@ export default function InterviewSimulator() {
           <div className="analysis-grid">
             <AnalysisCard
               type="weak"
-              title={currentQuestion.id === "intro" ? "Respuesta Débil" : "Evita respuestas vagas"}
-              subtitle={currentQuestion.id === "intro" ? "Ejemplo sobre el propósito del viaje" : "Orientación general"}
-              quote={currentQuestion.id === "intro" ? INTRO_ANALYSIS.weak : null}
-              notes={currentQuestion.id === "intro" ? INTRO_ANALYSIS.weakNotes : GENERAL_ANALYSIS.weakNotes}
+              {...getAnalysisSide(currentQuestion, "weak", { intro: INTRO_ANALYSIS, general: GENERAL_ANALYSIS })}
             />
             <AnalysisCard
               type="strong"
-              title={currentQuestion.id === "intro" ? "Respuesta Fuerte" : "Responde con claridad"}
-              subtitle={currentQuestion.id === "intro" ? "Ejemplo sobre el propósito del viaje" : "Orientación general"}
-              quote={currentQuestion.id === "intro" ? INTRO_ANALYSIS.strong : null}
-              notes={currentQuestion.id === "intro" ? INTRO_ANALYSIS.strongNotes : GENERAL_ANALYSIS.strongNotes}
+              {...getAnalysisSide(currentQuestion, "strong", { intro: INTRO_ANALYSIS, general: GENERAL_ANALYSIS })}
             />
           </div>
         </section>
