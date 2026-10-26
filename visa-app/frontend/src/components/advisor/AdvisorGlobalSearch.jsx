@@ -43,7 +43,7 @@ export default function AdvisorGlobalSearch() {
 
   const select = (process) => {
     setOpen(false); setQuery(""); setActiveIndex(-1);
-    navigate(`/advisor/solicitudes?process=${process.id}`);
+    navigate(`/advisor/solicitudes/${process.id}`);
   };
 
   const handleKeyDown = (event) => {
