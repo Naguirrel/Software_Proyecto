@@ -16,8 +16,12 @@
 .advisor-relationship-card__person small { display: flex; align-items: center; gap: 6px; color: var(--vg-text-muted); overflow-wrap: anywhere; }
 .advisor-relationship-card__person small svg { width: 14px; height: 14px; }
 .advisor-relationship-card__empty { color: var(--vg-text-muted); line-height: 1.55; }
-.advisor-change-trigger { margin-top: 18px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--vg-border); border-radius: 9px; padding: 10px 13px; background: var(--vg-bg-alt); color: var(--vg-text); font: inherit; font-weight: 700; cursor: pointer; }
-.advisor-change-trigger svg { width: 18px; height: 18px; color: var(--vg-red); }
+.advisor-change-entry { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--vg-border); }
+.advisor-change-entry > strong { display: block; font-size: 16px; }
+.advisor-change-entry > p { max-width: 62ch; margin: 6px 0 12px; color: var(--vg-text-muted); line-height: 1.5; }
+.advisor-change-trigger { display: inline-flex; align-items: center; min-height: 42px; border: 1px solid color-mix(in srgb, var(--vg-red) 42%, var(--vg-border)); border-radius: 9px; padding: 0 14px; background: transparent; color: var(--vg-red); font: inherit; font-weight: 800; cursor: pointer; }
+.advisor-change-trigger:hover { background: color-mix(in srgb, var(--vg-red) 8%, transparent); }
+.advisor-change-trigger:focus-visible { outline: 3px solid color-mix(in srgb, var(--vg-red) 28%, transparent); outline-offset: 2px; }
 .advisor-change-status { display: flex; gap: 10px; margin-top: 18px; padding: 12px; border-radius: 10px; background: var(--vg-bg-alt); }
 .advisor-change-status > svg { width: 20px; flex: 0 0 auto; }
 .advisor-change-status > div { display: grid; gap: 3px; }

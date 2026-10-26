@@ -36,29 +36,25 @@ body,
   align-items: center;
 }
 
-.brand {
+.profile-brand {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.brand-badge {
+.profile-brand .visaguide-logo__mark {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #ff3d71, #ff5f8f);
-  color: white;
-  font-weight: 800;
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.brand-name {
+.profile-brand .visaguide-logo__name {
   font-size: 1.6rem;
   font-weight: 800;
   color: var(--vg-text);
+}
+
+.profile-brand .visaguide-logo__accent {
+  color: var(--vg-red);
 }
 
 .login-link {
@@ -175,14 +171,29 @@ body,
 
 /* ICONO */
 .card-icon {
-  display: block;
+  --profile-icon: var(--vg-red);
+  display: grid;
   width: 48px;
   height: 48px;
+  place-items: center;
   border-radius: 14px;
-  background: var(--vg-bg-alt);
+  background: color-mix(in srgb, var(--profile-icon) 12%, var(--vg-card));
   margin-bottom: 16px;
-  border: 1px solid var(--vg-border);
+  border: 1px solid color-mix(in srgb, var(--profile-icon) 24%, var(--vg-border));
+  color: var(--profile-icon);
   flex-shrink: 0;
+}
+
+.card-icon--turismo_negocios { --profile-icon: #e11d48; }
+.card-icon--estudiante { --profile-icon: #2563eb; }
+.card-icon--renovacion { --profile-icon: #0f8f75; }
+.card-icon--grupo_familiar { --profile-icon: #7c3aed; }
+.card-icon--adulto_mayor { --profile-icon: #c26a12; }
+
+.profile-card.selected .card-icon {
+  background: var(--profile-icon);
+  border-color: var(--profile-icon);
+  color: #fff;
 }
 
 /* TITULO TARJETA */
@@ -264,6 +275,17 @@ body,
   font-size: 1.25rem;
 }
 
+.modo-senior .card-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+}
+
+.modo-senior .card-icon svg {
+  width: 34px;
+  height: 34px;
+}
+
 .modo-senior .card-description {
   font-size: 1.1rem;
 }
@@ -301,5 +323,18 @@ body,
 
   .onboarding-step {
     display: none;
+  }
+
+  .profile-brand {
+    gap: 9px;
+  }
+
+  .profile-brand .visaguide-logo__mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .profile-brand .visaguide-logo__name {
+    font-size: 1.25rem;
   }
 }

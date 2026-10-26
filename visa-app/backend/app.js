@@ -57,7 +57,7 @@ app.use(express.json());
 app.use("/api-docs", createApiDocsSecurityHeaders());
 app.use(createApiDocsRouter());
 
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== "production" || process.env.LOCAL_STORAGE_FALLBACK === "true") {
   app.use("/local-files", express.static(LOCAL_STORAGE_DIR));
 }
 

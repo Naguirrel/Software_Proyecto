@@ -31,13 +31,16 @@ describe("AdvisorRelationshipCard", () => {
 
     expect(await screen.findByText("Laura Asesora")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Abrir chat" })).toHaveAttribute("href", "/chat");
-    await user.click(screen.getByRole("button", { name: /solicitar cambio de asesor/i }));
-    await user.selectOptions(screen.getByRole("combobox", { name: "Motivo principal" }), "poor_communication");
+    expect(screen.getByText("¿Algún problema con tu asesor?")).toBeInTheDocument();
+    const changeButton = screen.getByRole("button", { name: "Contar mi caso" });
+    expect(changeButton.querySelector("svg")).not.toBeInTheDocument();
+    await user.click(changeButton);
+    await user.selectOptions(screen.getByRole("combobox", { name: "Motivo" }), "poor_communication");
     await user.type(
-      screen.getByRole("textbox", { name: "Explicación" }),
+      screen.getByRole("textbox", { name: "Descripción" }),
       "No he recibido respuesta durante varios días y necesito continuar."
     );
-    await user.click(screen.getByRole("button", { name: "Enviar solicitud" }));
+    await user.click(screen.getByRole("button", { name: "Enviar caso para revisión" }));
 
     expect(apiRequest).toHaveBeenLastCalledWith("/advisor-change-requests", expect.objectContaining({
       method: "POST",
@@ -46,8 +49,8 @@ describe("AdvisorRelationshipCard", () => {
         message: "No he recibido respuesta durante varios días y necesito continuar.",
       }),
     }));
-    expect(await screen.findByText("Pendiente de revisión administrativa")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /solicitar cambio/i })).not.toBeInTheDocument();
+    expect(await screen.findByText("Solicitud en revisión")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Contar mi caso" })).not.toBeInTheDocument();
   });
 
   test("mantiene bloqueado un segundo envío mientras existe una solicitud pendiente", async () => {
@@ -58,7 +61,8 @@ describe("AdvisorRelationshipCard", () => {
 
     render(<MemoryRouter><AdvisorRelationshipCard /></MemoryRouter>);
 
-    expect(await screen.findByText("Pendiente de revisión administrativa")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /solicitar cambio/i })).not.toBeInTheDocument();
+    expect(await screen.findByText("Solicitud en revisión")).toBeInTheDocument();
+    expect(screen.getByText("Un administrador revisará tu caso antes de realizar cualquier cambio.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Contar mi caso" })).not.toBeInTheDocument();
   });
 });

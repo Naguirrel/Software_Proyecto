@@ -43,10 +43,7 @@
 .admin-sidebar__brand .visaguide-logo__mark {
   width: 52px;
   height: 52px;
-  border-radius: 14px;
-  background: var(--vg-red);
-  color: var(--vg-on-strong);
-  box-shadow: 0 8px 18px rgba(225, 29, 72, 0.24);
+  background: transparent;
 }
 
 .admin-sidebar__brand .visaguide-logo__text { gap: 4px; }

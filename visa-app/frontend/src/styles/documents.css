@@ -9,11 +9,15 @@
 }
 
 .documents-main {
+  --vg-page-content-max: var(--vg-content-max);
   min-height: 100vh;
-  width: calc(100% - var(--vg-sidebar-w));
-  max-width: var(--vg-content-max);
-  margin-left: var(--vg-sidebar-w);
-  margin-right: auto;
+  width: min(calc(100vw - var(--vg-sidebar-w)), var(--vg-page-content-max));
+  max-width: var(--vg-page-content-max);
+  margin-left: calc(
+    var(--vg-sidebar-w)
+    + max(0px, (100vw - var(--vg-sidebar-w) - var(--vg-page-content-max)) / 2)
+  );
+  margin-right: 0;
   padding: var(--vg-page-pad-top) var(--vg-page-pad-x) var(--vg-page-pad-bottom);
   box-sizing: border-box;
 }

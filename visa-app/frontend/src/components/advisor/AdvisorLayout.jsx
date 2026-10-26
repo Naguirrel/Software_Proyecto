@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  BookOpenText, CheckCircle2, ClipboardCheck, FileText, LayoutDashboard,
-  LogOut, Menu, MessageSquareText, Moon, Sun,
-  Users, X, MessagesSquare,
+  LogOut, Menu, Moon, Sun, X,
 } from "lucide-react";
 import VisaGuideLogo from "../VisaGuideLogo";
 import useTheme from "../../hooks/useTheme";
@@ -15,18 +13,28 @@ import AdvisorNotificationToasts from "./AdvisorNotificationToasts";
 import { AdvisorNotificationsProvider } from "./AdvisorNotificationsContext";
 import { useAdvisorNotifications } from "./advisorNotificationsStore";
 import ProfileAvatar from "../ProfileAvatar";
+import {
+  ApplicationsIcon,
+  ChatIcon,
+  ChecklistIcon,
+  DashboardIcon,
+  DocumentIcon,
+  FormIcon,
+  InterviewIcon,
+  QuestionBankIcon,
+} from "../icons/VisaGuideIcons";
 import "../../styles/admin.css";
 import "../../styles/advisor.css";
 
 const navItems = [
-  { label: "Inicio", path: "/advisor", icon: <LayoutDashboard size={20} aria-hidden="true" />, end: true },
-  { label: "Mis solicitudes", path: "/advisor/solicitudes", notificationType: "assignment", icon: <Users size={20} aria-hidden="true" /> },
-  { label: "Documentos", path: "/advisor/documentos", notificationType: "documento", icon: <FileText size={20} aria-hidden="true" /> },
-  { label: "Formularios DS-160", path: "/advisor/ds160", notificationType: "ds160", icon: <ClipboardCheck size={20} aria-hidden="true" /> },
-  { label: "Entrevistas", path: "/advisor/entrevistas", notificationType: "entrevista", icon: <MessageSquareText size={20} aria-hidden="true" /> },
-  { label: "Chat", path: "/advisor/chat", notificationType: "chat", icon: <MessagesSquare size={20} aria-hidden="true" /> },
-  { label: "Tareas", path: "/advisor/tareas", notificationType: "task", icon: <CheckCircle2 size={20} aria-hidden="true" /> },
-  { label: "Banco de preguntas", path: "/advisor/preguntas", icon: <BookOpenText size={20} aria-hidden="true" /> },
+  { label: "Inicio", path: "/advisor", icon: <DashboardIcon size={20} />, end: true },
+  { label: "Mis solicitudes", path: "/advisor/solicitudes", notificationType: "assignment", icon: <ApplicationsIcon size={20} /> },
+  { label: "Documentos", path: "/advisor/documentos", notificationType: "documento", icon: <DocumentIcon size={20} /> },
+  { label: "Formularios DS-160", path: "/advisor/ds160", notificationType: "ds160", icon: <FormIcon size={20} /> },
+  { label: "Entrevistas", path: "/advisor/entrevistas", notificationType: "entrevista", icon: <InterviewIcon size={20} /> },
+  { label: "Chat", path: "/advisor/chat", notificationType: "chat", icon: <ChatIcon size={20} /> },
+  { label: "Tareas", path: "/advisor/tareas", notificationType: "task", icon: <ChecklistIcon size={20} /> },
+  { label: "Banco de preguntas", path: "/advisor/preguntas", icon: <QuestionBankIcon size={20} /> },
 ];
 
 function AdvisorLayoutContent({ children }) {

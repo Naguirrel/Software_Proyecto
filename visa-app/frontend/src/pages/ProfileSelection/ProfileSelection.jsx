@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import "./ProfileSelection.css";
 import useModoSenior from "../../hooks/useModoSenior";
-import SeniorModeToggle from "../../components/SeniorModeToggle";
 import useRequireAuth from "../../hooks/useRequireAuth";
 import { apiRequest } from "../../utils/apiClient";
 import { buildSessionHeaders } from "../../utils/sessionAuth";
 import { setModoSenior } from "../../utils/modoSenior";
+import VisaGuideLogo from "../../components/VisaGuideLogo";
+import {
+  FamilyVisaIcon,
+  RenewalVisaIcon,
+  SeniorGlassesIcon,
+  StudentVisaIcon,
+  TourismBusinessVisaIcon,
+} from "../../components/icons/VisaGuideIcons";
 
 function ProfileSelection() {
   const { isValidating, session } = useRequireAuth();
@@ -14,6 +21,12 @@ function ProfileSelection() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const modoSenior = useModoSenior();
+
+  useEffect(() => {
+    // La selección inicia en modo estándar. Adulto Mayor es el único perfil
+    // que activa automáticamente la experiencia senior durante el onboarding.
+    setModoSenior(false);
+  }, []);
 
   useEffect(() => {
     if (!isValidating && (session?.perfil || localStorage.getItem("perfilUsuario"))) {
@@ -25,30 +38,35 @@ function ProfileSelection() {
     {
       id: "turismo_negocios",
       title: "Turismo / Negocios (B1/B2)",
+      Icon: TourismBusinessVisaIcon,
       description:
         "Viajes de placer, visitas familiares o reuniones de negocios.",
     },
     {
       id: "estudiante",
       title: "Estudiante (F/M)",
+      Icon: StudentVisaIcon,
       description:
         "Estudios académicos o vocacionales en instituciones de EE. UU.",
     },
     {
       id: "renovacion",
       title: "Renovación B1/B2",
+      Icon: RenewalVisaIcon,
       description:
         "Renueva tu visa con un DS-160 y pago nuevos. El portal oficial confirmará si necesitas entrevista.",
     },
     {
       id: "grupo_familiar",
       title: "Grupo Familiar",
+      Icon: FamilyVisaIcon,
       description:
         "Seguimiento compartido con DS-160, documentos y tarifa individual para cada integrante.",
     },
     {
       id: "adulto_mayor",
       title: "Adulto Mayor (asistencia accesible)",
+      Icon: SeniorGlassesIcon,
       description:
         "Activa el Modo Senior desde el inicio. La edad no elimina automáticamente la entrevista.",
     },
@@ -56,7 +74,7 @@ function ProfileSelection() {
 
   const handleSelectProfile = (profileId) => {
     setSelectedProfile(profileId);
-    if (profileId === "adulto_mayor") setModoSenior(true);
+    setModoSenior(profileId === "adulto_mayor");
     setErrorMessage("");
   };
 
@@ -119,13 +137,9 @@ function ProfileSelection() {
   return (
     <div className={`profile-page ${modoSenior ? "modo-senior" : ""}`}>
       <header className="profile-header">
-        <div className="brand" aria-label="VisaGuide">
-          <span className="brand-badge" aria-hidden="true">VG</span>
-          <span className="brand-name">VisaGuide</span>
-        </div>
+        <VisaGuideLogo className="profile-brand" />
         <div className="profile-header__actions">
           <span className="onboarding-step" data-senior-priority="secondary">Configuración de cuenta</span>
-          <SeniorModeToggle showState />
         </div>
       </header>
       <main id="main-content" tabIndex="-1" className="profile-main">
@@ -155,7 +169,9 @@ function ProfileSelection() {
               onClick={() => handleSelectProfile(profile.id)}
               aria-pressed={selectedProfile === profile.id}
             >
-              <span className="card-icon" aria-hidden="true" />
+              <span className={`card-icon card-icon--${profile.id}`} aria-hidden="true">
+                <profile.Icon size={26} strokeWidth={2} />
+              </span>
               <span className="card-title">{profile.title}</span>
               <span className="card-description">{profile.description}</span>
               <span className="card-footer">

@@ -8,6 +8,9 @@ services:
       NODE_ENV: production
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set in .env}
       LOCAL_UPLOAD_DIR: /app/local_uploads
+      # El entorno Docker local conserva archivos en el volumen local_uploads.
+      # R2 sigue teniendo prioridad cuando sus credenciales son válidas.
+      LOCAL_STORAGE_FALLBACK: "true"
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

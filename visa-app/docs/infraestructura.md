@@ -8,7 +8,7 @@ Las rutas indicadas son relativas a `visa-app/`, salvo donde se indica expresame
 
 ## 2. Arquitectura general
 
-En producción, el Nginx del host recibe solicitudes y envía `/api/` al backend en el loopback del host; el resto llega al Nginx del contenedor frontend, que sirve la SPA. Este segundo Nginx también puede enviar `/api/`, `/documentos/` y `/local-files/` al servicio `backend` cuando se accede directamente al puerto 8080. Express consulta el servicio PostgreSQL `db`. Los archivos se envían a R2 cuando está configurado; el fallback en `local_uploads` solo se permite fuera de producción. El correo usa un transporte SMTP o Resend cuando está configurado.
+En producción, el Nginx del host recibe solicitudes y envía `/api/` al backend en el loopback del host; el resto llega al Nginx del contenedor frontend, que sirve la SPA. Este segundo Nginx también puede enviar `/api/`, `/documentos/` y `/local-files/` al servicio `backend` cuando se accede directamente al puerto 8080. Express consulta el servicio PostgreSQL `db`. Los archivos se envían a R2 cuando está configurado; el fallback en `local_uploads` se permite fuera de producción o mediante `LOCAL_STORAGE_FALLBACK=true` en un entorno controlado con volumen persistente. El correo usa un transporte SMTP o Resend cuando está configurado.
 
 ```mermaid
 flowchart LR
@@ -139,6 +139,7 @@ El frontend lee `VITE_API_URL` y `VITE_API_PORT` en `frontend/src/config/api.js`
 | `R2_BUCKET` | Backend | Obligatoria para uploads en producción | Bucket de objetos | Configuración |
 | `R2_ENDPOINT` | Backend | Obligatoria para uploads en producción | Endpoint de R2 | Configuración |
 | `LOCAL_UPLOAD_DIR` | Backend | Opcional | Directorio del fallback local | Configuración |
+| `LOCAL_STORAGE_FALLBACK` | Backend | Opcional (`false`) | Habilita explícitamente el almacenamiento local cuando R2 no está configurado | Configuración |
 
 `backend/storage.js` usa R2 cuando la configuración es válida; solo fuera de producción permite guardar localmente. Compose monta `local_uploads` en el directorio del backend. Los uploads están limitados en `backend/upload.js` a 5 MB por archivo y 8 archivos; documentos admiten PDF/JPEG/PNG y audio de entrevista WebM según extensión y MIME. Nginx declara `client_max_body_size 25m` en ambas capas versionadas.
 

@@ -409,6 +409,7 @@ html.modo-senior :where(.ds160-content, .interview-hero, .perfil-grid) {
 
 html.modo-senior .perfil-grid {
   width: min(100%, 900px);
+  margin-inline: auto;
 }
 
 html.modo-senior .dash-checklist__item--done,
@@ -467,8 +468,8 @@ html.modo-senior .chat-input-bar__send {
   height: 64px;
 }
 
-html.modo-senior :where(.consular-main, .question-bank-shell, .interview-main, .documents-shell) {
-  max-width: 1120px;
+html.modo-senior :where(.consular-main, .interview-main, .documents-main) {
+  --vg-page-content-max: 1120px;
 }
 
 html.modo-senior :where(.consular-card, .question-card) {

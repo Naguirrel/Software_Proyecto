@@ -7,7 +7,8 @@ El modo senior es una capa de accesibilidad y simplificación exclusiva del clie
 - Texto base de 24 px y texto auxiliar de al menos 20 px.
 - Controles de formulario de al menos 64 px de alto.
 - Foco visible de alto contraste y reducción de movimiento cuando el sistema lo solicita.
-- Navegación lateral expandida en escritorio para evitar depender únicamente de iconos.
+- Navegación lateral compacta en reposo y expandida mediante hover o foco en escritorio; los iconos mantienen etiquetas y tooltips accesibles.
+- Activador identificado con lentes circulares, sin recurrir al icono genérico de accesibilidad.
 - Navegación simplificada: conserva las áreas autónomas del cliente, el paso actual y los pasos que ya están permitidos por el flujo.
 - Guía contextual visible en cada vista con una instrucción breve y la siguiente acción recomendada.
 - Tableros, formularios y flujos principales pasan a una sola columna cuando mejora la lectura.

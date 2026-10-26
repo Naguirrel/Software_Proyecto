@@ -2,6 +2,7 @@ import NotificationCenter from "./NotificationCenter";
 import { Link } from "react-router-dom";
 import { preloadRoute } from "../routes/lazyRoutes";
 import useIdioma from "../hooks/useIdioma";
+import { InformationIcon } from "./icons/VisaGuideIcons";
 
 export default function TopActions({ userId, unreadCount = 0 }) {
   const { t } = useIdioma();
@@ -22,11 +23,7 @@ export default function TopActions({ userId, unreadCount = 0 }) {
         onMouseEnter={() => preloadRoute("/dashboard")}
         onFocus={() => preloadRoute("/dashboard")}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 11v6" />
-          <path d="M12 7h.01" />
-        </svg>
+        <InformationIcon size={22} strokeWidth={2} />
       </Link>
       <NotificationCenter userId={userId} unreadCount={unreadCount} />
     </div>

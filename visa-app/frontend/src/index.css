@@ -322,21 +322,29 @@ img, video, canvas, svg {
 }
 
 .vg-main {
-  margin-left: var(--vg-sidebar-w);
-  flex: 1;
-  width: calc(100% - var(--vg-sidebar-w));
-  max-width: var(--vg-content-max);
-  margin-right: auto;
+  --vg-page-content-max: var(--vg-content-max);
+  margin-left: calc(
+    var(--vg-sidebar-w)
+    + max(0px, (100vw - var(--vg-sidebar-w) - var(--vg-page-content-max)) / 2)
+  );
+  flex: 0 0 auto;
+  width: min(calc(100vw - var(--vg-sidebar-w)), var(--vg-page-content-max));
+  max-width: var(--vg-page-content-max);
+  margin-right: 0;
   min-height: 100vh;
   transition: margin-left 0.3s ease;
   min-width: 0;
-  max-width: 100%;
 }
 
 .vg-authenticated-page {
-  width: calc(100% - var(--vg-sidebar-w));
-  max-width: var(--vg-content-max) !important;
-  margin-right: auto;
+  --vg-page-content-max: var(--vg-content-max);
+  width: min(calc(100vw - var(--vg-sidebar-w)), var(--vg-page-content-max)) !important;
+  max-width: var(--vg-page-content-max) !important;
+  margin-left: calc(
+    var(--vg-sidebar-w)
+    + max(0px, (100vw - var(--vg-sidebar-w) - var(--vg-page-content-max)) / 2)
+  ) !important;
+  margin-right: 0;
   padding: var(--vg-page-pad-top) var(--vg-page-pad-x) var(--vg-page-pad-bottom) !important;
   box-sizing: border-box;
   font-family: var(--vg-font) !important;
@@ -448,15 +456,12 @@ img, video, canvas, svg {
   width: 42px;
   height: 42px;
   flex: 0 0 42px;
-  border-radius: 11px;
-  background: var(--vg-navy);
-  color: #fff;
-  box-shadow: 0 7px 16px rgba(15, 23, 42, .13);
+  background: transparent;
 }
 
 .vg-sidebar-logo .visaguide-logo__mark svg {
-  width: 20px;
-  height: 20px;
+  width: 42px;
+  height: 42px;
 }
 
 .vg-sidebar-logo .visaguide-logo__name {
@@ -466,7 +471,7 @@ img, video, canvas, svg {
 }
 
 .vg-sidebar-logo .visaguide-logo__accent {
-  color: inherit;
+  color: var(--vg-red);
 }
 
 .vg-sidebar-user-link {
@@ -1440,8 +1445,8 @@ html.modo-senior .vg-sidebar-logo .visaguide-logo__mark {
 }
 
 html.modo-senior .vg-sidebar-logo .visaguide-logo__mark svg {
-  width: 26px;
-  height: 26px;
+  width: 52px;
+  height: 52px;
 }
 
 html.modo-senior .vg-sidebar-logo .visaguide-logo__name {

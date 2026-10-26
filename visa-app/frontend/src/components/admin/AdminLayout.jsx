@@ -1,27 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
-  Activity,
-  BookOpenText,
-  BarChart3,
-  Bell,
-  BriefcaseBusiness,
-  CheckSquare,
-  ClipboardList,
-  FileText,
-  LayoutDashboard,
   LogOut,
-  MailCheck,
-  MessageSquareText,
   Menu,
   Moon,
-  ReceiptText,
-  Settings,
   Sun,
   X,
-  UserCircle,
-  UserRoundCheck,
-  Users,
 } from "lucide-react";
 import VisaGuideLogo from "../VisaGuideLogo";
 import { buildApiUrl } from "../../config/api";
@@ -29,23 +13,41 @@ import { buildSessionHeaders } from "../../utils/sessionAuth";
 import useTheme from "../../hooks/useTheme";
 import { useAdminSession } from "./AdminSessionContext";
 import { preloadRoute } from "../../routes/lazyRoutes";
+import {
+  ActivityIcon,
+  AdvisorIcon,
+  ApplicationsIcon,
+  AssignmentIcon,
+  BellIcon,
+  DashboardIcon,
+  DocumentIcon,
+  FormIcon,
+  InterviewIcon,
+  PaymentIcon,
+  ProfileIcon,
+  QuestionBankIcon,
+  ReminderIcon,
+  ReportsIcon,
+  SettingsIcon,
+  UsersIcon,
+} from "../icons/VisaGuideIcons";
 import "../../styles/admin.css";
 import "../../styles/admin-prototype.css";
 
 const adminNavItems = [
-  { label: "Inicio", path: "/admin", icon: <LayoutDashboard size={20} strokeWidth={2} aria-hidden="true" />, end: true },
-  { label: "Todas las solicitudes", path: "/admin/processes", icon: <ClipboardList size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Asesores", path: "/admin/advisors", icon: <BriefcaseBusiness size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Usuarios", path: "/admin/users", icon: <Users size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Asignaciones", path: "/admin/assignments", icon: <UserRoundCheck size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Documentos", path: "/admin/documents", icon: <FileText size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Formularios DS-160", path: "/admin/ds160", icon: <CheckSquare size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Entrevistas", path: "/admin/interviews", icon: <MessageSquareText size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Pagos y citas", path: "/admin/consular", icon: <ReceiptText size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Banco de preguntas", path: "/admin/questions", icon: <BookOpenText size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Reportes", path: "/admin/reports", icon: <BarChart3 size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Actividad", path: "/admin/activity-logs", icon: <Activity size={20} strokeWidth={2} aria-hidden="true" /> },
-  { label: "Recordatorios", path: "/admin/email-reminders", icon: <MailCheck size={20} strokeWidth={2} aria-hidden="true" /> },
+  { label: "Inicio", path: "/admin", icon: <DashboardIcon size={20} />, end: true },
+  { label: "Todas las solicitudes", path: "/admin/processes", icon: <ApplicationsIcon size={20} /> },
+  { label: "Asesores", path: "/admin/advisors", icon: <AdvisorIcon size={20} /> },
+  { label: "Usuarios", path: "/admin/users", icon: <UsersIcon size={20} /> },
+  { label: "Asignaciones", path: "/admin/assignments", icon: <AssignmentIcon size={20} /> },
+  { label: "Documentos", path: "/admin/documents", icon: <DocumentIcon size={20} /> },
+  { label: "Formularios DS-160", path: "/admin/ds160", icon: <FormIcon size={20} /> },
+  { label: "Entrevistas", path: "/admin/interviews", icon: <InterviewIcon size={20} /> },
+  { label: "Pagos y citas", path: "/admin/consular", icon: <PaymentIcon size={20} /> },
+  { label: "Banco de preguntas", path: "/admin/questions", icon: <QuestionBankIcon size={20} /> },
+  { label: "Reportes", path: "/admin/reports", icon: <ReportsIcon size={20} /> },
+  { label: "Actividad", path: "/admin/activity-logs", icon: <ActivityIcon size={20} /> },
+  { label: "Recordatorios", path: "/admin/email-reminders", icon: <ReminderIcon size={20} /> },
 ];
 
 export default function AdminLayout({ children }) {
@@ -163,7 +165,7 @@ export default function AdminLayout({ children }) {
             onMouseEnter={() => preloadRoute("/admin/settings")}
             onFocus={() => preloadRoute("/admin/settings")}
           >
-            <Settings size={20} strokeWidth={2} aria-hidden="true" />
+            <SettingsIcon size={20} />
             <span>Configuración</span>
           </NavLink>
         </nav>
@@ -193,7 +195,7 @@ export default function AdminLayout({ children }) {
             onMouseEnter={() => preloadRoute("/admin/profile")}
             onFocus={() => preloadRoute("/admin/profile")}
           >
-            <UserCircle size={20} strokeWidth={2} aria-hidden="true" /><span>Mi perfil</span>
+            <ProfileIcon size={20} /><span>Mi perfil</span>
           </NavLink>
 
           <button type="button" className="admin-sidebar__logout" data-tooltip="Cerrar sesion" title="Cerrar sesion" onClick={handleLogout}>
@@ -210,7 +212,7 @@ export default function AdminLayout({ children }) {
           <div className="admin-header__actions" role="group" aria-label="Notificaciones y perfil administrativo">
             <div className="admin-header__notifications" ref={notificationRef}>
             <button ref={notificationTriggerRef} type="button" className="admin-header__notification" aria-label="Notificaciones" aria-haspopup="true" aria-expanded={notificationsOpen} onClick={() => setNotificationsOpen((open) => { const nextOpen = !open; if (nextOpen) loadAdminNotifications(); return nextOpen; })}>
-              <Bell size={22} strokeWidth={2} aria-hidden="true" />
+              <BellIcon size={22} />
               {notifications.some((item) => !item.leido) && <span aria-hidden="true" />}
             </button>
             {notificationsOpen && <section className="admin-notification-menu" aria-label="Notificaciones administrativas"><header><strong>Notificaciones</strong><button type="button" onClick={() => { setNotificationsOpen(false); notificationTriggerRef.current?.focus(); }} aria-label="Cerrar notificaciones">×</button></header>{notificationsLoading ? <p role="status">Cargando…</p> : notificationsError ? <div role="alert"><p>{notificationsError}</p><button type="button" onClick={loadAdminNotifications}>Reintentar</button></div> : notifications.length ? <ul>{notifications.slice(0, 8).map((item) => <li key={item.id}><strong>{item.titulo}</strong><span>{item.mensaje}</span></li>)}</ul> : <p>Sin notificaciones.</p>}</section>}
