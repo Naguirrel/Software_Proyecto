@@ -272,6 +272,15 @@ function createDocumentService(pool, {
     return getStoredFile(storageKey);
   }
 
+  // Un asesor solo accede a los clientes cuyo trámite tiene asignado (SP10-07).
+  async function isAdvisorAssigned(advisorId, usuarioId) {
+    const result = await pool.query(
+      "SELECT 1 FROM tramite WHERE id_usuario = $1 AND id_asesor = $2 LIMIT 1",
+      [Number(usuarioId), Number(advisorId)]
+    );
+    return result.rows.length > 0;
+  }
+
   return {
     presentDocumento,
     buildDownloadFilename,
@@ -284,6 +293,7 @@ function createDocumentService(pool, {
     deleteDocumento,
     getDocumentoById,
     getDocumentoFile,
+    isAdvisorAssigned,
   };
 }
 

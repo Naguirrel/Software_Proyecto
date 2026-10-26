@@ -1,12 +1,15 @@
 const { sendErrorResponse } = require("../middleware/errorResponse");
 
 function createDocumentController(documentService) {
-  function canAccessUser(req, usuarioId) {
+  // El propio usuario y los administradores acceden siempre; un asesor solo a sus clientes asignados.
+  async function canAccessUser(req, usuarioId) {
     const role = req.auth?.rol || "cliente";
-    return role === "admin" || role === "asesor" || Number(req.auth?.id_usuario) === Number(usuarioId);
+    if (role === "admin" || Number(req.auth?.id_usuario) === Number(usuarioId)) return true;
+    if (role === "asesor") return documentService.isAdvisorAssigned(req.auth.id_usuario, usuarioId);
+    return false;
   }
 
-  function resolveUsuarioId(req, value, { source = "body" } = {}) {
+  async function resolveUsuarioId(req, value, { source = "body" } = {}) {
     const hasExplicitValue = value !== undefined && value !== null && value !== "";
     const parsed = hasExplicitValue ? Number(value) : Number(req.auth?.id_usuario);
 
@@ -20,7 +23,7 @@ function createDocumentController(documentService) {
       throw error;
     }
 
-    if (!canAccessUser(req, parsed)) {
+    if (!(await canAccessUser(req, parsed))) {
       const error = new Error("No puedes acceder a documentos de otro usuario");
       error.statusCode = 403;
       throw error;
@@ -29,8 +32,8 @@ function createDocumentController(documentService) {
     return parsed;
   }
 
-  function ensureCanAccessDocument(req, document) {
-    if (canAccessUser(req, document.usuario_id)) return;
+  async function ensureCanAccessDocument(req, document) {
+    if (await canAccessUser(req, document.usuario_id)) return;
 
     const error = new Error("No puedes acceder a documentos de otro usuario");
     error.statusCode = 403;
@@ -45,7 +48,7 @@ function createDocumentController(documentService) {
     }
 
     try {
-      const scopedUsuarioId = resolveUsuarioId(req, usuario_id);
+      const scopedUsuarioId = await resolveUsuarioId(req, usuario_id);
       const { documento, uploadedFile } = await documentService.saveDocumento(
         req.file,
         { 
@@ -83,7 +86,7 @@ function createDocumentController(documentService) {
     }
 
     try {
-      const scopedUsuarioId = resolveUsuarioId(req, usuario_id);
+      const scopedUsuarioId = await resolveUsuarioId(req, usuario_id);
       const { documento, uploadedFile } = await documentService.saveDocumento(
         req.file,
         { nombre, tipo, usuario_id: scopedUsuarioId, documento_key },
@@ -108,7 +111,7 @@ function createDocumentController(documentService) {
     const usuarioIdValue = req.params.usuarioId ?? req.body?.usuario_id ?? req.body?.usuarioId;
 
     try {
-      const usuarioId = resolveUsuarioId(req, usuarioIdValue, {
+      const usuarioId = await resolveUsuarioId(req, usuarioIdValue, {
         source: req.params.usuarioId === undefined ? "body" : "params",
       });
       const documentos = await documentService.listDocumentos(usuarioId);
@@ -135,7 +138,7 @@ function createDocumentController(documentService) {
     }
 
     try {
-      resolveUsuarioId(req, usuarioId);
+      await resolveUsuarioId(req, usuarioId);
       const deleted = await documentService.deleteDocumento(documentId, usuarioId);
 
       if (!deleted) {
@@ -165,7 +168,7 @@ function createDocumentController(documentService) {
         return res.status(404).json({ error: "Documento no encontrado" });
       }
 
-      ensureCanAccessDocument(req, document);
+      await ensureCanAccessDocument(req, document);
 
       if (!document.storage_key) {
         if (documentService.isSelfDocumentFileUrl(document)) {
