@@ -134,7 +134,7 @@ describe("documentación de la API", () => {
       .filter(([path]) => path.startsWith("/advisor/"))
       .flatMap(([path, operations]) => Object.entries(operations).map(([method, operation]) => ({ path, method, operation })));
 
-    expect(advisorOperations).toHaveLength(31);
+    expect(advisorOperations).toHaveLength(32);
     for (const { path, method, operation } of advisorOperations) {
       expect(operation.security).toEqual([{ bearerAuth: [] }]);
       expect(operation.description).toContain("Requiere rol asesor");
@@ -193,6 +193,16 @@ describe("documentación de la API", () => {
     expect(contract.paths["/advisor/documents/{id}"].put.responses[200].content["application/json"].schema).toEqual({
       $ref: "#/components/schemas/AdvisorDocumentResponse",
     });
+    const documentReminder = contract.paths["/advisor/documents/reminders"].post;
+    expect(documentReminder.security).toEqual([{ bearerAuth: [] }]);
+    expect(documentReminder.requestBody.content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/AdvisorDocumentReminderRequest",
+    });
+    expect(documentReminder.responses[201].content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/SuccessMessage",
+    });
+    expect(documentReminder.responses[404]).toEqual({ $ref: "#/components/responses/NotFound" });
+    expect(documentReminder.responses[409]).toBeDefined();
     expect(contract.paths["/advisor/tasks"].post.responses[201].content["application/json"].schema).toEqual({
       $ref: "#/components/schemas/AdvisorTaskResponse",
     });

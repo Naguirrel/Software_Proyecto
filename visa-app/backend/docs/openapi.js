@@ -276,6 +276,14 @@ const schemas = {
     required: ["status"],
     properties: { status: { type: "string", enum: ["approved", "correction"] }, feedback: { type: "string" } },
   },
+  AdvisorDocumentReminderRequest: {
+    type: "object",
+    required: ["userId", "key"],
+    properties: {
+      userId: { type: "integer", minimum: 1, description: "Identificador de un solicitante asignado al asesor." },
+      key: { type: "string", minLength: 1, maxLength: 150, description: "Clave de un documento obligatorio pendiente para el perfil del solicitante." },
+    },
+  },
   AdvisorDs160Request: {
     type: "object",
     required: ["status"],
@@ -998,6 +1006,7 @@ const endpoints = [
   ["get", "/advisor/processes/{id}", "Asesor", "Consultar solicitud asignada", "advisor"],
   ["put", "/advisor/processes/{id}", "Asesor", "Actualizar solicitud asignada", "advisor", "AdvisorProcessRequest"],
   ["get", "/advisor/documents", "Asesor", "Listar documentos asignados", "advisor"],
+  ["post", "/advisor/documents/reminders", "Asesor", "Recordar un documento obligatorio pendiente", "advisor", "AdvisorDocumentReminderRequest", 201],
   ["put", "/advisor/documents/{id}", "Asesor", "Revisar documento asignado", "advisor", "AdvisorDocumentRequest"],
   ["get", "/advisor/ds160", "Asesor", "Listar formularios DS-160 asignados", "advisor"],
   ["put", "/advisor/ds160/{id}", "Asesor", "Revisar formulario DS-160", "advisor", "AdvisorDs160Request"],
@@ -1212,6 +1221,14 @@ const advisorDocumentation = {
       response: [200, "Documentos asignados", "AdvisorDocumentListResponse"],
     },
   },
+  "/advisor/documents/reminders": {
+    post: {
+      description: "Envía al centro de notificaciones del solicitante asignado un recordatorio de un documento obligatorio que aún no ha cargado. Solo se envía una vez por día y documento.",
+      response: [201, "Recordatorio enviado", "SuccessMessage"],
+      notFound: true,
+      requestExample: { userId: 42, key: "passport" },
+    },
+  },
   "/advisor/documents/{id}": {
     put: {
       description: "Aprueba un documento asignado o solicita su corrección. Para una corrección se recomienda explicar el cambio requerido en feedback.",
@@ -1407,6 +1424,11 @@ for (const [path, methods] of Object.entries(advisorDocumentation)) {
     }
   }
 }
+
+paths["/advisor/documents/reminders"].post.responses[409] = {
+  description: "El documento ya fue cargado o el recordatorio ya se envió hoy (o las notificaciones están desactivadas).",
+  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+};
 
 paths["/advisor/notifications/stream"].get.responses[200] = {
   description: "Flujo de eventos del servidor. Cada bloque contiene event, id opcional y data serializada como JSON.",
