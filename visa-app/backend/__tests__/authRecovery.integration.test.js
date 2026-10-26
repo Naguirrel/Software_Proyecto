@@ -1,8 +1,9 @@
 const http = require("http");
 const request = require("supertest");
 const { createAuthIntegrationApp, extractTokenFromMail } = require("../test-utils/authIntegrationHarness");
+const { PRIVACY_CONSENT } = require("../test-utils/privacyConsent");
 
-const USER = { nombre: "Ana Pérez", correo: "ana@example.com", contrasena: "clave-original-1" };
+const USER = { nombre: "Ana Pérez", correo: "ana@example.com", contrasena: "clave-original-1", ...PRIVACY_CONSENT };
 const HOUR_MS = 60 * 60 * 1000;
 
 async function registerUser(target) {

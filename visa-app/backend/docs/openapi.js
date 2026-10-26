@@ -25,11 +25,13 @@ const schemas = {
   },
   RegisterRequest: {
     type: "object",
-    required: ["nombre", "correo", "contrasena"],
+    required: ["nombre", "correo", "contrasena", "acepta_privacidad", "version_privacidad"],
     properties: {
       nombre: { type: "string" },
       correo: { type: "string", format: "email" },
       contrasena: { type: "string", format: "password", minLength: 8, description: "Mínimo 8 caracteres, con letras y números." },
+      acepta_privacidad: { type: "boolean", enum: [true], description: "Debe ser true: la persona aceptó el aviso de privacidad." },
+      version_privacidad: { type: "string", example: "1.0", description: "Versión del aviso de privacidad que se aceptó; debe ser la vigente." },
     },
   },
   LoginRequest: {

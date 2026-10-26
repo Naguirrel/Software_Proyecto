@@ -2,6 +2,7 @@ const request = require("supertest");
 const { Readable } = require("stream");
 const bcrypt = require("bcrypt");
 const { issueSessionToken } = require("../auth");
+const { PRIVACY_CONSENT } = require("../test-utils/privacyConsent");
 
 const LOGIN_TEST_PASSWORD_HASH = bcrypt.hashSync("1234", 10);
 
@@ -622,7 +623,8 @@ function createIntegrationFlowQueryHandler() {
         correo: values[1],
         contrasena: values[2],
         perfil: null,
-        rol: values[3] || "cliente",
+        rol: "cliente",
+        privacidad_version: values[3] ?? null,
       };
       state.nextUserId += 1;
       return { rows: [state.user] };
@@ -813,6 +815,7 @@ describe("app endpoints", () => {
       nombre: "Nuevo Usuario",
       correo: "nuevo@example.com",
       contrasena: "clave1234",
+      ...PRIVACY_CONSENT,
     });
 
     expect(response.status).toBe(200);
@@ -832,6 +835,7 @@ describe("app endpoints", () => {
       nombre: "Nuevo Usuario",
       correo: "nuevo@example.com",
       contrasena: "clave1234",
+      ...PRIVACY_CONSENT,
     });
 
     const insertCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO usuario"));
@@ -856,6 +860,7 @@ describe("app endpoints", () => {
       nombre: "Usuario Repetido",
       correo: "repetido@example.com",
       contrasena: "clave1234",
+      ...PRIVACY_CONSENT,
     });
 
     expect(response.status).toBe(409);
@@ -902,6 +907,7 @@ describe("app endpoints", () => {
       nombre: "Usuario Repetido",
       correo: "nuevo@example.com",
       contrasena: "clave1234",
+      ...PRIVACY_CONSENT,
     });
 
     expect(response.status).toBe(500);
@@ -2552,7 +2558,7 @@ describe("app endpoints", () => {
         },
       };
 
-      const registerResponse = await request(app).post("/register").send(usuario);
+      const registerResponse = await request(app).post("/register").send({ ...usuario, ...PRIVACY_CONSENT });
 
       expect(registerResponse.status).toBe(200);
       expect(registerResponse.body.message).toBe("Usuario guardado en BD");

@@ -1,6 +1,7 @@
 const express = require("express");
 const request = require("supertest");
 const createAuthRoutes = require("../routes/authRoutes");
+const { PRIVACY_CONSENT } = require("../test-utils/privacyConsent");
 
 function createPool(handler) {
   return { query: jest.fn(handler) };
@@ -36,7 +37,7 @@ describe("POST /register envía la verificación de email", () => {
     const sendEmail = jest.fn(() => Promise.resolve({ status: "dry_run" }));
     const app = buildApp(pool, { sendEmail });
 
-    const response = await request(app).post("/register").send({ nombre: "Ana", correo: "ana@example.com", contrasena: "clave123" });
+    const response = await request(app).post("/register").send({ nombre: "Ana", correo: "ana@example.com", contrasena: "clave123", ...PRIVACY_CONSENT });
 
     expect(response.status).toBe(200);
     expect(response.body.data.emailVerificado).toBe(false);
@@ -57,7 +58,7 @@ describe("POST /register envía la verificación de email", () => {
     const sendEmail = jest.fn(() => Promise.reject(new Error("smtp down")));
     const app = buildApp(pool, { sendEmail });
 
-    const response = await request(app).post("/register").send({ nombre: "Ana", correo: "ana@example.com", contrasena: "clave123" });
+    const response = await request(app).post("/register").send({ nombre: "Ana", correo: "ana@example.com", contrasena: "clave123", ...PRIVACY_CONSENT });
 
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Usuario guardado en BD");

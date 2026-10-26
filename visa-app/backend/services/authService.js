@@ -52,15 +52,16 @@ function createAuthService(pool, { userSchemaReady, tramiteSchemaReady, password
     return result.rows[0] || null;
   }
 
-  async function createUser({ nombre, correo, contrasena }) {
+  async function createUser({ nombre, correo, contrasena, privacidadVersion = null }) {
     await userSchemaReady;
     await tramiteSchemaReady;
     
     const contrasenaHash = await bcrypt.hash(contrasena, SALT_ROUNDS);
     try {
       const result = await pool.query(
-        "INSERT INTO usuario(nombre, correo, contrasena, rol, email_verificado) VALUES($1,$2,$3,'cliente',FALSE) RETURNING *",
-        [nombre, correo, contrasenaHash]
+        `INSERT INTO usuario(nombre, correo, contrasena, rol, email_verificado, privacidad_aceptada_en, privacidad_version)
+         VALUES($1,$2,$3,'cliente',FALSE, CASE WHEN $4::text IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END, $4::text) RETURNING *`,
+        [nombre, correo, contrasenaHash, privacidadVersion]
       );
       return result.rows[0];
     } catch (error) {
