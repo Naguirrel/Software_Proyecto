@@ -67,7 +67,7 @@ visa-app/
   e2e/                             # Pruebas E2E con Playwright (ver docs/e2e.md)
   docs/                            # Entregables, guiones, estrategia de pruebas, backups, monitoreo
   tools/                           # Scripts Python de entregables + tools/backups y tools/monitoring (bash)
-  tests/load-test.js               # Prueba de carga k6
+  tests/                           # Pruebas no funcionales manuales: carga (k6), fuerza bruta y volumen; ver tests/README.md
   nginx/                           # Nginx del host EC2 (reverse proxy publico)
   init.sql                         # Esquema y seed inicial para Postgres
   docker-compose.yml               # backend + frontend + db
@@ -699,7 +699,7 @@ Al agregar endpoints:
 - Mockee queries nuevas en `defaultQueryHandler` o en el harness correspondiente.
 - Si agrega servicios puros, considere pruebas enfocadas de servicio.
 
-Pruebas de carga: `tests/load-test.js` (k6), no forman parte de CI.
+Pruebas no funcionales en `tests/`: carga (`tests/load-test.js`, k6), fuerza bruta (`tests/seguridad/fuerza-bruta.js`) y volumen de base de datos (`tests/volumen/`). No forman parte de CI; `tests/README.md` explica como correrlas. En k6, las rutas de `open()` (por ejemplo `USERS_FILE`) se resuelven desde la carpeta del script, no desde donde se ejecuta el comando.
 
 E2E: `e2e/` usa Playwright con su propia base PostgreSQL (`e2e/docker-compose.e2e.yml`, puerto 5434) y levanta backend y frontend por su cuenta. No forma parte de CI; ver `docs/e2e.md`.
 
