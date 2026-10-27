@@ -490,7 +490,7 @@ DS-160 (`ds160Routes.js`) [sesion; usa `req.auth`, no `correo`]:
 
 - `POST /ds160/load`, `POST /ds160`, `POST /ds160/pdf`
 
-Documentos/uploads (`documentRoutes.js`) [sesion; cliente solo los propios, `asesor`/`admin` cualquiera]:
+Documentos/uploads (`documentRoutes.js`) [sesion; cliente solo los propios, `asesor` solo los de sus clientes asignados, `admin` cualquiera]:
 
 - `POST /upload`, `POST /documentos` (multipart, campo `file`)
 - `POST /documentos/listar` con `{ usuario_id }`, `GET /documentos/:usuarioId`
@@ -735,6 +735,7 @@ Estado actual:
 - Uploads: maximo 5 MB y 8 archivos; documentos solo `.pdf/.jpg/.jpeg/.png` y audio solo `.webm`, validando extension y MIME.
 - Queries parametrizadas en todo el backend.
 - Perfil, tramite, entrevistas y audios exigen sesion y toman al usuario de `req.auth` (SP10-01/02).
+- Un `asesor` solo accede a los documentos y entrevistas de sus clientes asignados (`documentService.isAdvisorAssigned`, SP10-07); el cliente solo a los propios y el admin a todos.
 - `helmet` en Express (`middleware/securityHeaders.js`) con `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`, `Referrer-Policy: no-referrer`, `Permissions-Policy` y sin `X-Powered-By`; CSP estricta solo en `/api-docs` (la API responde JSON).
 - Rate limiting general y por endpoint de autenticacion, y bloqueo atomico por cuenta tras 5 intentos fallidos (ver "Autenticacion y autorizacion").
 - Politica de contrasenas en registro y restablecimiento (8+ caracteres con letras y numeros).
@@ -745,8 +746,8 @@ Estado actual:
 
 Pendientes conocidos, en orden de prioridad (no los "arregle" de paso sin pedido del usuario, pero no los replique en codigo nuevo):
 
-1. Cualquier `asesor` puede ver y borrar documentos de todos los clientes via `/documentos/*` (`controllers/documentController.js` permite `asesor` sin revisar asignacion), aunque `/advisor/*` si filtra por asignacion (SP10-07).
-2. Los Nginx (`nginx/visa-app.duckdns.org.conf` y `frontend/nginx.conf`) no tienen `server_tokens off`, cabeceras de seguridad ni HSTS; las cabeceras de helmet solo cubren lo que responde Express (SP10-03, parte Nginx).
+1. Los Nginx (`nginx/visa-app.duckdns.org.conf` y `frontend/nginx.conf`) no tienen `server_tokens off`, cabeceras de seguridad ni HSTS; las cabeceras de helmet solo cubren lo que responde Express. En produccion las paginas del frontend no envian CSP, `X-Frame-Options`, `X-Content-Type-Options` ni HSTS y muestran `Server: nginx/1.24.0 (Ubuntu)` (SP10-03, parte Nginx; hallazgos S-03, S-04, S-07, S-08 y S-09 de las pruebas de seguridad).
+2. Con un cuerpo que no es JSON valido, `express.json()` responde 400 con el mensaje del parser (por ejemplo, `Expected double-quoted property name in JSON at position 15`). No expone datos de la base, pero conviene devolver un mensaje generico.
 3. El login no normaliza el correo a minusculas (el registro si), y `authService.verifyPassword` aun acepta contrasenas legacy en texto plano y las migra a bcrypt al primer login.
 4. Un valor de `SESSION_SECRET` estuvo versionado en el antiguo `docker-compose.override.yml`; debe rotarse donde se haya utilizado. El desarrollo ahora exige `docker-compose.dev.yml` explicitamente y recibe el secreto desde `.env`.
 
