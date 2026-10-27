@@ -38,10 +38,10 @@ Cada usuario virtual inicia sesión y repite `GET /validar-sesion`, `POST /ds160
 | `stress` | hasta 1000, por escalones | Buscar el límite del sistema |
 
 ```bash
-k6 run -e TEST_PROFILE=smoke -e USERS_FILE=./tests/users.local.json tests/load-test.js
+k6 run -e TEST_PROFILE=smoke -e USERS_FILE=./users.local.json tests/load-test.js
 ```
 
-Con una sola cuenta se puede usar `-e TEST_EMAIL=... -e TEST_PASSWORD=...` en lugar de `USERS_FILE`. El resumen queda en `tests/results/`. El script rechaza URLs remotas salvo que se defina `ALLOW_REMOTE_LOAD_TEST=true`. Los resultados de referencia están en `docs/resultados-carga-scrum-204.md`.
+k6 resuelve la ruta de `USERS_FILE` desde la carpeta del script (`tests/`), no desde donde se ejecuta el comando: `./users.local.json` apunta a `tests/users.local.json`. En cambio, `SUMMARY_PATH` sí es relativa a la carpeta de ejecución. Con una sola cuenta se puede usar `-e TEST_EMAIL=... -e TEST_PASSWORD=...` en lugar de `USERS_FILE`. El resumen queda en `tests/results/`. El script rechaza URLs remotas salvo que se defina `ALLOW_REMOTE_LOAD_TEST=true`. Los resultados de referencia están en `docs/resultados-carga-scrum-204.md`.
 
 Las funciones de apoyo tienen pruebas propias:
 
@@ -57,7 +57,7 @@ node --test tests/load-test-utils.test.js
 k6 run -e TARGET_EMAIL=... -e TARGET_PASSWORD=... tests/seguridad/fuerza-bruta.js
 ```
 
-Use una cuenta de prueba: queda bloqueada 15 minutos. Se ajusta con `ATTACKERS` y `ATTEMPTS`. El resultado esperado es 0 accesos concedidos. Las respuestas 401 son contraseñas rechazadas, las 423 indican cuenta bloqueada y las 429 el rate limiting; el script cuenta las 429 como "inesperadas" porque es anterior al rate limiting.
+Use una cuenta de prueba: queda bloqueada 15 minutos. Se ajusta con `ATTACKERS` y `ATTEMPTS`. El resultado esperado es 0 accesos concedidos. El resumen separa las respuestas 401 (contraseña rechazada), 423 (cuenta bloqueada) y 429 (rate limiting del login); cualquier otro código cuenta como "inesperada" y hace fallar la prueba. Con el rate limiting activo, la mayoría de los intentos terminan en 429 antes de llegar al bloqueo.
 
 ## Volumen (`volumen/`)
 
