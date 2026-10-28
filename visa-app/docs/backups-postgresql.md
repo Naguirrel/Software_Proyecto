@@ -142,6 +142,27 @@ psql --host=127.0.0.1 --port=5433 --username=postgres --dbname=visa_db_restore -
 psql --host=127.0.0.1 --port=5433 --username=postgres --dbname=visa_db_restore -c 'SELECT COUNT(*) FROM usuario;'
 ```
 
+## Prueba automatizada de restauracion (RNF-23)
+
+`tools/backups/verify_restore.sh` hace los pasos anteriores de forma segura: valida que el archivo sea legible por `pg_restore`, lo restaura en una base temporal (`visa_db_restore_check` por defecto), compara tablas y cantidad de filas con la base de origen, muestra el tiempo de restauracion y elimina la base temporal al terminar. Se niega a usar como destino la base de origen.
+
+Con el backup mas reciente del directorio configurado:
+
+```bash
+ENV_FILE=/etc/visaguide/backup.env \
+  /opt/visa-app/tools/backups/verify_restore.sh
+```
+
+Con un backup especifico:
+
+```bash
+ENV_FILE=/etc/visaguide/backup.env \
+BACKUP_FILE=/var/backups/visaguide/postgres/visa_db_YYYYMMDD_HHMMSS.dump \
+  /opt/visa-app/tools/backups/verify_restore.sh
+```
+
+Termina con `RESULTADO: OK` y codigo 0 si el backup se restauro y contiene todas las tablas de la base de origen. Si alguna tabla tiene otra cantidad de filas, lo informa como aviso: es esperable cuando la base recibio cambios despues del backup. `KEEP_RESTORE_DB=1` conserva la base temporal para revisarla a mano.
+
 ## Restauracion de emergencia
 
 1. Active una ventana de mantenimiento y detenga temporalmente la aplicacion si el restore afectara `visa_db`.

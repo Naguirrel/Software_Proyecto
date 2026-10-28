@@ -111,6 +111,18 @@ bash /opt/visa-app/tools/monitoring/validate_monitoring.sh
 
 La suite no eleva CPU ni llena memoria o disco. Para verificar un umbral diferente manualmente, use `MONITOR_THRESHOLD=10` en una prueba directa y observe las lineas `WARNING`; la suite usa valores controlados y es la forma determinista de probar cada recurso. No pruebe sobrecargando la instancia de produccion.
 
+## Reporte de disponibilidad (RNF-10)
+
+`tools/monitoring/availability_report.sh` calcula la disponibilidad a partir del log. Cada `Revision del servidor` cuenta como una muestra: disponible si su linea `aplicacion` es `OK` y no disponible si es `CRITICAL`. CPU, memoria y disco no afectan el calculo. Informa el periodo cubierto, las muestras, los incidentes, la caida mas larga y el porcentaje frente a la meta (99% por defecto).
+
+```bash
+/opt/visa-app/tools/monitoring/availability_report.sh /var/log/visaguide/server-monitoring.log
+```
+
+Variables opcionales: `AVAILABILITY_TARGET` (meta en %), `REPORT_SINCE` y `REPORT_UNTIL` (fechas `AAAA-MM-DD`) y `MONITOR_INTERVAL_MINUTES` (5 por defecto, para estimar la duracion de las caidas). Devuelve 0 si cumple la meta, 1 si no la cumple y 2 si no hay muestras en el periodo.
+
+El log solo conserva `MONITOR_MAX_LOG_LINES` lineas (2000 por defecto). Cada revision ocupa unas seis, asi que con cron cada cinco minutos el log cubre poco mas de un dia. Para medir un periodo mas largo, aumente ese valor en `/etc/visaguide/monitoring.env` (por ejemplo, 25000 lineas cubren unos 14 dias) o use el historial de UptimeRobot.
+
 ## Alternativa externa: UptimeRobot
 
 En el panel de UptimeRobot, cree un monitor nuevo de tipo **HTTP(s)** con URL `https://visa-app.duckdns.org`, nombre identificable como `VisaGuide produccion`, intervalo de cinco minutos y un contacto de alerta verificado asociado a ese monitor. Guarde el monitor y compruebe que aparece como activo y que el contacto esta vinculado. Segun la [guia oficial de creacion](https://help.uptimerobot.com/en/articles/11358364-how-to-create-your-first-monitor-on-uptimerobot-quick-setup-guide), el monitor HTTP(s) marca la web como caida cuando no responde o devuelve un codigo de error; la [documentacion del intervalo](https://help.uptimerobot.com/en/articles/11360876-what-is-a-monitoring-interval-in-uptimerobot) indica cinco minutos para el plan gratuito. Configure y verifique las notificaciones en el servicio, sin colocar credenciales de UptimeRobot en este repositorio.
