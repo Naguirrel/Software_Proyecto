@@ -1,6 +1,6 @@
 const { issueSessionToken } = require("../auth");
 const { createSafeEmailSender } = require("../services/emailReminderService");
-const { accountLocked } = require("../templates/emailTemplates");
+const { accountLocked, emailVerification, passwordReset } = require("../templates/emailTemplates");
 const { sendErrorResponse } = require("../middleware/errorResponse");
 const { validatePassword } = require("../services/passwordPolicy");
 const { PRIVACY_NOTICE_VERSION, validatePrivacyConsent } = require("../config/privacyNotice");
@@ -48,14 +48,7 @@ function createAuthController(authService, { activityLogService, testUsersReady,
     await sendAuthEmail({
       to: usuarioRow.correo,
       subject: "Verifica tu correo - VisaGuide",
-      text: [
-        `Hola ${usuarioRow.nombre},`,
-        "",
-        "Confirma tu correo electrónico usando el siguiente enlace (válido por 24 horas):",
-        verifyUrl,
-        "",
-        "Si no creaste esta cuenta, ignora este mensaje.",
-      ].join("\n"),
+      ...emailVerification({ nombre: usuarioRow.nombre, verifyUrl }),
     });
 
     await activityLogService.logActivity({
@@ -246,14 +239,7 @@ function createAuthController(authService, { activityLogService, testUsersReady,
         await sendAuthEmail({
           to: result.usuario.correo,
           subject: "Recuperación de contraseña - VisaGuide",
-          text: [
-            `Hola ${result.usuario.nombre},`,
-            "",
-            "Solicitaste restablecer tu contraseña. Usa el siguiente enlace (válido por 1 hora):",
-            resetUrl,
-            "",
-            "Si no fuiste tú, ignora este mensaje.",
-          ].join("\n"),
+          ...passwordReset({ nombre: result.usuario.nombre, resetUrl }),
         });
 
         await activityLogService.logActivity({
