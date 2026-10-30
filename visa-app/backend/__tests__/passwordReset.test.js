@@ -65,6 +65,26 @@ describe("POST /forgot-password", () => {
 
     expect(response.status).toBe(500);
   });
+
+  test("avisa con 503 y un mensaje claro cuando el correo no se puede enviar", async () => {
+    const pool = createPool(async (sql, values) => {
+      const normalized = String(sql).replace(/\s+/g, " ").trim();
+      if (normalized.includes("FROM usuario WHERE correo")) {
+        return { rows: [{ id_usuario: 5, nombre: "Ana", correo: values[0], rol: "cliente" }] };
+      }
+      return { rows: [] };
+    });
+    const sendEmail = jest.fn(() => Promise.reject(new Error("connect ECONNREFUSED 208.91.112.55:587")));
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    const app = buildApp(pool, { sendEmail });
+
+    const response = await request(app).post("/forgot-password").send({ correo: "ana@example.com" });
+    consoleError.mockRestore();
+
+    expect(response.status).toBe(503);
+    expect(response.body.error).toBe("No pudimos enviar el correo en este momento. Intenta de nuevo en unos minutos.");
+    expect(JSON.stringify(response.body)).not.toContain("ECONNREFUSED");
+  });
 });
 
 describe("POST /reset-password", () => {

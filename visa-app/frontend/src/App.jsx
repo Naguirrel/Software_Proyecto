@@ -320,7 +320,11 @@ function ForgotPassword() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "No fue posible procesar la solicitud. Intenta de nuevo.");
+        return;
+      }
       setSuccess(data.message || "Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.");
     } catch { setError("Error de conexión."); }
     finally { setIsLoading(false); }

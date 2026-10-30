@@ -5,6 +5,11 @@
 const BRAND_COLOR = "#E11D48";
 const BRAND_NAVY = "#0F172A";
 
+// El nombre lo escribe el usuario al registrarse: no debe poder inyectar HTML en el correo.
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+}
+
 function baseTemplate(content, preheader = "") {
   return `
 <!DOCTYPE html>
@@ -66,18 +71,20 @@ function buttonStyle() {
 
 // Template: Verificación de email
 function emailVerification({ nombre, verifyUrl }) {
+  const safeName = escapeHtml(nombre);
+  const safeUrl = escapeHtml(verifyUrl);
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${BRAND_NAVY};">
       ¡Bienvenido a VisaGuide!
     </h2>
     <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
-      Hola <strong>${nombre}</strong>,
+      Hola <strong>${safeName}</strong>,
     </p>
     <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
       Gracias por registrarte en VisaGuide. Para completar tu registro y comenzar tu proceso de visa, por favor verifica tu correo electrónico.
     </p>
     <p style="margin: 0 0 32px; text-align: center;">
-      <a href="${verifyUrl}" style="${buttonStyle()}">
+      <a href="${safeUrl}" style="${buttonStyle()}">
         Verificar mi correo
       </a>
     </p>
@@ -85,7 +92,7 @@ function emailVerification({ nombre, verifyUrl }) {
       O copia y pega este enlace en tu navegador:
     </p>
     <p style="margin: 0 0 24px; font-size: 13px; color: #9ca3af; word-break: break-all;">
-      ${verifyUrl}
+      ${safeUrl}
     </p>
     <p style="margin: 0; font-size: 14px; color: #6b7280;">
       Este enlace expira en <strong>24 horas</strong>. Si no creaste esta cuenta, puedes ignorar este mensaje.
@@ -99,18 +106,20 @@ function emailVerification({ nombre, verifyUrl }) {
 
 // Template: Recuperación de contraseña
 function passwordReset({ nombre, resetUrl }) {
+  const safeName = escapeHtml(nombre);
+  const safeUrl = escapeHtml(resetUrl);
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${BRAND_NAVY};">
       Restablecer contraseña
     </h2>
     <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
-      Hola <strong>${nombre}</strong>,
+      Hola <strong>${safeName}</strong>,
     </p>
     <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
       Recibimos una solicitud para restablecer la contraseña de tu cuenta en VisaGuide. Haz clic en el botón para crear una nueva contraseña.
     </p>
     <p style="margin: 0 0 32px; text-align: center;">
-      <a href="${resetUrl}" style="${buttonStyle()}">
+      <a href="${safeUrl}" style="${buttonStyle()}">
         Restablecer contraseña
       </a>
     </p>
@@ -118,7 +127,7 @@ function passwordReset({ nombre, resetUrl }) {
       O copia y pega este enlace en tu navegador:
     </p>
     <p style="margin: 0 0 24px; font-size: 13px; color: #9ca3af; word-break: break-all;">
-      ${resetUrl}
+      ${safeUrl}
     </p>
     <p style="margin: 0; font-size: 14px; color: #6b7280;">
       Este enlace expira en <strong>1 hora</strong>. Si no solicitaste este cambio, puedes ignorar este mensaje.
@@ -254,7 +263,7 @@ function stageChange({ nombre, newStage, dashboardUrl }) {
 
 // Template: Cuenta bloqueada por intentos fallidos (RNF-13)
 function accountLocked({ nombre, minutos, unlockUrl, resetUrl }) {
-  const safeName = String(nombre || "").replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+  const safeName = escapeHtml(nombre);
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${BRAND_NAVY};">
       Bloqueamos tu cuenta temporalmente

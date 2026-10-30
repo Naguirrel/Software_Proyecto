@@ -1,9 +1,19 @@
 const { issueSessionToken } = require("../auth");
 const { createSafeEmailSender } = require("../services/emailReminderService");
-const { accountLocked } = require("../templates/emailTemplates");
+const { accountLocked, emailVerification, passwordReset } = require("../templates/emailTemplates");
 const { sendErrorResponse } = require("../middleware/errorResponse");
 const { validatePassword } = require("../services/passwordPolicy");
 const { PRIVACY_NOTICE_VERSION, validatePrivacyConsent } = require("../config/privacyNotice");
+
+const EMAIL_DELIVERY_ERROR_MESSAGE = "No pudimos enviar el correo en este momento. Intenta de nuevo en unos minutos.";
+
+// Marca un fallo del proveedor de correo para responder 503 con un mensaje que el usuario entienda.
+function asEmailDeliveryError(error) {
+  const deliveryError = error instanceof Error ? error : new Error(String(error));
+  deliveryError.statusCode = 503;
+  deliveryError.isEmailDeliveryError = true;
+  return deliveryError;
+}
 
 function getFrontendBaseUrl(env = process.env) {
   if (env.FRONTEND_URL) return env.FRONTEND_URL.replace(/\/+$/, "");
@@ -45,18 +55,15 @@ function createAuthController(authService, { activityLogService, testUsersReady,
     const token = await authService.createEmailVerificationToken(usuarioRow);
     const verifyUrl = `${getFrontendBaseUrl()}/verificar-email?token=${token}`;
 
-    await sendAuthEmail({
-      to: usuarioRow.correo,
-      subject: "Verifica tu correo - VisaGuide",
-      text: [
-        `Hola ${usuarioRow.nombre},`,
-        "",
-        "Confirma tu correo electrónico usando el siguiente enlace (válido por 24 horas):",
-        verifyUrl,
-        "",
-        "Si no creaste esta cuenta, ignora este mensaje.",
-      ].join("\n"),
-    });
+    try {
+      await sendAuthEmail({
+        to: usuarioRow.correo,
+        subject: "Verifica tu correo - VisaGuide",
+        ...emailVerification({ nombre: usuarioRow.nombre, verifyUrl }),
+      });
+    } catch (error) {
+      throw asEmailDeliveryError(error);
+    }
 
     await activityLogService.logActivity({
       req,
@@ -243,18 +250,15 @@ function createAuthController(authService, { activityLogService, testUsersReady,
 
       if (result) {
         const resetUrl = `${getFrontendBaseUrl()}/restablecer-contrasena?token=${result.token}`;
-        await sendAuthEmail({
-          to: result.usuario.correo,
-          subject: "Recuperación de contraseña - VisaGuide",
-          text: [
-            `Hola ${result.usuario.nombre},`,
-            "",
-            "Solicitaste restablecer tu contraseña. Usa el siguiente enlace (válido por 1 hora):",
-            resetUrl,
-            "",
-            "Si no fuiste tú, ignora este mensaje.",
-          ].join("\n"),
-        });
+        try {
+          await sendAuthEmail({
+            to: result.usuario.correo,
+            subject: "Recuperación de contraseña - VisaGuide",
+            ...passwordReset({ nombre: result.usuario.nombre, resetUrl }),
+          });
+        } catch (error) {
+          throw asEmailDeliveryError(error);
+        }
 
         await activityLogService.logActivity({
           req,
@@ -271,7 +275,7 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       res.json({ message: genericMessage });
     } catch (error) {
       return sendErrorResponse(req, res, error, {
-        fallback: "No fue posible procesar la solicitud",
+        fallback: error.isEmailDeliveryError ? EMAIL_DELIVERY_ERROR_MESSAGE : "No fue posible procesar la solicitud",
         context: "auth.forgot_password",
       });
     }
@@ -348,7 +352,7 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       res.json({ message: genericMessage });
     } catch (error) {
       return sendErrorResponse(req, res, error, {
-        fallback: "No fue posible procesar la solicitud",
+        fallback: error.isEmailDeliveryError ? EMAIL_DELIVERY_ERROR_MESSAGE : "No fue posible procesar la solicitud",
         context: "auth.resend_verification",
       });
     }
