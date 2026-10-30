@@ -367,6 +367,26 @@ describe("pantallas de autenticación", () => {
     });
   });
 
+  it("muestra un error y no un mensaje de éxito cuando el correo de recuperación no se pudo enviar", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: "No pudimos enviar el correo en este momento. Intenta de nuevo en unos minutos." }),
+    });
+    window.history.pushState({}, "", "/recuperar-contrasena");
+
+    render(<App />);
+
+    await user.type(screen.getByLabelText("Correo electrónico"), "persona@example.com");
+    await user.click(screen.getByRole("button", { name: /Enviar enlace/i }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(
+      "No pudimos enviar el correo en este momento. Intenta de nuevo en unos minutos."
+    ));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
   it("valida la nueva contraseña y la envía junto al token del enlace", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
