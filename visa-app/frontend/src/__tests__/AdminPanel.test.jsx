@@ -330,7 +330,7 @@ function mockAdminSession() {
             id: 8,
             nombre: "Carlos Mendoza",
             correo: "carlos@example.com",
-            perfil: "RenovaciÃ³n B1/B2",
+            perfil: "Renovación B1/B2",
             ciudad: "Ciudad de Guatemala",
             pais: "Guatemala",
             createdAt: "2026-07-20T10:00:00.000Z",
