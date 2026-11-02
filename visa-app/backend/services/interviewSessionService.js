@@ -273,7 +273,7 @@ function createInterviewSessionService(pool) {
 
     const parsedId = Number(id);
     if (Number.isNaN(parsedId)) {
-      const error = new Error("ID invÃ¡lido");
+      const error = new Error("ID inválido");
       error.statusCode = 400;
       throw error;
     }
@@ -297,7 +297,7 @@ function createInterviewSessionService(pool) {
 
     const session = result.rows[0];
     if (!session) {
-      const error = new Error("SesiÃ³n no encontrada");
+      const error = new Error("Sesión no encontrada");
       error.statusCode = 404;
       throw error;
     }

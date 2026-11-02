@@ -198,7 +198,7 @@ describe("admin process management", () => {
       .set("Authorization", `Bearer ${issueSessionToken(admin)}`)
       .expect(404);
 
-    expect(response.body).toEqual({ error: "TrÃ¡mite no encontrado" });
+    expect(response.body).toEqual({ error: "Trámite no encontrado" });
   });
 
   test("assigns an advisor and updates status and stage", async () => {

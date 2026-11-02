@@ -272,7 +272,7 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
     const processId = Number(req.params.id);
 
     if (!Number.isInteger(processId) || processId <= 0) {
-      return res.status(400).json({ error: "TrÃ¡mite invÃ¡lido" });
+      return res.status(400).json({ error: "Trámite inválido" });
     }
 
     try {
@@ -296,7 +296,7 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
       `, [processId]);
 
       const process = processResult.rows[0];
-      if (!process) return res.status(404).json({ error: "TrÃ¡mite no encontrado" });
+      if (!process) return res.status(404).json({ error: "Trámite no encontrado" });
 
       const userId = process.id_usuario;
       const [ds160Result, documentsResult, interviewsResult, notificationsResult] = await Promise.all([
@@ -341,7 +341,7 @@ module.exports = function createAdminProcessRoutes(pool, { requireAdmin, schemaR
       });
     } catch (error) {
       console.error("ERROR ADMIN PROCESS DETAIL:", error);
-      return res.status(500).json({ error: "No fue posible cargar el detalle del trÃ¡mite" });
+      return res.status(500).json({ error: "No fue posible cargar el detalle del trámite" });
     }
   });
 
