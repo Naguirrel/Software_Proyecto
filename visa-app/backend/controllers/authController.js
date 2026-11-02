@@ -1,4 +1,5 @@
 const { issueSessionToken } = require("../auth");
+const { getFrontendBaseUrl } = require("../config/email");
 const { createSafeEmailSender } = require("../services/emailReminderService");
 const { accountLocked, emailVerification, passwordReset } = require("../templates/emailTemplates");
 const { sendErrorResponse } = require("../middleware/errorResponse");
@@ -13,11 +14,6 @@ function asEmailDeliveryError(error) {
   deliveryError.statusCode = 503;
   deliveryError.isEmailDeliveryError = true;
   return deliveryError;
-}
-
-function getFrontendBaseUrl(env = process.env) {
-  if (env.FRONTEND_URL) return env.FRONTEND_URL.replace(/\/+$/, "");
-  return env.NODE_ENV === "production" ? "https://visa-app.duckdns.org" : "http://localhost:5173";
 }
 
 function presentLoginUser(row) {
@@ -48,7 +44,8 @@ function respondAccountLocked(res, lockedUntil) {
 }
 
 function createAuthController(authService, { activityLogService, testUsersReady, sendEmail }) {
-  const sendAuthEmail = sendEmail || createSafeEmailSender();
+  // EMAIL_REMINDERS_MODE solo gobierna los recordatorios: verificar y recuperar la cuenta siempre debe enviarse.
+  const sendAuthEmail = sendEmail || createSafeEmailSender(process.env, { ignoreReminderMode: true });
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   async function sendEmailVerification(usuarioRow, req) {

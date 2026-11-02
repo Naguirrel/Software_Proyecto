@@ -79,8 +79,18 @@ module.exports = function createAdminManagementRoutes(pool, { requireAdmin, sche
     }
   });
 
+  router.get("/email-reminders/status", (req, res) => {
+    return res.json({ modo: activeEmailReminderService.getMode() });
+  });
+
   router.post("/email-reminders/run", async (req, res) => {
+    const modo = activeEmailReminderService.getMode();
+    if (modo === "disabled") {
+      return res.status(409).json({ error: "Los recordatorios por email están desactivados en este servidor.", modo });
+    }
+
     const summary = {
+      modo,
       encontrados: 0,
       enviados: 0,
       dryRun: 0,

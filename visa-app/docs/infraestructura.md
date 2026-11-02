@@ -156,9 +156,9 @@ El frontend lee `VITE_API_URL` y `VITE_API_PORT` en `frontend/src/config/api.js`
 | `SMTP_FROM` | Backend | Opcional | Remitente alternativo | Configuración |
 | `EMAIL_FROM` | Backend | Opcional | Remitente preferido | Configuración |
 | `RESEND_API_KEY` | Backend | Condicional para Resend | Acceso al proveedor | Secreto |
-| `EMAIL_REMINDERS_MODE` | Backend | Opcional | `disabled` deshabilita recordatorios | Configuración |
+| `EMAIL_REMINDERS_MODE` | Backend | Opcional | `disabled` no los ejecuta, `dry_run` los simula, `send` los envía | Configuración |
 
-Si falta el transporte, el código de recordatorios devuelve dry-run. **No** se debe suponer que `EMAIL_REMINDERS_MODE=dry_run` impida envíos cuando hay transporte configurado: `backend/services/emailReminderService.js` solo trata explícitamente `disabled` y, con transporte válido, intenta enviar. `backend/config/email.js` usa la validación TLS predeterminada de Nodemailer para Resend y SMTP.
+`EMAIL_REMINDERS_MODE` solo gobierna los recordatorios; los correos de verificación y recuperación de cuenta se envían siempre. `dry_run` no envía aunque haya transporte configurado. Con `send` o sin valor, el backend envía si hay transporte y simula si falta. `backend/config/email.js` usa la validación TLS predeterminada de Nodemailer para Resend y SMTP.
 
 ### Pagos
 

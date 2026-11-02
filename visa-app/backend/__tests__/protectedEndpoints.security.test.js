@@ -63,6 +63,7 @@ const ADMIN_ENDPOINTS = [
   ["get", "/admin/metrics/processes.csv"],
   ["get", "/admin/metrics/processes.xlsx"],
   ["get", "/admin/activity-logs"],
+  ["get", "/admin/email-reminders/status"],
   ["post", "/admin/email-reminders/run"],
   ["get", "/admin/dashboard"],
   ["get", "/admin/users"],

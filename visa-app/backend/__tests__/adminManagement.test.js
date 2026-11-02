@@ -86,6 +86,7 @@ describe("admin management integration", () => {
       metadata: {},
     };
     const emailReminderService = {
+      getMode: () => "dry_run",
       listReminderCandidates: jest.fn(async () => [candidate, { ...candidate, entity_id: "42" }]),
       sendReminder: jest.fn()
         .mockResolvedValueOnce({ status: "dry_run" })
@@ -106,6 +107,7 @@ describe("admin management integration", () => {
       .expect(200);
 
     expect(response.body).toMatchObject({
+      modo: "dry_run",
       encontrados: 2,
       enviados: 0,
       dryRun: 1,
@@ -117,6 +119,41 @@ describe("admin management integration", () => {
       action: "email_reminders.run",
       metadata: expect.objectContaining({ encontrados: 2, dryRun: 1, omitidosDuplicado: 1 }),
     }));
+  });
+
+  test("reports the email reminders mode", async () => {
+    const { app } = createApp(async (sql) => {
+      if (sql.includes("FROM usuario WHERE id_usuario")) return { rows: [admin] };
+      return { rows: [] };
+    }, { emailReminderService: { getMode: () => "send" } });
+
+    const response = await request(app)
+      .get("/admin/email-reminders/status")
+      .set("Authorization", `Bearer ${issueSessionToken(admin)}`)
+      .expect(200);
+
+    expect(response.body).toEqual({ modo: "send" });
+  });
+
+  test("does not process email reminders while they are disabled", async () => {
+    const emailReminderService = {
+      getMode: () => "disabled",
+      listReminderCandidates: jest.fn(),
+      sendReminder: jest.fn(),
+    };
+    const { app } = createApp(async (sql) => {
+      if (sql.includes("FROM usuario WHERE id_usuario")) return { rows: [admin] };
+      return { rows: [] };
+    }, { emailReminderService });
+
+    const response = await request(app)
+      .post("/admin/email-reminders/run")
+      .set("Authorization", `Bearer ${issueSessionToken(admin)}`)
+      .expect(409);
+
+    expect(response.body.error).toBe("Los recordatorios por email están desactivados en este servidor.");
+    expect(emailReminderService.listReminderCandidates).not.toHaveBeenCalled();
+    expect(emailReminderService.sendReminder).not.toHaveBeenCalled();
   });
 
   test("returns dashboard metrics, workload, activity and attention from database queries", async () => {
