@@ -10,7 +10,9 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
-function baseTemplate(content, preheader = "") {
+function baseTemplate(content, preheader = "", branding = {}) {
+  const brandName = escapeHtml(branding.nombreComercial || "VisaGuide");
+  const website = escapeHtml(branding.sitioWeb);
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -50,10 +52,11 @@ function baseTemplate(content, preheader = "") {
           <tr>
             <td style="padding: 24px 40px; background-color: #f8fafc; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="margin: 0 0 8px; font-size: 13px; color: #64748b;">
-                Este correo fue enviado por VisaGuide
+                Este correo fue enviado por ${brandName}
               </p>
+              ${website ? `<p style="margin: 0 0 8px; font-size: 13px;"><a href="${website}" style="color: #64748b;">${website}</a></p>` : ""}
               <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                © ${new Date().getFullYear()} VisaGuide. Todos los derechos reservados.
+                © ${new Date().getFullYear()} ${brandName}. Todos los derechos reservados.
               </p>
             </td>
           </tr>
@@ -70,7 +73,7 @@ function buttonStyle() {
 }
 
 // Template: Verificación de email
-function emailVerification({ nombre, verifyUrl }) {
+function emailVerification({ nombre, verifyUrl, branding }) {
   const safeName = escapeHtml(nombre);
   const safeUrl = escapeHtml(verifyUrl);
   const content = `
@@ -99,13 +102,13 @@ function emailVerification({ nombre, verifyUrl }) {
     </p>
   `;
   return {
-    html: baseTemplate(content, "Verifica tu correo para comenzar con VisaGuide"),
+    html: baseTemplate(content, "Verifica tu correo para comenzar con VisaGuide", branding),
     text: `Hola ${nombre},\n\nGracias por registrarte en VisaGuide. Verifica tu correo usando este enlace:\n\n${verifyUrl}\n\nEste enlace expira en 24 horas.\n\nSi no creaste esta cuenta, ignora este mensaje.`,
   };
 }
 
 // Template: Recuperación de contraseña
-function passwordReset({ nombre, resetUrl }) {
+function passwordReset({ nombre, resetUrl, branding }) {
   const safeName = escapeHtml(nombre);
   const safeUrl = escapeHtml(resetUrl);
   const content = `
@@ -134,7 +137,7 @@ function passwordReset({ nombre, resetUrl }) {
     </p>
   `;
   return {
-    html: baseTemplate(content, "Restablece tu contraseña de VisaGuide"),
+    html: baseTemplate(content, "Restablece tu contraseña de VisaGuide", branding),
     text: `Hola ${nombre},\n\nRecibimos una solicitud para restablecer tu contraseña. Usa este enlace:\n\n${resetUrl}\n\nEste enlace expira en 1 hora.\n\nSi no solicitaste este cambio, ignora este mensaje.`,
   };
 }
@@ -182,7 +185,7 @@ function documentReviewed({ nombre, documentName, status, feedback, dashboardUrl
 }
 
 // Template: Recordatorio de documento pendiente
-function documentReminder({ nombre, documentName, dashboardUrl }) {
+function documentReminder({ nombre, documentName, dashboardUrl, branding }) {
   const safeName = escapeHtml(nombre);
   const safeDocumentName = escapeHtml(documentName);
   const safeUrl = escapeHtml(dashboardUrl);
@@ -206,13 +209,13 @@ function documentReminder({ nombre, documentName, dashboardUrl }) {
     </p>
   `;
   return {
-    html: baseTemplate(content, `Recordatorio: documento "${safeDocumentName}" pendiente`),
+    html: baseTemplate(content, `Recordatorio: documento "${safeDocumentName}" pendiente`, branding),
     text: `Hola ${nombre},\n\nTe recordamos que tienes un documento pendiente de completar o corregir: "${documentName}"\n\nContinúa tu trámite en: ${dashboardUrl}`,
   };
 }
 
 // Template: Recordatorio de preparación para la entrevista
-function interviewReminder({ nombre, interviewUrl }) {
+function interviewReminder({ nombre, interviewUrl, branding }) {
   const safeName = escapeHtml(nombre);
   const safeUrl = escapeHtml(interviewUrl);
   const content = `
@@ -232,7 +235,7 @@ function interviewReminder({ nombre, interviewUrl }) {
     </p>
   `;
   return {
-    html: baseTemplate(content, "Practica para tu entrevista consular en VisaGuide"),
+    html: baseTemplate(content, "Practica para tu entrevista consular en VisaGuide", branding),
     text: `Hola ${nombre},\n\nTu trámite se encuentra en etapa de entrevista. Revisa tu preparación y próximos pasos en: ${interviewUrl}`,
   };
 }
@@ -291,7 +294,7 @@ function stageChange({ nombre, newStage, dashboardUrl }) {
 }
 
 // Template: Cuenta bloqueada por intentos fallidos (RNF-13)
-function accountLocked({ nombre, minutos, unlockUrl, resetUrl }) {
+function accountLocked({ nombre, minutos, unlockUrl, resetUrl, branding }) {
   const safeName = escapeHtml(nombre);
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${BRAND_NAVY};">
@@ -319,7 +322,7 @@ function accountLocked({ nombre, minutos, unlockUrl, resetUrl }) {
     </p>
   `;
   return {
-    html: baseTemplate(content, "Tu cuenta de VisaGuide fue bloqueada temporalmente"),
+    html: baseTemplate(content, "Tu cuenta de VisaGuide fue bloqueada temporalmente", branding),
     text: `Hola ${nombre},\n\nDetectamos varios intentos fallidos de inicio de sesión en tu cuenta de VisaGuide. Para protegerla, la bloqueamos durante ${minutos} minutos.\n\nPuedes desbloquearla ahora con este enlace:\n\n${unlockUrl}\n\nSi no fuiste tú, restablece tu contraseña cuanto antes: ${resetUrl}`,
   };
 }

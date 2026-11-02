@@ -1,4 +1,4 @@
-import { Bell, FileText, LockKeyhole, Settings, ShieldCheck } from "lucide-react";
+import { Bell, Settings } from "lucide-react";
 import { useState } from "react";
 import AdminLayout from "../../components/admin/AdminLayout";
 import { AdminPageHeader, AdminResourceState } from "../../components/admin/AdminShared";
@@ -16,9 +16,6 @@ const empty = {
 const sections = [
   ["general", <Settings aria-hidden="true" />, "General"],
   ["notifications", <Bell aria-hidden="true" />, "Notificaciones automáticas"],
-  ["documents", <FileText aria-hidden="true" />, "Requisitos documentales"],
-  ["roles", <ShieldCheck aria-hidden="true" />, "Roles y permisos"],
-  ["security", <LockKeyhole aria-hidden="true" />, "Seguridad"],
 ];
 
 export default function AdminSettingsPage() {
@@ -60,7 +57,7 @@ export default function AdminSettingsPage() {
               <form className="admin-form" onSubmit={save}>
                 <header>
                   <h3>Información de la Agencia</h3>
-                  <p>Los datos que verán los solicitantes en sus correos y perfiles.</p>
+                  <p>El nombre comercial y el sitio web aparecen en el pie de los correos que reciben los usuarios. La razón social y la zona horaria se guardan como referencia y por ahora no cambian nada en la plataforma.</p>
                 </header>
                 <div className="admin-form-grid">
                   <label>Nombre comercial<input value={form.nombre_comercial || ""} onChange={(event) => setDraft({ ...form, nombre_comercial: event.target.value })} /></label>
@@ -71,11 +68,11 @@ export default function AdminSettingsPage() {
                 {notice && <p role="status">{notice}</p>}
                 <button className="admin-primary-button" type="submit">Guardar cambios</button>
               </form>
-            ) : section === "notifications" ? (
+            ) : (
               <form className="admin-form" onSubmit={save}>
                 <header>
                   <h3>Notificaciones automáticas</h3>
-                  <p>Controla si la plataforma avisa a los usuarios cuando ocurren cambios en su proceso.</p>
+                  <p>Controla los avisos que aparecen dentro de la app. No afecta los correos ni los recordatorios por email.</p>
                 </header>
                 <label className="admin-toggle">
                   <input
@@ -85,17 +82,12 @@ export default function AdminSettingsPage() {
                   />
                   <span>
                     <strong>Activar notificaciones automáticas</strong>
-                    <span>Envía avisos a los usuarios cuando cambia el estado de su trámite, se revisa su DS-160, se les asigna un asesor, o reciben retroalimentación de entrevista.</span>
+                    <span>Crea avisos cuando cambia el estado de un trámite, se revisa un documento o DS-160, se asigna un asesor o hay retroalimentación de entrevista. Si la apagas, no se crea ningún aviso nuevo para clientes, asesores ni administradores.</span>
                   </span>
                 </label>
                 {notice && <p role="status">{notice}</p>}
                 <button className="admin-primary-button" type="submit">Guardar cambios</button>
               </form>
-            ) : (
-              <div className="admin-resource-state">
-                <strong>Configuración aún no disponible</strong>
-                <span>Esta sección requiere reglas de negocio adicionales antes de habilitar cambios seguros.</span>
-              </div>
             )}
           </section>
         </div>

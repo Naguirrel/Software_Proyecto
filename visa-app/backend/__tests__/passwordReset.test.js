@@ -57,6 +57,27 @@ describe("POST /forgot-password", () => {
     expect(message.text).toContain("/restablecer-contrasena?token=");
   });
 
+  test("el correo usa el nombre comercial y el sitio configurados", async () => {
+    const pool = createPool(async (sql, values) => {
+      const normalized = String(sql).replace(/\s+/g, " ").trim();
+      if (normalized.includes("FROM usuario WHERE correo")) {
+        return { rows: [{ id_usuario: 5, nombre: "Ana", correo: values[0], rol: "cliente" }] };
+      }
+      if (normalized.includes("FROM admin_settings")) {
+        return { rows: [{ nombre_comercial: "Agencia Quetzal", sitio_web: "https://quetzal.test" }] };
+      }
+      return { rows: [] };
+    });
+    const sendEmail = jest.fn(() => Promise.resolve({ status: "dry_run" }));
+    const app = buildApp(pool, { sendEmail });
+
+    await request(app).post("/forgot-password").send({ correo: "ana@example.com" }).expect(200);
+
+    const [message] = sendEmail.mock.calls[0];
+    expect(message.html).toContain("Este correo fue enviado por Agencia Quetzal");
+    expect(message.html).toContain('href="https://quetzal.test"');
+  });
+
   test("devuelve 500 ante un error inesperado", async () => {
     const pool = createPool(async () => { throw new Error("db down"); });
     const app = buildApp(pool);

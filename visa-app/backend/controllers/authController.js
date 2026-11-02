@@ -43,7 +43,7 @@ function respondAccountLocked(res, lockedUntil) {
   });
 }
 
-function createAuthController(authService, { activityLogService, testUsersReady, sendEmail }) {
+function createAuthController(authService, { activityLogService, testUsersReady, sendEmail, loadBranding = async () => ({}) }) {
   // EMAIL_REMINDERS_MODE solo gobierna los recordatorios: verificar y recuperar la cuenta siempre debe enviarse.
   const sendAuthEmail = sendEmail || createSafeEmailSender(process.env, { ignoreReminderMode: true });
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,12 +51,13 @@ function createAuthController(authService, { activityLogService, testUsersReady,
   async function sendEmailVerification(usuarioRow, req) {
     const token = await authService.createEmailVerificationToken(usuarioRow);
     const verifyUrl = `${getFrontendBaseUrl()}/verificar-email?token=${token}`;
+    const branding = await loadBranding();
 
     try {
       await sendAuthEmail({
         to: usuarioRow.correo,
         subject: "Verifica tu correo - VisaGuide",
-        ...emailVerification({ nombre: usuarioRow.nombre, verifyUrl }),
+        ...emailVerification({ nombre: usuarioRow.nombre, verifyUrl, branding }),
       });
     } catch (error) {
       throw asEmailDeliveryError(error);
@@ -81,6 +82,7 @@ function createAuthController(authService, { activityLogService, testUsersReady,
       minutos: Math.round(authService.ACCOUNT_LOCK_MS / 60000),
       unlockUrl: `${getFrontendBaseUrl()}/desbloquear-cuenta?token=${token}`,
       resetUrl: `${getFrontendBaseUrl()}/recuperar-contrasena`,
+      branding: await loadBranding(),
     });
 
     await sendAuthEmail({
@@ -247,11 +249,12 @@ function createAuthController(authService, { activityLogService, testUsersReady,
 
       if (result) {
         const resetUrl = `${getFrontendBaseUrl()}/restablecer-contrasena?token=${result.token}`;
+        const branding = await loadBranding();
         try {
           await sendAuthEmail({
             to: result.usuario.correo,
             subject: "Recuperación de contraseña - VisaGuide",
-            ...passwordReset({ nombre: result.usuario.nombre, resetUrl }),
+            ...passwordReset({ nombre: result.usuario.nombre, resetUrl, branding }),
           });
         } catch (error) {
           throw asEmailDeliveryError(error);
