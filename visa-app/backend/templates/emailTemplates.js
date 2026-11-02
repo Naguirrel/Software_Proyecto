@@ -183,18 +183,21 @@ function documentReviewed({ nombre, documentName, status, feedback, dashboardUrl
 
 // Template: Recordatorio de documento pendiente
 function documentReminder({ nombre, documentName, dashboardUrl }) {
+  const safeName = escapeHtml(nombre);
+  const safeDocumentName = escapeHtml(documentName);
+  const safeUrl = escapeHtml(dashboardUrl);
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${BRAND_NAVY};">
       Recordatorio de documento pendiente
     </h2>
     <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
-      Hola <strong>${nombre}</strong>,
+      Hola <strong>${safeName}</strong>,
     </p>
     <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
-      Te recordamos que tienes un documento pendiente de completar o revisar: <strong>"${documentName}"</strong>
+      Te recordamos que tienes un documento pendiente de completar o corregir: <strong>"${safeDocumentName}"</strong>
     </p>
     <p style="margin: 0 0 32px; text-align: center;">
-      <a href="${dashboardUrl}" style="${buttonStyle()}">
+      <a href="${safeUrl}" style="${buttonStyle()}">
         Continuar mi trámite
       </a>
     </p>
@@ -203,8 +206,34 @@ function documentReminder({ nombre, documentName, dashboardUrl }) {
     </p>
   `;
   return {
-    html: baseTemplate(content, `Recordatorio: documento "${documentName}" pendiente`),
-    text: `Hola ${nombre},\n\nTe recordamos que tienes un documento pendiente: "${documentName}"\n\nContinúa tu trámite en: ${dashboardUrl}`,
+    html: baseTemplate(content, `Recordatorio: documento "${safeDocumentName}" pendiente`),
+    text: `Hola ${nombre},\n\nTe recordamos que tienes un documento pendiente de completar o corregir: "${documentName}"\n\nContinúa tu trámite en: ${dashboardUrl}`,
+  };
+}
+
+// Template: Recordatorio de preparación para la entrevista
+function interviewReminder({ nombre, interviewUrl }) {
+  const safeName = escapeHtml(nombre);
+  const safeUrl = escapeHtml(interviewUrl);
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${BRAND_NAVY};">
+      Prepárate para tu entrevista
+    </h2>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
+      Hola <strong>${safeName}</strong>,
+    </p>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">
+      Tu trámite se encuentra en etapa de entrevista. Practica con el simulador y revisa tus próximos pasos para llegar con confianza.
+    </p>
+    <p style="margin: 0 0 32px; text-align: center;">
+      <a href="${safeUrl}" style="${buttonStyle()}">
+        Preparar mi entrevista
+      </a>
+    </p>
+  `;
+  return {
+    html: baseTemplate(content, "Practica para tu entrevista consular en VisaGuide"),
+    text: `Hola ${nombre},\n\nTu trámite se encuentra en etapa de entrevista. Revisa tu preparación y próximos pasos en: ${interviewUrl}`,
   };
 }
 
@@ -300,6 +329,7 @@ module.exports = {
   passwordReset,
   documentReviewed,
   documentReminder,
+  interviewReminder,
   interviewFeedback,
   stageChange,
   accountLocked,

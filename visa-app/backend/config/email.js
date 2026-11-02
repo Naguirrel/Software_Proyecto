@@ -54,6 +54,11 @@ function getEmailFrom(env = process.env) {
   return "VisaGuide <noreply@visaguide.com>";
 }
 
+function getFrontendBaseUrl(env = process.env) {
+  if (env.FRONTEND_URL) return env.FRONTEND_URL.replace(/\/+$/, "");
+  return env.NODE_ENV === "production" ? "https://visa-app.duckdns.org" : "http://localhost:5173";
+}
+
 function getEmailConfig(env = process.env) {
   return {
     provider: (env.EMAIL_PROVIDER || "smtp").toLowerCase(),
@@ -65,5 +70,6 @@ function getEmailConfig(env = process.env) {
 module.exports = {
   createEmailTransporter,
   getEmailFrom,
+  getFrontendBaseUrl,
   getEmailConfig,
 };

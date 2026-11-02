@@ -11,7 +11,10 @@ const adminSession = {
   token: "signed-admin-token",
 };
 
+let emailRemindersMode = "send";
+
 function mockAdminSession() {
+  emailRemindersMode = "send";
   localStorage.setItem("visaguide_session", JSON.stringify(adminSession));
   localStorage.setItem("correoUsuario", adminSession.correo);
   let adminDocumentStatus = "review";
@@ -202,10 +205,14 @@ function mockAdminSession() {
         }),
       });
     }
+    if (String(url).endsWith("/admin/email-reminders/status")) {
+      return Promise.resolve({ ok: true, json: async () => ({ modo: emailRemindersMode }) });
+    }
     if (String(url).endsWith("/admin/email-reminders/run") && options.method === "POST") {
       return Promise.resolve({
         ok: true,
         json: async () => ({
+          modo: "dry_run",
           encontrados: 2,
           enviados: 0,
           dryRun: 1,
@@ -218,7 +225,7 @@ function mockAdminSession() {
               entityId: "41",
               recipientEmail: "demo@example.com",
               status: "dry_run",
-              reason: "safe-mode",
+              reason: "simulation",
               error: "",
             },
             {
@@ -795,11 +802,12 @@ describe("panel de administracion", () => {
     await user.click(screen.getByRole("button", { name: "Ejecutar recordatorios" }));
 
     expect(await screen.findByText("Encontrados")).toBeInTheDocument();
-    expect(screen.getAllByText("Dry run").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Simulados").length).toBeGreaterThan(0);
     expect(screen.getByText("Duplicados")).toBeInTheDocument();
     expect(screen.getByText("demo@example.com")).toBeInTheDocument();
     expect(screen.getByText("carlos@example.com")).toBeInTheDocument();
-    expect(screen.getByText("safe-mode")).toBeInTheDocument();
+    expect(screen.getByText("Simulación: no se envió")).toBeInTheDocument();
+    expect(screen.getByText("Ya se procesó hoy")).toBeInTheDocument();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/admin/email-reminders/run"),
       expect.objectContaining({
@@ -807,6 +815,26 @@ describe("panel de administracion", () => {
         headers: expect.objectContaining({ Authorization: `Bearer ${adminSession.token}` }),
       })
     );
+  });
+
+  it("bloquea los recordatorios por email cuando están desactivados", async () => {
+    emailRemindersMode = "disabled";
+    window.history.pushState({}, "", "/admin/email-reminders");
+
+    render(<App />);
+
+    expect(await screen.findByText(/están desactivados en este servidor/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ejecutar recordatorios" })).toBeDisabled();
+  });
+
+  it("avisa que los recordatorios por email se simulan", async () => {
+    emailRemindersMode = "dry_run";
+    window.history.pushState({}, "", "/admin/email-reminders");
+
+    render(<App />);
+
+    expect(await screen.findByText(/Modo de simulación/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ejecutar recordatorios" })).toBeEnabled();
   });
 
   it("permite filtrar y desactivar preguntas desde el panel", async () => {

@@ -980,6 +980,7 @@ const endpoints = [
   ["get", "/admin/metrics/processes.csv", "Administración", "Exportar métricas en CSV", "admin", null, 200, "binary"],
   ["get", "/admin/metrics/processes.xlsx", "Administración", "Exportar métricas en Excel", "admin", null, 200, "binary"],
   ["get", "/admin/activity-logs", "Administración", "Listar actividad", "admin"],
+  ["get", "/admin/email-reminders/status", "Administración", "Consultar modo de recordatorios", "admin"],
   ["post", "/admin/email-reminders/run", "Administración", "Ejecutar recordatorios", "admin"],
   ["get", "/admin/dashboard", "Administración", "Consultar panel", "admin"],
   ["get", "/admin/users", "Administración", "Listar usuarios", "admin"],

@@ -539,7 +539,7 @@ Administracion [admin]:
 - `/admin/metrics`: `overview`, `processes`, `processes.csv`, `processes.xlsx`
 - `/admin/documents`: `GET /`, `PUT /:id/status`
 - `/admin/processes`: `GET /`, `GET /:id`, `GET /:id/history`, `PUT /:id`
-- `/admin`: `dashboard`, `users`, `POST /users/:id/unlock`, `advisors`, `assignments`, `ds160`, `profile`, `settings`, `activity-logs`, `POST /email-reminders/run`
+- `/admin`: `dashboard`, `users`, `POST /users/:id/unlock`, `advisors`, `assignments`, `ds160`, `profile`, `settings`, `activity-logs`, `GET /email-reminders/status`, `POST /email-reminders/run`
 
 Asesor (`advisorRoutes.js`) [asesor; todo filtrado por `tramite.id_asesor = req.auth.id_usuario`]:
 

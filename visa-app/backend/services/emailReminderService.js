@@ -28,16 +28,34 @@ function presentReminder(row) {
   };
 }
 
-const { createEmailTransporter, getEmailFrom } = require("../config/email");
+const { createEmailTransporter, getEmailFrom, getFrontendBaseUrl } = require("../config/email");
+const { documentReminder, interviewReminder } = require("../templates/emailTemplates");
 
-function createSafeEmailSender(env = process.env) {
+function getReminderMode(env = process.env) {
+  if (env.EMAIL_REMINDERS_MODE === "disabled") return "disabled";
+  if (env.EMAIL_REMINDERS_MODE === "dry_run") return "dry_run";
+  return createEmailTransporter(env) ? "send" : "dry_run";
+}
+
+function createSafeEmailSender(env = process.env, { ignoreReminderMode = false } = {}) {
   const transporter = createEmailTransporter(env);
   const fromAddress = getEmailFrom(env);
 
   return async function sendEmail(message) {
-    // Modo deshabilitado
-    if (env.EMAIL_REMINDERS_MODE === "disabled") {
-      return { status: "skipped", reason: "disabled" };
+    if (!ignoreReminderMode) {
+      // Modo deshabilitado
+      if (env.EMAIL_REMINDERS_MODE === "disabled") {
+        return { status: "skipped", reason: "disabled" };
+      }
+
+      // Simulación: no envía aunque haya proveedor configurado
+      if (env.EMAIL_REMINDERS_MODE === "dry_run") {
+        console.info("EMAIL DRY RUN (simulation):", {
+          to: message.to,
+          subject: message.subject,
+        });
+        return { status: "dry_run", reason: "simulation" };
+      }
     }
 
     // Si no hay transporter configurado, usar dry run
@@ -73,34 +91,27 @@ function createSafeEmailSender(env = process.env) {
   };
 }
 
-function buildPendingDocumentTemplate(candidate) {
-  const documentName = candidate.document_name || "documento pendiente";
-  return {
-    subject: "Recordatorio de documento pendiente",
-    body: [
-      `Hola ${candidate.user_name || "usuario"},`,
-      "",
-      `Tienes pendiente revisar o completar el documento: ${documentName}.`,
-      "Ingresa a VisaGuide para consultar el estado y continuar con tu trámite.",
-    ].join("\n"),
-  };
+function buildPendingDocumentTemplate(candidate, env) {
+  const { html, text } = documentReminder({
+    nombre: candidate.user_name || "usuario",
+    documentName: candidate.document_name || "documento pendiente",
+    dashboardUrl: `${getFrontendBaseUrl(env)}/documents`,
+  });
+  return { subject: "Recordatorio de documento pendiente", body: text, html };
 }
 
-function buildInterviewTemplate(candidate) {
-  return {
-    subject: "Recordatorio de preparación para entrevista",
-    body: [
-      `Hola ${candidate.user_name || "usuario"},`,
-      "",
-      "Tu trámite se encuentra en etapa de entrevista.",
-      "Ingresa a VisaGuide para revisar tu preparación y próximos pasos.",
-    ].join("\n"),
-  };
+function buildInterviewTemplate(candidate, env) {
+  const { html, text } = interviewReminder({
+    nombre: candidate.user_name || "usuario",
+    interviewUrl: `${getFrontendBaseUrl(env)}/entrevista`,
+  });
+  return { subject: "Recordatorio de preparación para entrevista", body: text, html };
 }
 
 module.exports = function createEmailReminderService(pool, options = {}) {
   const env = options.env || process.env;
   const sendEmail = options.sendEmail || createSafeEmailSender(env);
+  const reminderMode = getReminderMode(env);
 
   async function ensureSchema() {
     await pool.query(`
@@ -187,7 +198,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
              u.id_usuario AS user_id, u.nombre AS user_name, u.correo AS recipient_email
       FROM documentos d
       JOIN usuario u ON u.id_usuario = d.usuario_id
-      WHERE d.estado IN ('pending', 'review', 'correction', 'rejected')
+      WHERE d.estado IN ('pending', 'correction', 'rejected')
         AND COALESCE(u.notificaciones_email, TRUE) = TRUE
       ORDER BY d.actualizado_en ASC, d.creado_en ASC, d.id ASC
     `);
@@ -195,7 +206,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
     return result.rows
       .filter((row) => row.recipient_email)
       .map((row) => {
-        const template = buildPendingDocumentTemplate(row);
+        const template = buildPendingDocumentTemplate(row, env);
         return {
           user_id: row.user_id,
           recipient_email: row.recipient_email,
@@ -204,6 +215,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
           entity_id: String(row.document_id),
           subject: template.subject,
           body: template.body,
+          html: template.html,
           metadata: {
             documentName: row.document_name,
             estado: row.estado === "rejected" ? "correction" : row.estado,
@@ -227,7 +239,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
     return result.rows
       .filter((row) => row.recipient_email)
       .map((row) => {
-        const template = buildInterviewTemplate(row);
+        const template = buildInterviewTemplate(row, env);
         return {
           user_id: row.user_id,
           recipient_email: row.recipient_email,
@@ -236,6 +248,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
           entity_id: String(row.id_tramite),
           subject: template.subject,
           body: template.body,
+          html: template.html,
           metadata: { etapaActual: row.etapa_actual },
         };
       });
@@ -263,12 +276,13 @@ module.exports = function createEmailReminderService(pool, options = {}) {
         to: candidate.recipient_email,
         subject: candidate.subject,
         text: candidate.body,
+        html: candidate.html,
       });
-      const status = delivery?.status === "skipped"
-        ? "skipped"
-        : delivery?.status === "sent"
-          ? "sent"
-          : "dry_run";
+      // Sin registrar: una fila "skipped" bloquearía el envío real del mismo día como duplicado.
+      if (delivery?.status === "skipped") {
+        return { status: "skipped", reason: delivery.reason };
+      }
+      const status = delivery?.status === "sent" ? "sent" : "dry_run";
       const reminder = await recordReminder(candidate, { status, reminderDate });
       return { status, reminder };
     } catch (error) {
@@ -283,6 +297,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
 
   return {
     ensureSchema,
+    getMode: () => reminderMode,
     listReminderCandidates,
     listPendingDocumentCandidates,
     listInterviewCandidates,
@@ -292,3 +307,4 @@ module.exports = function createEmailReminderService(pool, options = {}) {
 };
 
 module.exports.createSafeEmailSender = createSafeEmailSender;
+module.exports.getReminderMode = getReminderMode;
