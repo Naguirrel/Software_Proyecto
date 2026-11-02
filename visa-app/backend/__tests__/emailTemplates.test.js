@@ -1,4 +1,5 @@
 const { emailVerification, passwordReset, accountLocked } = require("../templates/emailTemplates");
+const { loadEmailBranding, normalizeWebsite } = require("../services/emailBrandingService");
 
 describe("plantillas de correo", () => {
   const maliciousName = '<a href="https://phishing.example">Haz clic</a>';
@@ -25,5 +26,48 @@ describe("plantillas de correo", () => {
 
     expect(html).not.toContain("phishing.example\">Haz clic</a>");
     expect(html).toContain("&#60;a href=&#34;https://phishing.example&#34;&#62;Haz clic&#60;/a&#62;");
+  });
+
+  const resetEmail = (branding) => passwordReset({ nombre: "Ana", resetUrl: "http://localhost:8080/r", branding }).html;
+
+  test("sin configuración el pie usa VisaGuide y no muestra sitio", () => {
+    const html = resetEmail(undefined);
+
+    expect(html).toContain("Este correo fue enviado por VisaGuide");
+    expect(html).toContain("VisaGuide. Todos los derechos reservados.");
+    expect(html).not.toContain('style="color: #64748b;"');
+  });
+
+  test("el pie muestra el nombre comercial y enlaza el sitio", () => {
+    const html = resetEmail({ nombreComercial: "Agencia Quetzal", sitioWeb: "https://quetzal.test" });
+
+    expect(html).toContain("Este correo fue enviado por Agencia Quetzal");
+    expect(html).toContain("Agencia Quetzal. Todos los derechos reservados.");
+    expect(html).toContain('<a href="https://quetzal.test"');
+  });
+
+  test("el pie escapa el nombre comercial", () => {
+    const html = resetEmail({ nombreComercial: "<img src=x>" });
+
+    expect(html).not.toContain("<img src=x>");
+    expect(html).toContain("&#60;img src=x&#62;");
+  });
+
+  test.each([
+    ["javascript:alert(1)", ""],
+    ["data:text/html,hola", ""],
+    ["no es una url", ""],
+    ["", ""],
+    [null, ""],
+    ["https://quetzal.test", "https://quetzal.test"],
+    ["  http://quetzal.test/agencia  ", "http://quetzal.test/agencia"],
+  ])("normalizeWebsite(%j) devuelve %j", (value, expected) => {
+    expect(normalizeWebsite(value)).toBe(expected);
+  });
+
+  test("si no se puede leer la configuración, se envía con la marca por defecto", async () => {
+    const pool = { query: jest.fn(() => Promise.reject(new Error("relation admin_settings does not exist"))) };
+
+    await expect(loadEmailBranding(pool)).resolves.toEqual({});
   });
 });

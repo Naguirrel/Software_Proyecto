@@ -675,6 +675,18 @@ describe("panel de administracion", () => {
     );
   });
 
+  it("solo muestra las secciones de configuración que funcionan", async () => {
+    window.history.pushState({}, "", "/admin/settings");
+
+    render(<App />);
+
+    await screen.findByDisplayValue("VisaGuide");
+    const nav = screen.getByRole("navigation", { name: "Secciones de configuración" });
+    expect(within(nav).getAllByRole("button").map((button) => button.textContent)).toEqual(["General", "Notificaciones automáticas"]);
+    expect(screen.getByText(/aparecen en el pie de los correos/)).toBeInTheDocument();
+    expect(screen.queryByText("Configuración aún no disponible")).not.toBeInTheDocument();
+  });
+
   it("distingue los datos de solo lectura y valida la edición del perfil admin", async () => {
     const user = userEvent.setup();
     window.history.pushState({}, "", "/admin/profile");

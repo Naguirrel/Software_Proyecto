@@ -1,6 +1,7 @@
 const express = require("express");
 const createAuthController = require("../controllers/authController");
 const createAuthService = require("../services/authService");
+const { loadEmailBranding } = require("../services/emailBrandingService");
 
 function createAuthRoutes(pool, {
   userSchemaReady,
@@ -19,7 +20,12 @@ function createAuthRoutes(pool, {
   const router = express.Router();
 
   const authService = createAuthService(pool, { userSchemaReady, tramiteSchemaReady, passwordResetSchemaReady, emailVerificationSchemaReady, loginSecuritySchemaReady });
-  const authController = createAuthController(authService, { activityLogService, testUsersReady, sendEmail });
+  const authController = createAuthController(authService, {
+    activityLogService,
+    testUsersReady,
+    sendEmail,
+    loadBranding: () => loadEmailBranding(pool),
+  });
 
   router.post("/register", registerLimiter, authController.register);
   router.post("/login", loginLimiter, authController.login);

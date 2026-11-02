@@ -58,13 +58,30 @@ describe("email reminder service", () => {
     expect(candidates[0].body).toContain("https://app.test/documents");
   });
 
+  test("usa el nombre comercial y el sitio de la configuración en el pie", async () => {
+    const pool = createPool(async (sql) => {
+      if (String(sql).includes("FROM admin_settings")) {
+        return { rows: [{ nombre_comercial: "Agencia Quetzal", sitio_web: "https://quetzal.test" }] };
+      }
+      if (String(sql).includes("FROM tramite t")) {
+        return { rows: [{ id_tramite: 21, etapa_actual: "Entrevista", user_id: 4, user_name: "Cliente", recipient_email: "cliente@example.com" }] };
+      }
+      return { rows: [] };
+    });
+
+    const [candidate] = await createEmailReminderService(pool).listInterviewCandidates();
+
+    expect(candidate.html).toContain("Este correo fue enviado por Agencia Quetzal");
+    expect(candidate.html).toContain('href="https://quetzal.test"');
+  });
+
   test("no recuerda documentos que ya esperan revisión del asesor", async () => {
     const pool = createPool(async () => ({ rows: [] }));
     const service = createEmailReminderService(pool);
 
     await service.listPendingDocumentCandidates();
 
-    const [sql] = pool.query.mock.calls[0];
+    const [sql] = pool.query.mock.calls.find(([statement]) => String(statement).includes("FROM documentos d"));
     expect(sql).toContain("d.estado IN ('pending', 'correction', 'rejected')");
     expect(sql).not.toContain("'review'");
   });

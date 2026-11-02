@@ -30,6 +30,7 @@ function presentReminder(row) {
 
 const { createEmailTransporter, getEmailFrom, getFrontendBaseUrl } = require("../config/email");
 const { documentReminder, interviewReminder } = require("../templates/emailTemplates");
+const { loadEmailBranding } = require("./emailBrandingService");
 
 function getReminderMode(env = process.env) {
   if (env.EMAIL_REMINDERS_MODE === "disabled") return "disabled";
@@ -91,19 +92,21 @@ function createSafeEmailSender(env = process.env, { ignoreReminderMode = false }
   };
 }
 
-function buildPendingDocumentTemplate(candidate, env) {
+function buildPendingDocumentTemplate(candidate, env, branding) {
   const { html, text } = documentReminder({
     nombre: candidate.user_name || "usuario",
     documentName: candidate.document_name || "documento pendiente",
     dashboardUrl: `${getFrontendBaseUrl(env)}/documents`,
+    branding,
   });
   return { subject: "Recordatorio de documento pendiente", body: text, html };
 }
 
-function buildInterviewTemplate(candidate, env) {
+function buildInterviewTemplate(candidate, env, branding) {
   const { html, text } = interviewReminder({
     nombre: candidate.user_name || "usuario",
     interviewUrl: `${getFrontendBaseUrl(env)}/entrevista`,
+    branding,
   });
   return { subject: "Recordatorio de preparación para entrevista", body: text, html };
 }
@@ -193,6 +196,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
   }
 
   async function listPendingDocumentCandidates() {
+    const branding = await loadEmailBranding(pool);
     const result = await pool.query(`
       SELECT d.id AS document_id, d.nombre AS document_name, d.estado,
              u.id_usuario AS user_id, u.nombre AS user_name, u.correo AS recipient_email
@@ -206,7 +210,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
     return result.rows
       .filter((row) => row.recipient_email)
       .map((row) => {
-        const template = buildPendingDocumentTemplate(row, env);
+        const template = buildPendingDocumentTemplate(row, env, branding);
         return {
           user_id: row.user_id,
           recipient_email: row.recipient_email,
@@ -225,6 +229,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
   }
 
   async function listInterviewCandidates() {
+    const branding = await loadEmailBranding(pool);
     const result = await pool.query(`
       SELECT t.id_tramite, t.etapa_actual, u.id_usuario AS user_id,
              u.nombre AS user_name, u.correo AS recipient_email
@@ -239,7 +244,7 @@ module.exports = function createEmailReminderService(pool, options = {}) {
     return result.rows
       .filter((row) => row.recipient_email)
       .map((row) => {
-        const template = buildInterviewTemplate(row, env);
+        const template = buildInterviewTemplate(row, env, branding);
         return {
           user_id: row.user_id,
           recipient_email: row.recipient_email,
